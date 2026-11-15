@@ -23,6 +23,7 @@
 // test suite shows them converging to the analytic matrices as δ shrinks.
 
 import { qFromWaist } from './gaussian-beam.js';
+import { resolveSourceSpectrum } from './spectrum.js';
 
 const dot = (a, b) => a.x * b.x + a.y * b.y;
 const cross = (a, b) => a.x * b.y - a.y * b.x;
@@ -83,26 +84,43 @@ export const CLIP_RADII = 1.5;
 // The beam a laser starts: a laser drawn with a size is a Gaussian beam
 // whose 1/e² diameter is its Beam width, with the waist at its output and a
 // beam quality M² (1 by default). The Beam width is the only size setting,
-// so the drawn beam and the beam parameter cannot disagree. A laser drawn as
-// a simple line, a supercontinuum, an LED and a point source start none
+// so the drawn beam and the beam parameter cannot disagree at the output.
+// Its drawn rays leave the output parallel, at the edge of the waist
+// (`parallelRays`): they are the beam's geometric part, without diffraction.
+//
+// A supercontinuum drawn with a size is a single-mode beam too: fiber
+// supercontinua leave a single-mode photonic crystal fiber (M² < 1.1 on
+// commercial sources; docs/physics/beam-propagation.md lists the sources).
+// Every wavelength leaves in that mode, but a collimated fiber output is not
+// the same size at every wavelength: the collimator images the fiber's mode,
+// so the beam grows roughly in proportion to the wavelength (about 1, 2 and
+// 3 mm at 530, 1100 and 2000 nm on one commercial source) and spreads at
+// about the same angle. Its Beam width is the diameter at the band's centre,
+// and each part of the band scales it with its wavelength
+// (`scalesWithWavelength`, `referenceNm`).
+//
+// A laser drawn as a simple line, an LED and a point source start none
 // (`noBeamReason` says why). Null without one.
-export const BEAM_SOURCE_TYPES = new Set(['cwlaser', 'pulsedlaser']);
+export const BEAM_SOURCE_TYPES = new Set(['cwlaser', 'pulsedlaser', 'sclaser']);
 export function sourceBeamParameter(type, params = {}) {
   if (!BEAM_SOURCE_TYPES.has(type) || params.beamMode !== 'beam') return null;
   const waistUm = Number(params.beamWidth) * 500;
-  const wavelengthNm = Number(params.wavelength);
+  const supercontinuum = type === 'sclaser';
+  const wavelengthNm = supercontinuum ? resolveSourceSpectrum(type, params).wl : Number(params.wavelength);
   if (!(waistUm > 0) || !(wavelengthNm > 0)) return null;
   const m2 = Math.max(1, Number(params.beamM2) || 1);
-  return { waistUm, m2, wavelengthNm, q: qFromWaist({ waistUm, wavelengthNm, m2, index: 1 }) };
+  return {
+    waistUm, m2, wavelengthNm, q: qFromWaist({ waistUm, wavelengthNm, m2, index: 1 }), parallelRays: true,
+    ...(supercontinuum ? { scalesWithWavelength: true, referenceNm: wavelengthNm } : {}),
+  };
 }
 
 // Why a source starts no Gaussian beam, in a sentence a readout can show;
 // null for a source that starts one.
 export function noBeamReason(type, params = {}) {
   if (BEAM_SOURCE_TYPES.has(type)) {
-    return params.beamMode === 'beam' ? null : 'this laser is drawn as a simple line; draw it as a beam with size for a Gaussian beam';
+    return params.beamMode === 'beam' ? null : `this ${type === 'sclaser' ? 'supercontinuum' : 'laser'} is drawn as a simple line; draw it as a beam with size for a Gaussian beam`;
   }
-  if (type === 'sclaser') return 'a supercontinuum spans many wavelengths, each with its own beam size and divergence, and this model follows one beam at one wavelength, so it does not describe a supercontinuum (its output can still be a single-mode beam)';
   if (type === 'ledsource') return 'an LED is an incoherent, extended source: it is described by rays, not by a Gaussian beam';
   if (type === 'pointsource') return 'a point source radiates in all directions: it is described by rays, not by a Gaussian beam';
   return 'this light does not come from a laser drawn with a size';

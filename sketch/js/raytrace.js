@@ -7168,8 +7168,9 @@ function nextPathPhase(r, c, surface) {
 // every interaction it meets is kept as a step (the surface, the hit, the ray
 // as it arrived and which child it continued as). After the final trace two
 // companion rays replay those steps through the tracer's own intersections
-// and interact(), so the measured ray-transfer matrix, and with it the beam,
-// cannot disagree with the drawn rays.
+// and interact(), so the measured ray-transfer matrix is the drawn rays' own.
+// The beam adds the diffraction the drawn rays leave out, and the readouts
+// say where that moves it away from them (drawnRaysApart).
 
 // Surfaces with no paraxial model: the beam parameter stops there.
 // What each of them does to the beam, for the readout.
@@ -7231,11 +7232,16 @@ function continueBeam(target, parent, parentSteps, base, child, childIndex, vert
   // A part of the spectrum already present (dispersive glass, a grating, a
   // filter, a dichroic separating it) whose centre wavelength differs: the
   // same beam goes on, evaluated at the centre wavelength of the light that
-  // is there. The source's waist is the same at every wavelength, so its
-  // Rayleigh range scales as 1/λ; the distance from the waist does not.
+  // is there. A laser's waist is the same at every wavelength, so its
+  // Rayleigh range scales as 1/λ; a supercontinuum's waist scales with λ
+  // (sourceBeamParameter), so its Rayleigh range does too. The distance from
+  // the waist does not change.
   const now = parent.beamSeedNow || parent.beamSeed;
-  const seed = now && child.wl > 0 && Math.abs(child.wl - now.wavelengthNm) > 1e-9
-    ? { ...now, wavelengthNm: child.wl, q: { re: now.q.re, im: now.q.im * now.wavelengthNm / child.wl } }
+  const ratio = now && child.wl > 0 ? child.wl / now.wavelengthNm : 1;
+  const seed = now && Math.abs(ratio - 1) > 1e-12
+    ? (now.scalesWithWavelength
+      ? { ...now, wavelengthNm: child.wl, waistUm: now.waistUm * ratio, q: { re: now.q.re, im: now.q.im * ratio } }
+      : { ...now, wavelengthNm: child.wl, q: { re: now.q.re, im: now.q.im / ratio } })
     : null;
   target.beamSeedNow = seed || now;
   const index = target.mediumMaterial ? (glassIndex(target.mediumMaterial, target.wl) || target.ior || 1) : (target.ior || 1);
@@ -7481,6 +7487,7 @@ function addBeamReading(track, hit, surfaces) {
       entry.n = at.n;
       entry.beam = beamFromQ(entry.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
       entry.estimate = at.estimate || null;
+      entry.notes = beamReadingNotes(at, along, seed, entry.beam);
     }
   }
   if (!beamReadings.has(id)) beamReadings.set(id, []);
@@ -7491,10 +7498,41 @@ function addBeamReading(track, hit, surfaces) {
 // it holds from is the tracer's bookkeeping).
 const beamIssueReading = ({ atVertex, ...issue }) => issue;
 
+// A source's drawn rays leave its output parallel, at the edge of the waist
+// (sourceBeamParameter): they are the beam's geometric part, without
+// diffraction. Through a lossless system the beam radius is that geometric
+// ray and a diffraction ray added in quadrature, w² = y_g² + y_d², and the
+// beam's waist lies |u_d / u_g| Rayleigh ranges from where the geometric
+// rays cross. Where diffraction dominates both (the beam is wider than √2
+// times the geometric ray's height here, and its waist is more than a
+// Rayleigh range from their crossing, or they stay parallel), the drawn rays
+// do not show where the beam goes, and the readout says so with both places.
+// A supercontinuum's part at another wavelength is compared with its own
+// waist's geometric ray, which crosses where the drawn rays do.
+const DRAWN_PARALLEL_MM = 1e5;
+function drawnRaysApart(at, along, seed, beam) {
+  if (!seed?.parallelRays || !beam || !at?.matrix) return null;
+  const h = seed.waistUm / 1000;
+  const y = h * (at.matrix.A + along * at.matrix.C / at.n), slope = h * at.matrix.C / at.n;
+  const w = beam.radiusUm / 1000;
+  if (!(w * w > 2 * y * y)) return null;
+  const crossAheadMm = slope !== 0 ? -y / slope : Infinity;
+  if (Math.abs(crossAheadMm) < DRAWN_PARALLEL_MM) {
+    return Math.abs(crossAheadMm - beam.waistAheadMm) > beam.rayleighMm ? { crossAheadMm, waistAheadMm: beam.waistAheadMm } : null;
+  }
+  return { parallel: true, waistAheadMm: beam.waistAheadMm };
+}
+// What a reading adds about how to read it: where the drawn rays part from
+// the beam, and a supercontinuum's band centre (its Beam width's wavelength).
+const beamReadingNotes = (at, along, seed, beam) => {
+  const apart = drawnRaysApart(at, along, seed, beam);
+  return { ...(apart ? { drawnRays: apart } : {}), ...(seed.scalesWithWavelength ? { bandCentreNm: seed.referenceNm } : {}) };
+};
+
 const beamBranchReading = (entry, spectralParts = 1) => ({
   sourceId: entry.sourceId, wavelengthNm: entry.wavelengthNm, m2: entry.m2, index: entry.n,
   ...entry.beam, gouyScope: 'circular', ...(spectralParts > 1 ? { spectralParts } : {}),
-  ...(entry.estimate ? { estimate: entry.estimate } : {}),
+  ...(entry.estimate ? { estimate: entry.estimate } : {}), ...entry.notes,
 });
 
 // What a group of overlapping branches of one source reads. Branches of the
@@ -7604,7 +7642,8 @@ function trackBeamAt(track, i, point) {
     seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
   if (!at || clip) return { ...base, issue: beamIssueReading(clip || track.issue || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this point' }) };
   const q = propagateQ(at.q, along);
-  return { ...base, index: at.n, q, ...beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n }), ...(at.estimate ? { estimate: at.estimate } : {}) };
+  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
+  return { ...base, index: at.n, q, ...beam, ...(at.estimate ? { estimate: at.estimate } : {}), ...beamReadingNotes(at, along, seed, beam) };
 }
 
 // The propagated beams crossing a circle of `radius` about (x, y): one

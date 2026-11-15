@@ -374,9 +374,9 @@ test('a wavefront detector on a focus reads the focus plane, not collimated', ()
 });
 
 test('a focus with no beam parameter keeps the cone estimate, labelled as such', () => {
-  // A supercontinuum has no beam parameter (step G1): the waist is the
-  // ideal Gaussian of the traced cone at the mean wavelength.
-  const laser = createElement('sclaser', 0, 0);
+  // An LED has no beam parameter (step G1): the waist is the ideal
+  // Gaussian of the traced cone at the mean wavelength.
+  const laser = createElement('ledsource', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 10;
   const lens = createElement('lens', 100, 0);

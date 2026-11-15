@@ -12,7 +12,7 @@ import {
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
-  isVolumeSpecimen, isRotatable, estimateText,
+  isVolumeSpecimen, isRotatable, estimateText, drawnRaysText, bandCentreText,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
@@ -517,7 +517,7 @@ export function beamRowsHTML(beam, nameOf = () => '', kind = 'general') {
   if (!all.length) return '';
   const several = all.length > 1;
   const title = (item, i) => {
-    const nm = Number.isFinite(item.wavelengthNm) ? `${Math.round(item.wavelengthNm)} nm` : '';
+    const nm = Number.isFinite(item.wavelengthNm) ? `λ = ${Math.round(item.wavelengthNm)} nm` : '';
     const shared = all.filter(other => other !== item && Math.round(other.wavelengthNm) === Math.round(item.wavelengthNm) && other.sourceId !== item.sourceId).length;
     const who = shared && nameOf(item.sourceId) ? nameOf(item.sourceId) : '';
     const parts = item.spectralParts > 1 ? ` (strongest of ${item.spectralParts} spectral parts)` : '';
@@ -531,18 +531,23 @@ export function beamRowsHTML(beam, nameOf = () => '', kind = 'general') {
       const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
         : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
       const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
-        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, radius of curvature ${beamLength(Math.abs(b.curvatureMm))}`;
+        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, radius of curvature R = ${beamLength(Math.abs(b.curvatureMm))}`;
       const m2 = Number(b.m2) || 1;
       const cells = {
-        radius: `<dt>Beam radius w</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e²)</dd>`,
+        radius: `<dt>Beam radius</dt><dd data-beam-radius>w = ${beamLength(b.radiusUm / 1000)} (1/e²)</dd>`,
         wavefront: `<dt>Wavefront</dt><dd>${wavefront}</dd>`,
-        waist: `<dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>`,
-        rayleigh: `<dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>`,
-        quality: `<dt>Beam quality M²</dt><dd>${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}</dd>`,
-        gouy: `<dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>`,
+        waist: `<dt>Waist</dt><dd data-beam-waist>w₀ = ${beamLength(b.waistUm / 1000)}, ${ahead}</dd>`,
+        rayleigh: `<dt>Rayleigh range</dt><dd>z<sub>R</sub> = ${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>`,
+        quality: `<dt>Beam quality</dt><dd>M² = ${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}</dd>`,
+        gouy: `<dt>Gouy phase</dt><dd>ψ = ${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>`,
       };
+      // The notes say how to read the values: an estimate past a lens met
+      // far from its axis, drawn rays that leave out a diffraction that
+      // matters, a supercontinuum read at one wavelength.
       body = `<dl class="measurement-grid">${rows.map(key => cells[key]).join('')}</dl>`
-        + (b.estimate ? `<div class="beam-block-note" data-beam-estimate>${esc(estimateText(b.estimate))}</div>` : '');
+        + (b.estimate ? `<div class="beam-block-note" data-beam-estimate>${esc(estimateText(b.estimate))}</div>` : '')
+        + (b.drawnRays ? `<div class="beam-block-note" data-beam-drawn-rays>${esc(drawnRaysText(b.drawnRays))}</div>` : '')
+        + (b.bandCentreNm ? `<div class="beam-block-aside" data-beam-band>${esc(bandCentreText(b.bandCentreNm))}</div>` : '');
     } else {
       const text = item.element === 'This detector' ? item.reason : `${item.element}: ${item.reason}`;
       body = `<div class="beam-block-note" data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</div>`;

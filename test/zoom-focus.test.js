@@ -47,8 +47,8 @@ test('a beam focused in the region gets its propagated waist', () => {
 });
 
 test('a bundle with no beam parameter gets the Gaussian waist of its cone, labelled', () => {
-  // A supercontinuum carries no beam parameter (step G1).
-  const laser = createElement('sclaser', 0, 0);
+  // An LED carries no beam parameter (step G1).
+  const laser = createElement('ledsource', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 3;
   const lens = createElement('lens', 100, 0);

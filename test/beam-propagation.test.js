@@ -16,7 +16,7 @@ import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, com
 import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { lp01 } from '../sketch/js/lp01.js';
 import { beamRowsHTML } from '../sketch/js/inspector.js';
-import { estimateText } from '../sketch/js/elements.js';
+import { estimateText, drawnRaysText, bandCentreText } from '../sketch/js/elements.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
 import { zoomSceneSVG } from '../sketch/js/zoom-view.js';
 import { parseSketch } from '../sketch/js/state.js';
@@ -45,19 +45,22 @@ test('G1: a laser drawn with a size starts its beam from its Beam width, waist a
   assert.match(noBeamReason('cwlaser', { beamMode: 'line' }), /simple line/);
   assert.equal(noBeamReason('cwlaser', { beamMode: 'beam' }), null);
   // Sources without one spatial mode start none, each with its reason.
-  for (const [type, why] of [['sclaser', /many wavelengths/], ['ledsource', /incoherent/], ['pointsource', /all directions/]]) {
+  for (const [type, why] of [['ledsource', /incoherent/], ['pointsource', /all directions/]]) {
     assert.equal(sourceBeamParameter(type, { beamMode: 'beam', beamWidth: 4, wavelength: 532 }), null, type);
     assert.match(noBeamReason(type, {}), why, type);
   }
-  // Every laser offers M² alone, collapsed, defaulting to an ideal beam;
-  // the old waist settings are gone.
-  for (const type of ['cwlaser', 'pulsedlaser']) {
+  // Every laser and the supercontinuum offer M² alone, collapsed,
+  // defaulting to an ideal beam; the old waist settings are gone.
+  for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
     const params = registry[type].params;
     assert.equal(params.find(p => p.key === 'beamHeading')?.open, false, `${type}: collapsed`);
     assert.ok(!params.some(p => p.key === 'beamWaistUm' || p.key === 'beamWaistPosMm'), type);
     const el = createElement(type, 0, 0);
     assert.equal(el.params.beamM2, 1);
-    assert.match(params.find(p => p.key === 'beamParameter').readout(el.params), /^w₀ [0-9.]+ mm at the output \(1\/e², half the beam width\) · z_R [0-9.]+ m · θ [0-9.]+ mrad$/);
+    const values = /w₀ = [0-9.]+ mm at the output \(1\/e², half the beam width\) · Rayleigh range = [0-9.]+ m · half-angle divergence θ = [0-9.]+ mrad/;
+    const readout = params.find(p => p.key === 'beamParameter').readout(el.params);
+    assert.match(readout, values, type);
+    assert.equal(/^At [0-9]+ nm, the band's centre: /.test(readout), type === 'sclaser', type);
     // A beam of 0.1 mm can be drawn, so small waists need no other setting.
     assert.equal(params.find(p => p.key === 'beamWidth').min, 0.1);
   }
@@ -151,14 +154,14 @@ test('G1: every readout states the beam in the drawing plane, with the Gouy phas
   // The scope is the card's Scope row; the general detector's block lists
   // every property, M² included, and marks the Gouy phase circular.
   const rows = beamRowsHTML(reading.beam, () => '', 'general');
-  for (const label of ['Beam radius w', 'Wavefront', 'Waist w₀', 'Rayleigh range', 'Beam quality M²', 'Gouy phase']) assert.match(rows, new RegExp(label), label);
+  for (const label of ['Beam radius</dt><dd data-beam-radius>w = ', 'Wavefront', 'Waist</dt><dd data-beam-waist>w₀ = ', 'Rayleigh range</dt><dd>z<sub>R</sub> = ', 'Beam quality</dt><dd>M² = ', 'Gouy phase</dt><dd>ψ = ']) assert.ok(rows.includes(label), label);
   assert.match(rows, /assumes a circular beam/);
   assert.match(rows, /class="beam-block"/);
   // Each detector shows what it could measure: a camera the beam's size, a
   // wavefront sensor its size and wavefront, a photodiode or PMT nothing.
   const shown = kind => [...beamRowsHTML(reading.beam, () => '', kind).matchAll(/<dt>([^<]+)<\/dt>/g)].map(m => m[1]);
-  assert.deepEqual(shown('camera'), ['Beam radius w']);
-  assert.deepEqual(shown('wavefront'), ['Beam radius w', 'Wavefront']);
+  assert.deepEqual(shown('camera'), ['Beam radius']);
+  assert.deepEqual(shown('wavefront'), ['Beam radius', 'Wavefront']);
   for (const kind of ['detector', 'pmt', 'power', 'spectrometer', 'autocorrelator', 'polarimeter', 'retina']) assert.equal(beamRowsHTML(reading.beam, () => '', kind), '', kind);
 });
 
@@ -251,21 +254,23 @@ test('G1: the probe can show the Gaussian beam where it stands', () => {
   const elements = [laser(), make('lens', 200, 0, { f: 100 }), probe];
   traceScene(elements);
   const svg = registry.probe.svg(probe, elements);
-  // One bullet per property, in this order, R named as the wavefront's
-  // radius of curvature, M² included; no footer.
-  const lines = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map(m => m[1]);
-  assert.equal(lines[0], 'Gaussian beam · 1000 nm');
-  assert.match(lines[1], /^• Beam radius w [0-9.]+ µm \(1\/e²\)$/);
-  assert.match(lines[2], /^• Wavefront (converging|diverging) \(radius of curvature [0-9.]+ mm\)$/);
-  assert.match(lines[3], /^• Waist w₀ [0-9.]+ µm, [0-9.]+ (µm|mm) (ahead|behind)$/);
-  assert.match(lines[4], /^• Rayleigh range [0-9.]+ (µm|mm)$/);
-  assert.equal(lines[5], '• Beam quality M² 1 (ideal)');
+  // One bullet per property, in this order, each with its symbol and an
+  // = sign, R named as the wavefront's radius of curvature, M² included; no
+  // footer. z_R's R is a subscript.
+  const lines = [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
+  assert.equal(lines[0], 'Gaussian beam · λ = 1000 nm');
+  assert.match(lines[1], /^• Beam radius w = [0-9.]+ µm \(1\/e²\)$/);
+  assert.match(lines[2], /^• Wavefront (converging|diverging), radius of curvature R = [0-9.]+ mm$/);
+  assert.match(lines[3], /^• Waist w₀ = [0-9.]+ µm, [0-9.]+ (µm|mm) (ahead|behind)$/);
+  assert.match(lines[4], /^• Rayleigh range zR = [0-9.]+ (µm|mm)$/);
+  assert.match(svg, /Rayleigh range z<tspan dy="[0-9.]+" font-size="[0-9.]+">R<\/tspan><tspan dy="-[0-9.]+"> = /);
+  assert.equal(lines[5], '• Beam quality M² = 1 (ideal)');
   assert.equal(lines.length, 6);
   assert.doesNotMatch(svg, /drawing plane/);
   // One beam: no source name to decode.
   assert.doesNotMatch(svg, /Laser|CW laser/);
   // The detector card names R the same way.
-  assert.match(beamRowsHTML({ branches: beamAtPoint(300, 0, 1), declined: [] }), /<dt>Wavefront<\/dt><dd>(converging|diverging), radius of curvature [0-9.]+ mm/);
+  assert.match(beamRowsHTML({ branches: beamAtPoint(300, 0, 1), declined: [] }), /<dt>Wavefront<\/dt><dd>(converging|diverging), radius of curvature R = [0-9.]+ mm/);
   // Just behind a diffuser, where the scattered central ray still passes
   // whatever direction the diffuser gave it.
   const behind = make('probe', 203, 0, { prop: 'beam', sampleDiameterMm: 2 });
@@ -413,8 +418,8 @@ test('G1 (Luca): separate spots of one source on one detector are read one by on
   // Two blocks, numbered and named by colour, not by the laser's name.
   const html = beamRowsHTML(beam, () => 'Laser 5', 'general');
   assert.equal([...html.matchAll(/class="beam-block"/g)].length, 2);
-  assert.match(html, /Gaussian beam 1 · 633 nm/);
-  assert.match(html, /Gaussian beam 2 · 633 nm/);
+  assert.match(html, /Gaussian beam 1 · λ = 633 nm/);
+  assert.match(html, /Gaussian beam 2 · λ = 633 nm/);
   assert.doesNotMatch(html, /Laser 5/);
 });
 
@@ -595,4 +600,90 @@ test('G1 (review 6): the estimate follows the waist into the zoom and the focus 
   assert.equal(reading.convergence?.estimate?.deviationPercent, 5.7, JSON.stringify(reading.convergence));
   assert.match(registry.display.svg(display, scene), /w₀ \/ zR \(EST\.\)/);
   assert.doesNotMatch(registry.display.svg(display, scene), /±/);
+});
+
+test('G1 (review 7): a supercontinuum drawn with a size is a single-mode beam whose size scales with wavelength', () => {
+  // Its Beam width is the 1/e² diameter at the band's centre.
+  const sc = { beamMode: 'beam', beamWidth: 2, scMin: 400, scMax: 2000 };
+  const beam = sourceBeamParameter('sclaser', sc);
+  assert.equal(beam.waistUm, 1000);
+  assert.equal(beam.wavelengthNm, 1200);
+  assert.equal(beam.referenceNm, 1200);
+  assert.equal(beam.scalesWithWavelength, true);
+  close(beam.q.im, Math.PI * 1 / 1200e-6, 1e-6, 'z_R at the centre');
+  // Drawn as a simple line it starts none, and says how to get one.
+  assert.equal(sourceBeamParameter('sclaser', { ...sc, beamMode: 'line' }), null);
+  assert.match(noBeamReason('sclaser', { beamMode: 'line' }), /^this supercontinuum is drawn as a simple line/);
+  assert.equal(noBeamReason('sclaser', { beamMode: 'beam' }), null);
+  // The whole band reads at its centre, with the note that says so.
+  const probe = make('probe', 300, 0, { prop: 'beam' });
+  const elements = [make('sclaser', 0, 0, sc), probe, make('detector', 400, 0)];
+  traceScene(elements);
+  const [whole] = beamAtPoint(300, 0, 1);
+  assert.equal(whole.wavelengthNm, 1200);
+  close(whole.waistUm, 1000, 1e-9, 'w₀ at the centre');
+  assert.equal(whole.bandCentreNm, 1200);
+  const card = [...registry.probe.svg(probe, elements).matchAll(/<text[^>]*>(.*?)<\/text>/g)].map(m => m[1].replace(/<[^>]+>/g, '')).join(' ');
+  assert.ok(card.includes(bandCentreText(1200)), card);
+  assert.match(card, /λ = 1200 nm/);
+  // A part of the band leaves with a waist in proportion to its wavelength
+  // and the same divergence (a collimated fiber output); its Rayleigh range
+  // scales with λ.
+  for (const [ftype, cutoff, centre] of [['longpass', 1500, 1750], ['shortpass', 600, 500]]) {
+    traceScene([make('sclaser', 0, 0, sc), make('filter', 150, 0, { ftype, cutoff, trans: 1 }), make('detector', 400, 0)]);
+    const [part] = beamAtPoint(300, 0, 1);
+    close(part.wavelengthNm, centre, 1e-6, ftype);
+    close(part.waistUm, 1000 * centre / 1200, 1e-6, `${ftype}: w₀ ∝ λ`);
+    close(part.halfDivergenceMrad, whole.halfDivergenceMrad, 1e-9, `${ftype}: same θ`);
+    close(part.rayleighMm / whole.rayleighMm, centre / 1200, 1e-9, `${ftype}: z_R ∝ λ`);
+    assert.equal(part.bandCentreNm, 1200);
+  }
+  // A laser's spectral part keeps the laser's waist (z_R ∝ 1/λ), as before.
+  traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }), make('filter', 200, 0, { ftype: 'longpass', cutoff: 795, trans: 1 }), make('detector', 400, 0)]);
+  const [laserPart] = beamAtPoint(300, 0, 1);
+  close(laserPart.waistUm, 1000, 1e-9, 'laser part keeps w₀');
+  assert.equal(laserPart.bandCentreNm, undefined);
+});
+
+test('G1 (review 7): where diffraction matters, the readout says the drawn rays leave it out', () => {
+  // A 0.1 mm beam at 633 nm (z_R = 12.4 mm) into an f = 100 mm lens 148 mm
+  // from the laser's output: the drawn rays, parallel at the waist's edge,
+  // cross at the focal point (x = 300), but the beam's waist is the lens's
+  // image of the laser's waist, s' = f + f²(s − f)/((s − f)² + z_R²).
+  const elements = [laser({ beamWidth: 0.1, wavelength: 633 }), make('lens', 200, 0, { f: 100 }), make('detector', 700, 0, {}, 0)];
+  elements[2].id = 'det-far';
+  traceScene(elements);
+  const zR0 = Math.PI * 0.05 ** 2 / 633e-6;
+  const waistX = 200 + 100 + 100 ** 2 * 48 / (48 ** 2 + zR0 ** 2);
+  for (const x of [250, 350, 450]) {
+    const [b] = beamAtPoint(x, 0, 1);
+    close(b.waistAheadMm, waistX - x, 1e-6, `waist ahead at ${x}`);
+    close(b.drawnRays.crossAheadMm, 300 - x, 1e-6, `drawn rays cross at ${x}`);
+    // Past the drawn focus the drawn rays diverge while the beam still
+    // converges: the card says why, with both places.
+    if (x > 300) assert.ok(b.curvatureMm < 0, `converging at ${x}`);
+  }
+  const [after] = beamAtPoint(350, 0, 1);
+  assert.equal(drawnRaysText(after.drawnRays), 'The drawn rays leave out diffraction, which matters for this beam: its waist is 145 mm ahead, while the drawn rays cross 50 mm behind');
+  const probe = make('probe', 350, 0, { prop: 'beam' });
+  traceScene([...elements, probe]);
+  const card = [...registry.probe.svg(probe, [...elements, probe]).matchAll(/<text[^>]*>(.*?)<\/text>/g)].map(m => m[1].replace(/<[^>]+>/g, '')).join(' ');
+  assert.match(card, /The drawn rays leave out diffraction/);
+  assert.match(beamRowsHTML(detectorReading('det-far').beam), /data-beam-drawn-rays>The drawn rays leave out diffraction/);
+  // At the beam's own waist the drawn rays show its size: no note.
+  assert.equal(beamAtPoint(waistX, 0, 1)[0].drawnRays, undefined);
+  // Wider beams follow the drawn rays within a Rayleigh range of their
+  // crossing: no note anywhere along the path.
+  for (const beamWidth of [2, 0.5]) {
+    traceScene([laser({ beamWidth, wavelength: 633 }), make('lens', 200, 0, { f: 100 }), make('detector', 700, 0)]);
+    for (const x of [100, 250, 300, 301, 350, 600]) assert.equal(beamAtPoint(x, 0, 1)[0].drawnRays, undefined, `${beamWidth} mm at ${x}`);
+  }
+  // Straight out of the laser the drawn rays stay parallel; the note starts
+  // where the beam leaves its Rayleigh range (w > √2 w₀), not before.
+  traceScene([laser({ beamWidth: 0.1, wavelength: 633 }), make('detector', 400, 0)]);
+  const output = beamTracksFromLastTrace()[0].path.pts[0].x;
+  assert.equal(beamAtPoint(output + 0.99 * zR0, 0, 1)[0].drawnRays, undefined);
+  const beyond = beamAtPoint(output + 1.01 * zR0, 0, 1)[0];
+  assert.equal(beyond.drawnRays.parallel, true);
+  assert.match(drawnRaysText(beyond.drawnRays), /its waist is 12\.5 mm behind, while the drawn rays stay parallel$/);
 });

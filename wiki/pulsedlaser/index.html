@@ -243,8 +243,14 @@
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
-        element's in-plane ray-transfer matrix, so the beam cannot disagree with the drawn
-        rays. The beam probe, the general detector and the zoom then report its radius, the
+        element's in-plane ray-transfer matrix, so the beam passes every optic as the drawn
+        rays do. The drawn rays leave out diffraction, though, which a narrow beam cannot: a
+        beam whose Rayleigh range is short beside the distances it travels spreads faster than
+        its drawn rays, and a lens focuses it where it images the laser's waist, not at its
+        focal point. For a 0.1&nbsp;mm beam at 633&nbsp;nm, 148&nbsp;mm before an
+        f&nbsp;=&nbsp;100&nbsp;mm lens, the drawn rays cross at the focal point while the beam's
+        waist lies 295&nbsp;mm past the lens; where that matters, the readouts say so with both
+        places. The beam probe, the general detector and the zoom then report its radius, the
         wavefront's radius of curvature, the waist, the Rayleigh range and M², in the drawing
         plane; a camera shows the beam's size and a wavefront detector its size and wavefront.
         Where filters or dispersive glass separate the spectrum, each part keeps the beam at

@@ -12,19 +12,52 @@ size a source had.
 **Source.** A CW or pulsed laser drawn with a size starts a Gaussian beam
 whose 1/e² diameter is its Beam width (0.1 to 60 mm), with the waist at its
 output. The Beam width is the only size setting, so the drawn beam and the
-beam parameter always agree; the collapsed *Gaussian beam* section adds the
-beam quality M² (1 by default) and shows the waist, the Rayleigh range and the
-divergence that follow. A laser drawn as a simple line starts none, and the
-probe says so. A supercontinuum starts none either. That is a limit of this
-model, not of the light: a supercontinuum can leave its fiber as a
-single-mode, diffraction-limited beam, but it spans many wavelengths, the
-size and divergence of a beam depend on the wavelength, and G1 follows one
-beam parameter at one wavelength, so it would misstate most of the spectrum. An LED is an
-incoherent, extended source and a point source radiates in all directions:
-both are described by rays, not by a Gaussian beam. The step guide in
-issue #313 also offered a waist size and a waist position overriding the Beam
-width; Luca's review of the first version removed them, as two size settings
-for one beam were confusing. The beam parameter is
+beam parameter agree at the output; the collapsed *Gaussian beam* section adds
+the beam quality M² (1 by default) and shows the waist, the Rayleigh range and
+the divergence that follow. A laser drawn as a simple line starts none, and the
+probe says so. An LED is an incoherent, extended source and a point source
+radiates in all directions: both are described by rays, not by a Gaussian
+beam. The step guide in issue #313 also offered a waist size and a waist
+position overriding the Beam width; Luca's review of the first version removed
+them, as two size settings for one beam were confusing.
+
+**Supercontinuum.** A supercontinuum drawn with a size starts a Gaussian beam
+too (Luca's request after the first version, which declined it). A fiber
+supercontinuum leaves a single-mode photonic crystal fiber, and the
+literature agrees that it is a single-mode beam at every wavelength:
+
+- an endlessly single-mode photonic crystal fiber is single-mode at any
+  wavelength (T. A. Birks, J. C. Knight and P. St. J. Russell, *Opt. Lett.*
+  22, 961 (1997), abstract);
+- a white-light continuum from such a fiber measured M² close to 1 across the
+  visible (G. J. Esposito et al., *Meas. Sci. Technol.* 18, 2609 (2007),
+  abstract), and a 49.8 W all-fiber continuum was verified strictly
+  single-mode across 500–1700 nm (X. Hu et al., *Opt. Lett.* 36, 2659 (2011),
+  abstract);
+- a commercial source specifies M² < 1.1 and a collimated beam diameter of
+  ≈ 1 mm at 530 nm, ≈ 2 mm at 1100 nm and ≈ 3 mm at 2000 nm (NKT Photonics,
+  SuperK EXTREME/FIANIUM datasheet, read in full).
+
+The last point is the one a model has to respect: a single-mode beam is not
+the same size at every wavelength. The collimator images the fiber's mode, of
+nearly the same size at every wavelength, so the collimated beam radius is
+about λ·f/(π·w_fiber), growing with λ, and its divergence w_fiber/f is about
+the same at every wavelength. The model takes that limit: the Beam width is
+the 1/e² diameter at the band's centre λ_c, and the part of the band centred
+at λ starts with w₀(λ) = w₀·λ/λ_c, the same divergence and a Rayleigh range
+in proportion to λ (`scalesWithWavelength`, `referenceNm`). On the datasheet
+figures, scaling from 2 mm at 1100 nm gives 0.96 mm at 530 nm and 3.6 mm at
+2000 nm against ≈ 1 and ≈ 3 mm: the fiber's mode grows somewhat with
+wavelength, which this does not model. A lens collimator's chromatic focal
+shift (which a mirror collimator avoids; M. Arnold et al., *Opt. Express* 22,
+13860 (2014), abstract) and an M² that rises at high pump power are not
+modelled either, and a continuum generated in a multimode fiber is not a
+single-mode beam. The drawn rays keep the Beam width at every wavelength. The
+readouts give the beam at one wavelength (the band's centre, or the centre of
+the part that is there) and say that the size scales with wavelength from the
+band's centre.
+
+The beam parameter is
 
 1/q = 1/R − i·M²·λ / (π·n·w²),  q = z + i·z_R
 
@@ -56,8 +89,8 @@ divergence-ray method of optical design programs (R. Herloski, S. Marshall
 and R. Antos, *Appl. Opt.* 22, 1168 (1983); J. A. Arnaud, *Appl. Opt.* 24, 538
 (1985)). Thin and thick lenses, aspheres, lens groups, the objective, tilted
 and curved mirrors, prisms and gratings are covered by construction, with
-their in-plane anamorphic factors, and the beam cannot disagree with the drawn
-rays. Along a segment q advances by the distance travelled. A reflection
+their in-plane anamorphic factors, and the matrix is the drawn rays' own.
+Along a segment q advances by the distance travelled. A reflection
 mirrors the plane, so in this basis it negates the matrix, which leaves q
 unchanged.
 
@@ -105,9 +138,10 @@ each with its own companions' replay. A laser's beam parameter is evaluated
 at the centre wavelength of the light: where dispersive glass, a grating, a
 filter, a dichroic, an etalon or an AOTF separates its spectrum into parts,
 each part carries the beam on at its own centre wavelength (a long-pass that
-moves the centre to 800.76 nm, the two parts a notch leaves). The source's
-waist is the same at every wavelength, so the Rayleigh range scales as 1/λ
-and the distance from the waist does not change. Parts of one spectrum that
+moves the centre to 800.76 nm, the two parts a notch leaves). A laser's
+waist is the same at every wavelength, so the Rayleigh range scales as 1/λ;
+a supercontinuum's waist scales with λ (above), so its Rayleigh range does
+too. The distance from the waist does not change. Parts of one spectrum that
 reach the same place are one beam: they add in power, and the strongest is
 read, marked "strongest of N spectral parts". Converted light is told by
 where it comes from, not by its wavelength, since a conversion can land
@@ -119,10 +153,11 @@ single beam describes them: the readout says they recombine.
 
 ## Readouts
 
-The beam probe's *Gaussian beam size* view lists, one bullet each, the 1/e²
-radius w, the wavefront (converging or diverging, with its radius of
-curvature R), the waist w₀ and how far ahead or behind it lies, the Rayleigh
-range and the beam quality M². Several beams get one block each, named by
+The beam probe's *Gaussian beam size* view is headed by the wavelength
+(λ = 633 nm) and lists, one bullet each with its symbol and an = sign, the
+1/e² radius w, the wavefront (converging before the waist, diverging after
+it, with its radius of curvature R), the waist w₀ and how far ahead or behind
+it lies, the Rayleigh range z_R and the beam quality M². Several beams get one block each, named by
 their wavelength and direction of travel, as the probe's other views name
 beams. A detector shows what that kind of detector could measure, one block
 per beam:
@@ -139,6 +174,28 @@ All of it is in the drawing plane (step A5: `reading.beam` has the scope
 property). The Gouy phase of a beam is half the sum of the phases of its two
 transverse planes; until the out-of-plane size is added it assumes a
 circular beam, and says so beside its value (`gouyScope: 'circular'`).
+
+**Where the drawn rays leave the beam.** A source's drawn rays leave its
+output parallel, at the edge of the waist: they are the beam's geometric
+part, without diffraction. Through a lossless system the beam radius is that
+geometric ray and a diffraction ray (starting on the axis at the far-field
+angle) added in quadrature, w² = y_g² + y_d², and the beam's waist lies
+|u_d/u_g| Rayleigh ranges from where the geometric rays cross. For most
+beams the diffraction ray is small and the drawn rays show where the beam
+goes. A narrow beam, whose Rayleigh range is short beside the distances it
+travels, is the opposite: a 0.1 mm beam at 633 nm (z_R = 12.4 mm) 148 mm
+before an f = 100 mm lens is focused where the lens images the laser's
+waist, 295 mm past the lens, while the drawn rays cross at the focal point,
+100 mm past it; between the two the drawn rays diverge and the beam still
+converges. Where diffraction dominates both (the beam is wider than √2
+times the geometric ray's height, and its waist lies more than a Rayleigh
+range from the drawn rays' crossing, or they stay parallel) the probe and
+the detector cards say "The drawn rays leave out diffraction, which matters
+for this beam: its waist is 145 mm ahead, while the drawn rays cross 50 mm
+behind" (the example at 150 mm past the lens). Straight out of a laser the
+note starts where the beam leaves its Rayleigh range (w > √2 w₀). At the
+beam's own waist, and for the 0.5 mm and wider beams of the same case,
+nothing is added. The drawn rays are not changed.
 
 Only light that is there counts. A dark port of an interferometer keeps its
 traced path with no power on it: neither the probe nor a detector reads a
@@ -211,7 +268,11 @@ the reason (the detector's inspector card, the probe card), at:
   the central ray.
 - Clipping: a clipped beam is declined, not truncated.
 - The beam's own effect on the drawn rays: the 25 rays of a sized laser still
-  sample its width uniformly; the envelope drawing is step G2.
+  sample its width uniformly and leave out diffraction (the readouts say
+  where that matters); the envelope drawing is step G2.
+- A supercontinuum fiber's mode growing with wavelength, a lens collimator's
+  chromatic focal shift, and the wavelength dependence of a fiber output's
+  LP₀₁ mode within one beam (a part a filter leaves keeps the fiber's waist).
 - The accumulated Gouy phase between branches and Gaussian interference
   profiles on cameras (step G5).
 

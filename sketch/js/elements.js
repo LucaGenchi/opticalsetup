@@ -1181,21 +1181,44 @@ const probeIssueText = issue => (issue.element === 'Here' ? issue.reason : `${is
 // Why a beam's values are an estimate: an ideal lens met far from its axis
 // is not a physical lens there and does not keep the beam quality.
 export const estimateText = estimate => `Estimate: ${estimate.element} is met far from its axis, where an ideal lens is not a lossless lens (it would change the beam quality by ${estimate.deviationPercent} %)`;
-// The properties of one beam, one bullet each (a card of run-on lines
-// reads as a paragraph). R is named as the wavefront's radius of curvature.
+// Where the drawn rays, which leave out diffraction, part from the beam
+// (raytrace.js drawnRaysApart): both places, ahead or behind.
+const beamPlace = mm => (Math.abs(mm) < 1e-3 ? 'here' : `${probeBeamLength(Math.abs(mm))} ${mm > 0 ? 'ahead' : 'behind'}`);
+export const drawnRaysText = d => `The drawn rays leave out diffraction, which matters for this beam: its waist is ${beamPlace(d.waistAheadMm)}, while the drawn rays ${d.parallel ? 'stay parallel' : `cross ${beamPlace(d.crossAheadMm)}`}`;
+// A supercontinuum's beam is read at one wavelength; its size scales with
+// the wavelength from the band's centre, where its Beam width is set.
+export const bandCentreText = nm => `Supercontinuum: each wavelength has its own beam, sized in proportion to the wavelength; the Beam width is the size at the band's centre (${Math.round(nm)} nm)`;
+// The symbols of one beam, with = signs, one bullet each (a card of run-on
+// lines reads as a paragraph). R is named as the wavefront's radius of
+// curvature. `_{x}` is a subscript (probeRichText).
 function probeBeamBullets(b) {
   const wave = !Number.isFinite(b.curvatureMm) ? 'Wavefront flat (at the waist)'
-    : `Wavefront ${b.curvatureMm < 0 ? 'converging' : 'diverging'} (radius of curvature ${probeBeamLength(Math.abs(b.curvatureMm))})`;
+    : `Wavefront ${b.curvatureMm < 0 ? 'converging' : 'diverging'}, radius of curvature R = ${probeBeamLength(Math.abs(b.curvatureMm))}`;
   const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
     : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
   const m2 = Number(b.m2) || 1;
   return [
-    `Beam radius w ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`,
+    `Beam radius w = ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`,
     wave,
-    `Waist w₀ ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`,
-    `Rayleigh range ${probeBeamLength(b.rayleighMm)}`,
-    `Beam quality M² ${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}`,
+    `Waist w₀ = ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`,
+    `Rayleigh range z_{R} = ${probeBeamLength(b.rayleighMm)}`,
+    `Beam quality M² = ${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}`,
   ];
+}
+// A card row's text in SVG: `_{x}` becomes a subscript, lowered and
+// smaller, and the text after it returns to the line.
+const RICH_SUB = /_\{([^}]*)\}/g;
+const probePlainText = text => text.replace(RICH_SUB, '$1');
+function probeRichText(text, size) {
+  let out = '', last = 0, lowered = false;
+  for (const match of text.matchAll(RICH_SUB)) {
+    out += lowered ? `<tspan dy="${(-0.28 * size).toFixed(2)}">${esc(text.slice(last, match.index))}</tspan>` : esc(text.slice(last, match.index));
+    out += `<tspan dy="${(0.28 * size).toFixed(2)}" font-size="${(0.72 * size).toFixed(2)}">${esc(match[1])}</tspan>`;
+    last = match.index + match[0].length;
+    lowered = true;
+  }
+  const rest = text.slice(last);
+  return out + (lowered && rest ? `<tspan dy="${(-0.28 * size).toFixed(2)}">${esc(rest)}</tspan>` : esc(rest));
 }
 function probeBeamCard(el, elements = []) {
   const radius = probeSampleDiameterMm(el.params) / 2;
@@ -1204,9 +1227,12 @@ function probeBeamCard(el, elements = []) {
   const note = text => wrapWords(text, 52).forEach(line => rows.push({ text: line, size: 7, color: '#b45309' }));
   // Past an ideal lens met far from its axis the values are an estimate,
   // and the card says why and by how much.
+  const aside = text => wrapWords(text, 52).forEach(line => rows.push({ text: line, size: 7, color: '#666' }));
   const bullets = b => {
     probeBeamBullets(b).forEach(text => rows.push({ text: `• ${text}`, size: 7.5, color: '#333' }));
     if (b.estimate) note(estimateText(b.estimate));
+    if (b.drawnRays) note(drawnRaysText(b.drawnRays));
+    if (b.bandCentreNm) aside(bandCentreText(b.bandCentreNm));
   };
   // Light spread over parts of its spectrum (a dispersive element, a filter)
   // is read at its strongest part, and says so.
@@ -1217,7 +1243,7 @@ function probeBeamCard(el, elements = []) {
       rows.push({ text: 'No Gaussian beam here', size: 9, color: '#333', bold: true });
       note(probeIssueText(b.issue));
     } else {
-      rows.push({ text: `Gaussian beam · ${Math.round(b.wavelengthNm)} nm${parts(b)}`, size: 8.5, color: '#333', bold: true });
+      rows.push({ text: `Gaussian beam · λ = ${Math.round(b.wavelengthNm)} nm${parts(b)}`, size: 8.5, color: '#333', bold: true });
       bullets(b);
     }
   } else if (found.length > 1) {
@@ -1225,7 +1251,7 @@ function probeBeamCard(el, elements = []) {
     // the probe's other views name beams.
     found.slice(0, 3).forEach((b, i) => {
       if (i) rows.push({ text: '', size: 3, color: '#333' });
-      const who = `${Math.round(b.wavelengthNm)} nm ${probeArrow(b.direction)}`;
+      const who = `λ = ${Math.round(b.wavelengthNm)} nm ${probeArrow(b.direction)}`;
       if (b.issue) {
         rows.push({ text: `${who}: no Gaussian beam`, size: 8, color: '#333', bold: true });
         note(probeIssueText(b.issue));
@@ -1249,11 +1275,11 @@ function probeBeamCard(el, elements = []) {
       for (const reason of reasons) note(reason.replace(/^./, c => c.toUpperCase()));
     }
   }
-  const w = Math.max(56, ...rows.map(r => r.text.length * r.size * 0.56 + 14));
+  const w = Math.max(56, ...rows.map(r => probePlainText(r.text).length * r.size * 0.56 + 14));
   let y = 4, body = '';
   for (const r of rows) {
     y += r.size + 3;
-    body += `<text x="7" y="${y.toFixed(1)}" font-size="${r.size}"${r.bold ? ' font-weight="700"' : ''} fill="${r.color}">${esc(r.text)}</text>`;
+    body += `<text x="7" y="${y.toFixed(1)}" font-size="${r.size}"${r.bold ? ' font-weight="700"' : ''} fill="${r.color}">${probeRichText(r.text, r.size)}</text>`;
   }
   const h = y + 6;
   return { w, h, body: `<rect x="0" y="0" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="#fff" stroke="#c9ced6"/>${body}` };
@@ -2556,23 +2582,27 @@ const beamShapeParams = beamWidthDef => [
   { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 0.1, max: 60, step: 0.1, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
-// The Gaussian beam a CW or pulsed laser starts (step G1,
-// docs/physics/beam-propagation.md): its Beam width is the beam's 1/e²
+// The Gaussian beam a CW or pulsed laser or a supercontinuum starts (step
+// G1, docs/physics/beam-propagation.md): its Beam width is the beam's 1/e²
 // diameter, the waist sits at the output, and M² sets how much faster than
-// an ideal beam it spreads. Collapsed: the default (M² = 1) is the beam the
-// laser always drew.
+// an ideal beam it spreads. A supercontinuum's Beam width is the size at its
+// band's centre, and each wavelength scales it (sourceBeamParameter).
+// Collapsed: the default (M² = 1) is the beam the source always drew.
 const formatBeamLength = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
   : mm < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
 const gaussianBeamParams = type => [
   { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
   { key: 'beamM2', label: 'Beam quality M² (1 = ideal)', type: 'number', min: 1, max: 100, step: 0.1, def: 1, show: p => p.beamMode === 'beam' },
   {
-    key: 'beamParameter', label: 'Beam', type: 'readout',
+    key: 'beamParameter', label: 'Beam', type: 'readout', wide: true,
     readout: p => {
       const beam = sourceBeamParameter(type, p);
       if (!beam) return noBeamReason(type, p).replace(/^./, c => c.toUpperCase()) + '.';
       const shape = beamFromQ(beam.q, beam);
-      return `w₀ ${formatBeamLength(beam.waistUm / 1000)} at the output (1/e², half the beam width) · z_R ${formatBeamLength(shape.rayleighMm)} · θ ${Number(shape.halfDivergenceMrad.toPrecision(3))} mrad`;
+      const values = `w₀ = ${formatBeamLength(beam.waistUm / 1000)} at the output (1/e², half the beam width) · Rayleigh range = ${formatBeamLength(shape.rayleighMm)} · half-angle divergence θ = ${Number(shape.halfDivergenceMrad.toPrecision(3))} mrad`;
+      return beam.scalesWithWavelength
+        ? `At ${Math.round(beam.referenceNm)} nm, the band's centre: ${values}. Every other wavelength has w₀ in proportion to it and the same θ`
+        : values;
     },
   },
 ];
@@ -6720,6 +6750,7 @@ registry.sclaser = {
     { ...P.color, def: '#cbd8ea' },
     SHOW_PULSE_PARAM,
     pinnedParam('temporalMode', 'pulsed'),
+    ...gaussianBeamParams('sclaser'),
     // Drawn in Label & appearance; the Interference panel stays last.
     ...laserHousingParams('#24233a', '#171629'),
     ...pulsedInterferenceParams('sclaser'),
