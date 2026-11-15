@@ -148,6 +148,10 @@ function propagatedFocus(group) {
   const along = shape.waistAheadMm;
   const length = Math.max(...group.rays.map(r => r.len));
   if (!(along > -shape.rayleighMm && along <= length + shape.rayleighMm)) return { ok: false };
+  // An edge that clips the beam before its waist or within the drawn
+  // stretch ends the beam parameter there (as the probe and detectors
+  // read it): the zoom then keeps the cone estimate.
+  if (beam.clipWithin?.(Math.max(along, length))) return null;
   return {
     ok: true, model: 'propagated',
     point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d },

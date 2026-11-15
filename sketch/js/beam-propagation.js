@@ -102,7 +102,7 @@ export function noBeamReason(type, params = {}) {
   if (BEAM_SOURCE_TYPES.has(type)) {
     return params.beamMode === 'beam' ? null : 'this laser is drawn as a simple line; draw it as a beam with size for a Gaussian beam';
   }
-  if (type === 'sclaser') return 'a supercontinuum spans many wavelengths, each with its own beam size and divergence, so no single Gaussian beam describes it';
+  if (type === 'sclaser') return 'a supercontinuum spans many wavelengths, each with its own beam size and divergence, and this model follows one beam at one wavelength, so it does not describe a supercontinuum (its output can still be a single-mode beam)';
   if (type === 'ledsource') return 'an LED is an incoherent, extended source: it is described by rays, not by a Gaussian beam';
   if (type === 'pointsource') return 'a point source radiates in all directions: it is described by rays, not by a Gaussian beam';
   return 'this light does not come from a laser drawn with a size';

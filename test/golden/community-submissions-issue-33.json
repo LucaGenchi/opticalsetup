@@ -1439,9 +1439,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "Filter",
-       "elementId": "ezdowt9y",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Mirror",
+       "elementId": "ecyp262p",
+       "reason": "its edge lies 13.2 mm from the beam's centre along its surface, closer than 1.5 beam radii (13.8 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
        "sourceId": "eoriz5x9",
        "wavelengthNm": 650
       }
@@ -3850,16 +3850,23 @@
     "bandMax": 783.730132,
     "bandMin": 776.269868,
     "beam": {
-     "branches": [],
-     "declined": [
+     "branches": [
       {
-       "element": "Dichroic mirror",
-       "elementId": "e7ojxkft",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "curvatureMm": 69397923.5,
+       "gouyDeg": 0.109943152,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.043179428,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 5750.01058,
+       "rayleighMm": 133165.265,
        "sourceId": "el9jqbcq",
+       "waistAheadMm": -255.527144,
+       "waistUm": 5750,
        "wavelengthNm": 780
       }
-     ]
+     ],
+     "declined": []
     },
     "centroid": null,
     "coherentPaths": 0,
@@ -5779,9 +5786,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "AOTF",
-       "elementId": "e5lbywtr",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Mirror",
+       "elementId": "evhneld7",
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (9.55 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
        "sourceId": "eplwudba",
        "wavelengthNm": 532
       }
@@ -6345,9 +6352,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "AOTF",
-       "elementId": "e5lbywtr",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Mirror",
+       "elementId": "evhneld7",
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (9.55 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
        "sourceId": "eplwudba",
        "wavelengthNm": 532
       }
@@ -7830,16 +7837,23 @@
     "bandMax": 453.267286,
     "bandMin": 446.732714,
     "beam": {
-     "branches": [],
-     "declined": [
+     "branches": [
       {
-       "element": "Dichroic mirror",
-       "elementId": "e5ofjza5",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "curvatureMm": 2.11040816,
+       "gouyDeg": 89.5030287,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 88.4615717,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 186.683,
+       "rayleighMm": 0.018304309,
        "sourceId": "e9xej9i6",
+       "waistAheadMm": -2.11024939,
+       "waistUm": 1.61922794,
        "wavelengthNm": 450
       }
-     ]
+     ],
+     "declined": []
     },
     "centroid": 0.270800148,
     "coherentPaths": 0,

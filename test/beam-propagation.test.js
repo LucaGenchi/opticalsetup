@@ -16,6 +16,7 @@ import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, com
 import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { lp01 } from '../sketch/js/lp01.js';
 import { beamRowsHTML } from '../sketch/js/inspector.js';
+import { zoomFoci } from '../sketch/js/zoom-focus.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const make = (type, x, y, params = {}, rot = 0) => {
@@ -419,4 +420,46 @@ test('G1: a probe whose circle reaches past an optic reads the beam at the end o
   const lit = beamAtPoint(203, 0, 5).find(b => !b.issue);
   const [atDiffuser] = (traceScene([laser()]), beamAtPoint(200, 0, 0.01));
   close(lit.radiusUm, atDiffuser.radiusUm, 1e-9, 'w at the diffuser');
+});
+
+// Andrea's review of 0ebebbd8 (three reproductions).
+test('G1 (review 3): a wide probe circle over two parallel, separate beams reads two beams', () => {
+  traceScene([laser({ wavelength: 633 }), make('bs', 200, 0), make('bs', 200, -30, { ratio: 0 }), make('detector', 400, -15, { aperture: 60 })]);
+  // A 40 mm circle takes in both beams, 30 mm apart with w ≈ 1 mm.
+  const found = beamAtPoint(350, -15, 20);
+  assert.equal(found.length, 2, JSON.stringify(found));
+  assert.ok(found.every(b => !b.issue && b.radiusUm > 0));
+});
+
+test('G1 (review 3): dispersive glass slices the spectrum without converting it', () => {
+  // A 100 fs pulse at 800 nm through an N-BK7 thick lens: the tracer slices
+  // its spectrum; the beam continues in the slice that holds 800 nm.
+  const detector = make('detector', 400, 0);
+  traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }),
+    make('thicklens', 200, 0, { r1: 60, r2: -60, thickness: 6, glass: 'nbk7' }), detector]);
+  const beam = detectorReading(detector.id).beam;
+  assert.equal(beam.branches.length, 1, JSON.stringify(beam));
+  assert.equal(beam.branches[0].wavelengthNm, 800);
+  // The slices beside it are that beam's own light: no decline here.
+  assert.deepEqual(beam.declined, []);
+  const reasons = beamTracksFromLastTrace().map(t => t.issue?.reason).filter(Boolean);
+  assert.ok(reasons.length >= 2, 'the other slices carry a reason');
+  assert.ok(reasons.every(r => /dispersion separates the spectrum into slices; the Gaussian beam is followed at the source's centre wavelength \(800 nm\)/.test(r)), reasons.join('\n'));
+  assert.ok(!reasons.some(r => /converts/.test(r)));
+  // A real conversion is still called one.
+  const pump = make('detector', 400, 0);
+  traceScene([laser({ wavelength: 1064 }), make('crystal', 200, 0, { convert: 'shg' }), pump]);
+  assert.ok(detectorReading(pump.id).beam.declined.some(d => /converts the wavelength/.test(d.reason)));
+});
+
+test('G1 (review 3): the zoom keeps the cone estimate where an edge clips the beam before the focus', () => {
+  const focus = withBlock => {
+    const zoom = make('zoom', 300, 0, { w: 20, h: 20 });
+    const elements = [laser(), make('lens', 200, 0, { f: 100 }), ...(withBlock ? [make('blocker', 250, 30.6, { w: 16, h: 60 })] : []), zoom];
+    return zoomFoci(zoom, traceScene(elements, []).paths);
+  };
+  assert.equal(focus(false)[0].model, 'propagated');
+  // The block's edge is 600 µm from the beam's centre, inside 1.5 w = 872 µm.
+  assert.equal(focus(true)[0].model, 'cone');
+  assert.match(beamAtPoint(290, 0, 0.5)[0].issue.reason, /clips the beam/);
 });

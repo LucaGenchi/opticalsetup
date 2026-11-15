@@ -15,9 +15,11 @@ output. The Beam width is the only size setting, so the drawn beam and the
 beam parameter always agree; the collapsed *Gaussian beam* section adds the
 beam quality M² (1 by default) and shows the waist, the Rayleigh range and the
 divergence that follow. A laser drawn as a simple line starts none, and the
-probe says so. A supercontinuum starts none either: it spans many
-wavelengths, and the size and divergence of a beam depend on the wavelength,
-so one beam parameter would misstate most of its spectrum. An LED is an
+probe says so. A supercontinuum starts none either. That is a limit of this
+model, not of the light: a supercontinuum can leave its fiber as a
+single-mode, diffraction-limited beam, but it spans many wavelengths, the
+size and divergence of a beam depend on the wavelength, and G1 follows one
+beam parameter at one wavelength, so it would misstate most of the spectrum. An LED is an
 incoherent, extended source and a point source radiates in all directions:
 both are described by rays, not by a Gaussian beam. The step guide in
 issue #313 also offered a waist size and a waist position overriding the Beam
@@ -78,7 +80,13 @@ mode, starts none, and light that came in with a beam parameter says why.
 
 **What a child inherits.** At a split (beamsplitter, polarizing splitter,
 grating orders, dichroic ports) every branch carries the beam parameter on,
-each with its own companions' replay. Where two branches of one source reach
+each with its own companions' replay. A pulsed laser's beam parameter is the
+one at its centre wavelength. Where dispersive glass, a grating or a filter
+separates its spectrum into slices, the beam continues in the slice that
+holds the centre wavelength; the other slices are the same light, not
+converted light, and carry the reason G1 does not follow them (it does not
+follow q(λ) wavelength by wavelength), shown only where no beam of that
+source is read. Where two branches of one source reach
 the same detector, they add as fields and no single beam parameter describes
 the light: the detector declines. At a wavelength conversion the generated
 light starts no beam parameter in this version; the unconverted pump keeps
@@ -113,7 +121,9 @@ screens (`waistModel: 'cone'`). The zoom draws the propagated waist where the
 bundle's central ray carries one and notes *beam parameter*; elsewhere it
 keeps the cone estimate and notes *cone estimate*. A propagated waist that lies
 outside the bundle's stretch is not drawn there: the rays' crossing is then not
-where the beam is narrowest.
+where the beam is narrowest. An edge that clips the beam before its waist or
+within the drawn stretch ends the beam parameter there for the zoom too, which
+then keeps the cone estimate.
 
 For an ideal beam (M² = 1) in air, the cone estimate λ·f/(π·w) is the limit of
 the propagated waist when the Rayleigh range of the incoming beam is much
@@ -154,14 +164,21 @@ the reason (the detector's inspector card, the probe card), at:
   imaging onto a flat focal plane, has determinant cos³θ_out / cos³θ_in in the
   drawing plane (0.7 % at 4°, 5.7 % for a collimated beam 20 mm off the axis of
   an f = 100 mm lens), and would change the beam quality by as much. Below the
-  tolerance the beam follows the lens as the rays do, off by at most 1 %;
+  tolerance the beam follows the lens as the rays do. The 1 % is an
+  approximation budget chosen for the app, not a physical threshold or a
+  measure of a real M². Rescaling the matrix to determinant 1 would not help:
+  dividing A, B, C and D by √det leaves q′ unchanged. A tolerance at the
+  companions' numerical error (about 10⁻⁵) would decline the ideal lens beyond
+  about 0.15° off its axis, including the galvo-to-back-pupil example (4°) and
+  the 4f filter's grating orders;
 - a companion ray that misses the surface or leaves the central ray's
   sequence of interactions;
 - a wavelength conversion, and branches of one source that overlap again. On
   a detector two branches recombine when their spots overlap (closer than
   1.5 (w₁ + w₂)); separate spots are read one by one. At the probe, branches
-  that travel together through its circle (within 0.1 rad) recombine, and beams
-  that cross it at larger angles are listed apart.
+  recombine when they travel together through its circle (within 0.1 rad) and
+  overlap across the beam by the same measure; parallel beams side by side in
+  a wide circle, and beams that cross it at larger angles, are listed apart.
 
 ## Not modelled
 

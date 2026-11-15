@@ -217,9 +217,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "SP700",
-       "elementId": "e227dxsg",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
        "sourceId": "evgazbrh",
        "wavelengthNm": 920
       }
@@ -783,9 +783,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "SP700",
-       "elementId": "e227dxsg",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
        "sourceId": "evgazbrh",
        "wavelengthNm": 920
       }
@@ -1439,9 +1439,16 @@
      "branches": [],
      "declined": [
       {
-       "element": "SP700",
-       "elementId": "e227dxsg",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "element": "Sample on piezo stage",
+       "elementId": "e17so0o1",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
+      },
+      {
+       "element": "Objective",
+       "elementId": "etsvxovm",
+       "reason": "the beam's far-field half-angle after it, 231 mrad, exceeds the paraxial limit of 200 mrad",
        "sourceId": "evgazbrh",
        "wavelengthNm": 920
       }
