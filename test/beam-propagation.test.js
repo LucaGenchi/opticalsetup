@@ -242,7 +242,8 @@ test('G1: the probe can show the Gaussian beam where it stands', () => {
   traceScene(elements);
   const svg = registry.probe.svg(probe, elements);
   assert.match(svg, /Beam radius w [0-9.]+ µm \(1\/e²\)/);
-  assert.match(svg, /Wavefront (converging|diverging), R /);
+  assert.match(svg, /Wavefront radius of curvature R [0-9.]+ mm \((converging|diverging)\)/);
+  assert.match(beamRowsHTML({ branches: beamAtPoint(300, 0, 1), declined: [] }), /Wavefront radius of curvature R<\/dt><dd>[0-9.]+ mm, (converging|diverging)/);
   assert.match(svg, /Gaussian beam, in the drawing plane/);
   // One beam: no source name to decode.
   assert.doesNotMatch(svg, /Laser|CW laser/);

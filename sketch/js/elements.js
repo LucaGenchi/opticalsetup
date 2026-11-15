@@ -1190,12 +1190,14 @@ function probeBeamCard(el, elements = []) {
       rows.push({ text: 'No Gaussian beam here', size: 9, color: '#333', bold: true });
       note(probeIssueText(b.issue));
     } else {
-      const wave = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
-        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${probeBeamLength(Math.abs(b.curvatureMm))}`;
+      // R is the radius of curvature of the wavefront, said in full: a bare
+      // "R" next to the beam radius read as a second size.
+      const wave = !Number.isFinite(b.curvatureMm) ? 'Wavefront flat (at the waist)'
+        : `Wavefront radius of curvature R ${probeBeamLength(Math.abs(b.curvatureMm))} (${b.curvatureMm < 0 ? 'converging' : 'diverging'})`;
       const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
         : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
       rows.push({ text: `Beam radius w ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`, size: 9, color: '#333', bold: true });
-      rows.push({ text: `Wavefront ${wave}`, size: 7.5, color: '#444' });
+      rows.push({ text: wave, size: 7.5, color: '#444' });
       rows.push({ text: `Waist w₀ ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`, size: 7.5, color: '#444' });
       rows.push({ text: `Rayleigh range ${probeBeamLength(b.rayleighMm)}`, size: 7.5, color: '#444' });
     }
@@ -1209,7 +1211,8 @@ function probeBeamCard(el, elements = []) {
         note(probeIssueText(b.issue));
         continue;
       }
-      const wave = !Number.isFinite(b.curvatureMm) ? 'flat' : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${probeBeamLength(Math.abs(b.curvatureMm))}`;
+      const wave = !Number.isFinite(b.curvatureMm) ? 'wavefront flat'
+        : `wavefront radius R ${probeBeamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
       const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
         : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
       rows.push({ text: `${who}: w ${probeBeamLength(b.radiusUm / 1000)} · ${wave}`, size: 8, color: '#333', bold: true });

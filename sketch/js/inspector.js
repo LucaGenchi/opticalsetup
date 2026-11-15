@@ -515,10 +515,10 @@ export function beamRowsHTML(beam, nameOf = () => '') {
   for (const b of beam.branches) {
     const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
       : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
-    const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
-      : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${beamLength(Math.abs(b.curvatureMm))}`;
+    const wavefront = !Number.isFinite(b.curvatureMm) ? 'infinite: flat wavefront (at the waist)'
+      : `${beamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
     h += `<dt>Beam radius w${label(b)}</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e², in the drawing plane)</dd>
-      <dt>Wavefront</dt><dd>${wavefront}</dd>
+      <dt>Wavefront radius of curvature R</dt><dd>${wavefront}</dd>
       <dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>
       <dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>
       <dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>
