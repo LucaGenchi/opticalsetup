@@ -13,6 +13,13 @@
       "scheme": 1,
       "rendererSha256": "b72fe452849ff74a5f216fe2cddbcadfc9288cd08929ca4fd8b62daa1ae1a2d3",
       "siteSha256": "e93fc0ca55fb76b273f045a9e2f281902271788cf063245e9a397febb3d34a3a"
+    },
+    {
+      "version": "v1.2.0",
+      "date": "2026-11-15",
+      "scheme": 1,
+      "rendererSha256": "a0cb9fae8d0497158ce25a70b17715197f5adc7652b9c4c6d2efbd89f34b56c7",
+      "siteSha256": "a76a0270118f26e5cc6ad4dbcfa1b43a6efb42dfefaaecaeb82a938f3bb6a936"
     }
   ]
 }
