@@ -323,3 +323,18 @@ test('G1 (review): no readout writer can record while companions replay an inter
     assert.match(line, /companionMode/, line.trim());
   }
 });
+
+test('G1 (review): a probe just before a lens wide enough for the beam reads the beam', () => {
+  // The lens ending the segment is not an edge ahead of the probe; its rim
+  // (12.7 mm) is checked where the beam meets it.
+  const detector = make('detector', 400, 0);
+  traceScene([laser(), make('lens', 200, 0, { f: 100, dia: 25.4 }), detector]);
+  for (const x of [198, 198.5, 199, 199.9]) {
+    const [b] = beamAtPoint(x, 0, 0.001);
+    assert.ok(!b.issue && b.radiusUm > 0, `at ${x} mm: ${JSON.stringify(b.issue)}`);
+  }
+  assert.equal(detectorReading(detector.id).beam.branches.length, 1);
+  // A block that ends the beam is not reported as clipping it before it is reached.
+  traceScene([laser(), make('blocker', 200, 0, { w: 16, h: 60 })]);
+  assert.ok(!beamAtPoint(191.5, 0, 0.001)[0].issue, "0.5 mm before the block's face at 192 mm");
+});

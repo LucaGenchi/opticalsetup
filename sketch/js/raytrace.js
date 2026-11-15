@@ -480,6 +480,10 @@ let beamReadings = new Map();
 let beamStepLists = new WeakMap();
 let beamDetectorHitsOf = new WeakMap();
 let beamTrackOf = new WeakMap();
+// What a ray carrying a beam parameter met at each vertex of its path (the
+// owner of the surface hit there), so a probe on a segment can leave out the
+// element that ends it, as advanceBeam does.
+let beamVertexOwnersOf = new WeakMap();
 // The surfaces of the last trace, for clip checks up to a probed point.
 let lastBeamSurfaces = [];
 // The beam parameter starts with no steps on a ray that carries a seed.
@@ -7484,8 +7488,11 @@ export function beamAtPoint(x, y, radius = 5) {
       const along = at ? dot(sub(point, at.p), at.d) : 0;
       // An edge between the last interaction and the probed point clips the
       // beam there, though the next interaction has not been reached.
+      // The element that ends this segment is checked where the beam meets
+      // it (hitEdgeIssue), not as an edge lying ahead of the probe.
+      const ahead = beamVertexOwnersOf.get(track.path)?.[i + 1] ?? null;
       const clip = at && beamClipIssue(at.p, { x: at.p.x + at.d.x * along, y: at.p.y + at.d.y * along }, at.q, at.n,
-        track.seed, lastBeamSurfaces, new Set([at.elementId].filter(Boolean)));
+        track.seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
       if (!at || clip) {
         found.set(key, { ...base, issue: beamIssueReading(clip || track.issue || { elementId: null, element: 'The beam', reason: 'no beam parameter here' }) });
       } else {
@@ -7759,6 +7766,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         break;
       }
       appendPoint(r, { x: hit.p.x, y: hit.p.y }, hit.t);
+      if (r.beamSeed) {
+        if (!beamVertexOwnersOf.has(r)) beamVertexOwnersOf.set(r, []);
+        beamVertexOwnersOf.get(r)[r.pts.length - 1] = surfaceOwnerId(hit.surface);
+      }
       const interactionKey = surfaceInteractionKey(hit.surface);
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
@@ -8846,6 +8857,7 @@ export function traceScene(elements, beams = [], options = {}) {
   beamStepLists = new WeakMap();
   beamDetectorHitsOf = new WeakMap();
   beamTrackOf = new WeakMap();
+  beamVertexOwnersOf = new WeakMap();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
