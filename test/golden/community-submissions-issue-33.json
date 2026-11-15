@@ -2063,7 +2063,7 @@
       {
        "element": "Crystal",
        "elementId": "edcwbjkb",
-       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "reason": "it converts the wavelength: the light it generates is new light, whose beam is not computed (the light that passes unconverted keeps its own)",
        "sourceId": "ealoa8hz",
        "wavelengthNm": 1064
       }

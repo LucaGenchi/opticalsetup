@@ -497,37 +497,57 @@ export function fiberMeasurementHTML(beam) {
 const beamLength = mm => (!Number.isFinite(mm) ? '∞'
   : Math.abs(mm) < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
     : Math.abs(mm) < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
-export function beamRowsHTML(beam, nameOf = () => '') {
-  if (!beam) return '';
-  let h = '';
-  // Several beams are told apart by their colour, as the probe names them,
-  // and by their source where two share one wavelength.
+// What each detector can tell of a Gaussian beam: the general detector (DET)
+// reads everything; a camera images the beam's size on its face; a
+// wavefront sensor sees its size and the curvature of its wavefront. A
+// photodiode, PMT, power meter, spectrometer, autocorrelator, polarimeter or
+// eye measures none of it, so their cards show none.
+const BEAM_ROWS_BY_KIND = {
+  general: ['radius', 'wavefront', 'waist', 'rayleigh', 'quality', 'gouy'],
+  wavefront: ['radius', 'wavefront'],
+  camera: ['radius'],
+};
+// The beams on a detector, one block each (several blocks are numbered and
+// named by colour, and by source where two sources share one), or why there
+// is none.
+export function beamRowsHTML(beam, nameOf = () => '', kind = 'general') {
+  const rows = BEAM_ROWS_BY_KIND[kind];
+  if (!beam || !rows) return '';
   const all = [...beam.branches, ...beam.declined];
+  if (!all.length) return '';
   const several = all.length > 1;
-  const label = item => {
-    if (!several) return '';
+  const title = (item, i) => {
     const nm = Number.isFinite(item.wavelengthNm) ? `${Math.round(item.wavelengthNm)} nm` : '';
     const shared = all.filter(other => other !== item && Math.round(other.wavelengthNm) === Math.round(item.wavelengthNm) && other.sourceId !== item.sourceId).length;
     const who = shared && nameOf(item.sourceId) ? nameOf(item.sourceId) : '';
-    const text = [nm, who].filter(Boolean).join(', ');
-    return text ? ` · ${esc(text)}` : '';
+    const parts = item.spectralParts > 1 ? ` (strongest of ${item.spectralParts} spectral parts)` : '';
+    return `Gaussian beam${several ? ` ${i + 1}` : ''}${[nm, who].filter(Boolean).length ? ` · ${esc([nm, who].filter(Boolean).join(', '))}` : ''}${parts}`;
   };
-  for (const b of beam.branches) {
-    const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
-      : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
-    const wavefront = !Number.isFinite(b.curvatureMm) ? 'infinite: flat wavefront (at the waist)'
-      : `${beamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
-    h += `<dt>Beam radius w${label(b)}</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e², in the drawing plane)</dd>
-      <dt>Wavefront radius of curvature R</dt><dd>${wavefront}</dd>
-      <dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>
-      <dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>
-      <dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>
-      ${b.m2 > 1 ? `<dt>Beam quality</dt><dd>M² = ${b.m2}</dd>` : ''}`;
-  }
-  for (const d of beam.declined) {
-    const text = d.element === 'This detector' ? d.reason : `${d.element}: ${d.reason}`;
-    h += `<dt>Gaussian beam${label(d)}</dt><dd data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</dd>`;
-  }
+  let h = '';
+  all.forEach((item, i) => {
+    let body;
+    if (beam.branches.includes(item)) {
+      const b = item;
+      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
+        : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+      const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
+        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, radius of curvature ${beamLength(Math.abs(b.curvatureMm))}`;
+      const m2 = Number(b.m2) || 1;
+      const cells = {
+        radius: `<dt>Beam radius w</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e²)</dd>`,
+        wavefront: `<dt>Wavefront</dt><dd>${wavefront}</dd>`,
+        waist: `<dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>`,
+        rayleigh: `<dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>`,
+        quality: `<dt>Beam quality M²</dt><dd>${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}</dd>`,
+        gouy: `<dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>`,
+      };
+      body = `<dl class="measurement-grid">${rows.map(key => cells[key]).join('')}</dl>`;
+    } else {
+      const text = item.element === 'This detector' ? item.reason : `${item.element}: ${item.reason}`;
+      body = `<div class="beam-block-note" data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</div>`;
+    }
+    h += `<div class="beam-block" data-beam-block><div class="beam-block-head">${title(item, i)}</div>${body}</div>`;
+  });
   return h;
 }
 
@@ -659,11 +679,11 @@ function measurementHTML(el) {
       <dt>Spectrum</dt><dd>${spectral}</dd>
       <dt>Polarization</dt><dd>${esc(rd.polarization)}</dd>
       <dt>Spot span</dt><dd>${spot}</dd>`}
-      ${beamRowsHTML(rd.beam, id => { const s = state.elements.find(e => e.id === id); return s ? sensorName(s) : ''; })}
       ${sampleRow}
       ${detectorRows}
       ${pulseRows}
     </dl>
+    ${beamRowsHTML(rd.beam, id => { const s = state.elements.find(e => e.id === id); return s ? sensorName(s) : ''; }, readoutKind)}
     ${cameraProfile}
     ${poincare}
     ${pulseTimeline}

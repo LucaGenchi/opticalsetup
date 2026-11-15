@@ -718,6 +718,9 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .measurement-grid dt { color: var(--muted); }
 .measurement-grid dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
 .pulse-timeline { margin-top: 9px; padding-top: 8px; border-top: 1px solid #dce8e3; }
+.beam-block { margin-top: 9px; padding-top: 8px; border-top: 1px solid #dce8e3; }
+.beam-block-head { margin-bottom: 6px; color: var(--muted); font-size: 9px; font-weight: 680; }
+.beam-block-note { color: #b45309; font-size: 10px; line-height: 1.4; }
 .pulse-timeline svg { display: block; width: 100%; height: auto; min-height: 30px; overflow: visible; }
 .pulse-timeline span { display: block; margin-top: 2px; color: var(--muted); font-size: 8.5px; text-align: right; }
 .camera-profile { margin-top: 9px; padding-top: 8px; border-top: 1px solid #dce8e3; }
@@ -967,7 +970,9 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] .measurement-card { border-color: #2f5145; background: #182923; }
 :root[data-theme="dark"] .measurement-card.no-signal { border-color: var(--border); background: var(--surface); }
 :root[data-theme="dark"] .pulse-timeline,
-:root[data-theme="dark"] .camera-profile { border-color: #2f5145; }
+:root[data-theme="dark"] .camera-profile,
+:root[data-theme="dark"] .beam-block { border-color: #2f5145; }
+:root[data-theme="dark"] .beam-block-note { color: #f5b041; }
 :root[data-theme="dark"] .camera-profile-mode.warning { border-color: #72541d; background: #302719; color: #f0bd6a; }
 :root[data-theme="dark"] .camera-profile-mode.cancelled { color: #94a3b8; }
 :root[data-theme="dark"] .camera-profile-note { color: #d7a756; }

@@ -1178,46 +1178,54 @@ const PROBE_ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 const probeArrow = d => PROBE_ARROWS[((Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) % 8) + 8) % 8];
 // A decline as one sentence: the element, then why.
 const probeIssueText = issue => (issue.element === 'Here' ? issue.reason : `${issue.element}: ${issue.reason}`);
+// The properties of one beam, one bullet each (a card of run-on lines
+// reads as a paragraph). R is named as the wavefront's radius of curvature.
+function probeBeamBullets(b) {
+  const wave = !Number.isFinite(b.curvatureMm) ? 'Wavefront flat (at the waist)'
+    : `Wavefront ${b.curvatureMm < 0 ? 'converging' : 'diverging'} (radius of curvature ${probeBeamLength(Math.abs(b.curvatureMm))})`;
+  const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
+    : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+  const m2 = Number(b.m2) || 1;
+  return [
+    `Beam radius w ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`,
+    wave,
+    `Waist w₀ ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`,
+    `Rayleigh range ${probeBeamLength(b.rayleighMm)}`,
+    `Beam quality M² ${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}`,
+  ];
+}
 function probeBeamCard(el, elements = []) {
   const radius = probeSampleDiameterMm(el.params) / 2;
   const found = beamAtPoint(el.x, el.y, radius);
   const rows = [];
   const note = text => wrapWords(text, 52).forEach(line => rows.push({ text: line, size: 7, color: '#b45309' }));
+  const bullets = b => probeBeamBullets(b).forEach(text => rows.push({ text: `• ${text}`, size: 7.5, color: '#333' }));
+  // Light spread over parts of its spectrum (a dispersive element, a filter)
+  // is read at its strongest part, and says so.
+  const parts = b => (b.spectralParts > 1 ? ` (strongest of ${b.spectralParts} spectral parts)` : '');
   if (found.length === 1) {
-    // One beam: its numbers in words, no names to decode.
     const b = found[0];
     if (b.issue) {
       rows.push({ text: 'No Gaussian beam here', size: 9, color: '#333', bold: true });
       note(probeIssueText(b.issue));
     } else {
-      // R is the radius of curvature of the wavefront, said in full: a bare
-      // "R" next to the beam radius read as a second size.
-      const wave = !Number.isFinite(b.curvatureMm) ? 'Wavefront flat (at the waist)'
-        : `Wavefront radius of curvature R ${probeBeamLength(Math.abs(b.curvatureMm))} (${b.curvatureMm < 0 ? 'converging' : 'diverging'})`;
-      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
-        : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
-      rows.push({ text: `Beam radius w ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`, size: 9, color: '#333', bold: true });
-      rows.push({ text: wave, size: 7.5, color: '#444' });
-      rows.push({ text: `Waist w₀ ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`, size: 7.5, color: '#444' });
-      rows.push({ text: `Rayleigh range ${probeBeamLength(b.rayleighMm)}`, size: 7.5, color: '#444' });
+      rows.push({ text: `Gaussian beam · ${Math.round(b.wavelengthNm)} nm${parts(b)}`, size: 8.5, color: '#333', bold: true });
+      bullets(b);
     }
   } else if (found.length > 1) {
-    // Several beams: each named by its colour and direction, as the probe's
-    // other views name beams.
-    for (const b of found.slice(0, 3)) {
+    // Several beams: one block each, named by its colour and direction, as
+    // the probe's other views name beams.
+    found.slice(0, 3).forEach((b, i) => {
+      if (i) rows.push({ text: '', size: 3, color: '#333' });
       const who = `${Math.round(b.wavelengthNm)} nm ${probeArrow(b.direction)}`;
       if (b.issue) {
         rows.push({ text: `${who}: no Gaussian beam`, size: 8, color: '#333', bold: true });
         note(probeIssueText(b.issue));
-        continue;
+        return;
       }
-      const wave = !Number.isFinite(b.curvatureMm) ? 'wavefront flat'
-        : `wavefront radius R ${probeBeamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
-      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
-        : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
-      rows.push({ text: `${who}: w ${probeBeamLength(b.radiusUm / 1000)} · ${wave}`, size: 8, color: '#333', bold: true });
-      rows.push({ text: `waist ${probeBeamLength(b.waistUm / 1000)}, ${ahead} · Rayleigh range ${probeBeamLength(b.rayleighMm)}`, size: 7, color: '#444' });
-    }
+      rows.push({ text: `${who}${parts(b)}`, size: 8, color: '#333', bold: true });
+      bullets(b);
+    });
     if (found.length > 3) rows.push({ text: `+${found.length - 3} more`, size: 7, color: '#666' });
   } else {
     // Light without a Gaussian beam says which source it is and why.
@@ -1233,7 +1241,6 @@ function probeBeamCard(el, elements = []) {
       for (const reason of reasons) note(reason.replace(/^./, c => c.toUpperCase()));
     }
   }
-  if (found.some(b => !b.issue)) rows.push({ text: 'Gaussian beam, in the drawing plane', size: 6.5, color: '#8a93a0' });
   const w = Math.max(56, ...rows.map(r => r.text.length * r.size * 0.56 + 14));
   let y = 4, body = '';
   for (const r of rows) {

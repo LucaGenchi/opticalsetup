@@ -493,7 +493,7 @@
       {
        "element": "Objective",
        "elementId": "etsvxovm",
-       "reason": "the beam's far-field half-angle after it, 232 mrad, exceeds the paraxial limit of 200 mrad",
+       "reason": "it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle 232 mrad, above 200 mrad",
        "sourceId": "evgazbrh",
        "wavelengthNm": 780
       }
@@ -636,7 +636,7 @@
       {
        "element": "Objective",
        "elementId": "etsvxovm",
-       "reason": "the beam's far-field half-angle after it, 232 mrad, exceeds the paraxial limit of 200 mrad",
+       "reason": "it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle 232 mrad, above 200 mrad",
        "sourceId": "evgazbrh",
        "wavelengthNm": 780
       }

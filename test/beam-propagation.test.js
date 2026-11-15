@@ -146,10 +146,18 @@ test('G1: every readout states the beam in the drawing plane, with the Gouy phas
   const q = { re: -b.waistAheadMm, im: b.rayleighMm };
   close(b.gouyDeg, Math.atan2(q.re, q.im) * 180 / Math.PI, 1e-9, 'Gouy');
   close(b.radiusUm, b.waistUm * Math.hypot(1, q.re / q.im), 1e-6, 'w(z)');
-  const rows = beamRowsHTML(reading.beam);
-  assert.match(rows, /Beam radius w/);
-  assert.match(rows, /in the drawing plane/);
+  // The scope is the card's Scope row; the general detector's block lists
+  // every property, M² included, and marks the Gouy phase circular.
+  const rows = beamRowsHTML(reading.beam, () => '', 'general');
+  for (const label of ['Beam radius w', 'Wavefront', 'Waist w₀', 'Rayleigh range', 'Beam quality M²', 'Gouy phase']) assert.match(rows, new RegExp(label), label);
   assert.match(rows, /assumes a circular beam/);
+  assert.match(rows, /class="beam-block"/);
+  // Each detector shows what it could measure: a camera the beam's size, a
+  // wavefront sensor its size and wavefront, a photodiode or PMT nothing.
+  const shown = kind => [...beamRowsHTML(reading.beam, () => '', kind).matchAll(/<dt>([^<]+)<\/dt>/g)].map(m => m[1]);
+  assert.deepEqual(shown('camera'), ['Beam radius w']);
+  assert.deepEqual(shown('wavefront'), ['Beam radius w', 'Wavefront']);
+  for (const kind of ['detector', 'pmt', 'power', 'spectrometer', 'autocorrelator', 'polarimeter', 'retina']) assert.equal(beamRowsHTML(reading.beam, () => '', kind), '', kind);
 });
 
 test('G1: a split gives each branch its own beam; branches that recombine are declined', () => {
@@ -201,7 +209,7 @@ test('G1: a focus steeper than the paraxial limit is declined', () => {
   // w = 5 mm into f = 10 mm: far-field half-angle about 0.5 rad.
   traceScene([laser({ beamWidth: 10 }), make('lens', 200, 0, { f: 10, dia: 25.4 }), detector]);
   const beam = detectorReading(detector.id).beam;
-  assert.ok(beam.declined.some(d => /paraxial limit/.test(d.reason)), JSON.stringify(beam));
+  assert.ok(beam.declined.some(d => /focuses the beam too steeply for the Gaussian-beam formulas/.test(d.reason)), JSON.stringify(beam));
 });
 
 test('G1: converted light starts no beam parameter; the unconverted pump keeps it', () => {
@@ -241,12 +249,21 @@ test('G1: the probe can show the Gaussian beam where it stands', () => {
   const elements = [laser(), make('lens', 200, 0, { f: 100 }), probe];
   traceScene(elements);
   const svg = registry.probe.svg(probe, elements);
-  assert.match(svg, /Beam radius w [0-9.]+ µm \(1\/e²\)/);
-  assert.match(svg, /Wavefront radius of curvature R [0-9.]+ mm \((converging|diverging)\)/);
-  assert.match(beamRowsHTML({ branches: beamAtPoint(300, 0, 1), declined: [] }), /Wavefront radius of curvature R<\/dt><dd>[0-9.]+ mm, (converging|diverging)/);
-  assert.match(svg, /Gaussian beam, in the drawing plane/);
+  // One bullet per property, in this order, R named as the wavefront's
+  // radius of curvature, M² included; no footer.
+  const lines = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map(m => m[1]);
+  assert.equal(lines[0], 'Gaussian beam · 1000 nm');
+  assert.match(lines[1], /^• Beam radius w [0-9.]+ µm \(1\/e²\)$/);
+  assert.match(lines[2], /^• Wavefront (converging|diverging) \(radius of curvature [0-9.]+ mm\)$/);
+  assert.match(lines[3], /^• Waist w₀ [0-9.]+ µm, [0-9.]+ (µm|mm) (ahead|behind)$/);
+  assert.match(lines[4], /^• Rayleigh range [0-9.]+ (µm|mm)$/);
+  assert.equal(lines[5], '• Beam quality M² 1 (ideal)');
+  assert.equal(lines.length, 6);
+  assert.doesNotMatch(svg, /drawing plane/);
   // One beam: no source name to decode.
   assert.doesNotMatch(svg, /Laser|CW laser/);
+  // The detector card names R the same way.
+  assert.match(beamRowsHTML({ branches: beamAtPoint(300, 0, 1), declined: [] }), /<dt>Wavefront<\/dt><dd>(converging|diverging), radius of curvature [0-9.]+ mm/);
   // Just behind a diffuser, where the scattered central ray still passes
   // whatever direction the diffuser gave it.
   const behind = make('probe', 203, 0, { prop: 'beam', sampleDiameterMm: 2 });
@@ -316,7 +333,7 @@ test('G1 (review): the beam a source starts is held to the paraxial limit', () =
   traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.002, wavelength: 1000 }), detector]);
   const beam = detectorReading(detector.id).beam;
   assert.equal(beam.branches.length, 0);
-  assert.match(beam.declined[0].reason, /318 mrad, beyond the paraxial limit/);
+  assert.match(beam.declined[0].reason, /spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle 318 mrad/);
   assert.equal(beam.declined[0].element, registry.cwlaser.label);
   assert.ok(beamAtPoint(200, 0, 1)[0].issue);
 });
@@ -391,27 +408,39 @@ test('G1 (Luca): separate spots of one source on one detector are read one by on
   assert.equal(beam.branches.length, 2, JSON.stringify(beam));
   assert.deepEqual(beam.declined, []);
   // The card names them by colour, not by the laser's internal name.
-  const html = beamRowsHTML(beam, () => 'Laser 5');
-  assert.match(html, /Beam radius w · 633 nm/);
+  // Two blocks, numbered and named by colour, not by the laser's name.
+  const html = beamRowsHTML(beam, () => 'Laser 5', 'general');
+  assert.equal([...html.matchAll(/class="beam-block"/g)].length, 2);
+  assert.match(html, /Gaussian beam 1 · 633 nm/);
+  assert.match(html, /Gaussian beam 2 · 633 nm/);
   assert.doesNotMatch(html, /Laser 5/);
 });
 
-test('G1: an ideal lens met far from its axis, where its model is not lossless, is declined', () => {
-  // A collimated beam h above the axis leaves at θ = atan(h/f); the ideal
-  // lens's matrix there has determinant cos³θ (0.4 % at h = 5 mm, 5.7 % at
-  // 20 mm), against 1 for any lossless paraxial optic.
-  const read = h => {
-    const detector = make('detector', 260, h * 0.4, { aperture: 100 });
-    traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 }), detector]);
-    const m = beamTracksFromLastTrace()[0].q[1]?.matrix;
-    return { beam: detectorReading(detector.id).beam, det: m && m.A * m.D - m.B * m.C };
-  };
-  const near = read(5);
-  close(near.det, Math.cos(Math.atan(0.05)) ** 3, 1e-6, 'determinant cos³θ');
-  assert.equal(near.beam.branches.length, 1);
-  const far = read(20);
-  assert.equal(far.beam.branches.length, 0);
-  assert.match(far.beam.declined[0].reason, /too far from its axis for its ideal model: there it would change the beam quality by 5\.7 %/);
+test('G1: a beam meeting an ideal lens far from its axis keeps its quality and focuses where the rays do', () => {
+  // A collimated 2 mm beam h above the axis of an f = 100 mm lens leaves at
+  // θ = atan(h/f) towards the focal point. The ideal lens's own matrix there
+  // has determinant cos³θ, not 1; no lens changes a beam's M², so the beam
+  // takes the size the rays give (w cos θ across the tilted beam) and their
+  // focus, at f / cos θ along the ray.
+  for (const h of [5, 20]) {
+    traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 })]);
+    const m = beamTracksFromLastTrace()[0].q[1].matrix;
+    const theta = Math.atan(h / 100);
+    close(m.A * m.D - m.B * m.C, Math.cos(theta) ** 3, 1e-6, `h = ${h}: the ideal lens's determinant`);
+    // At x = 250 (half way to the focal plane) by the q law.
+    const [b] = beamAtPoint(250, h / 2, 0.5);
+    // By hand: 148 mm from the laser's waist to the lens, then the lens as
+    // the rays see it (size × cos θ, focal length f / cos θ along the ray,
+    // lossless: D = 1/A), then 50 mm / cos θ on.
+    const a = Math.cos(theta), along = 50 / a;
+    const lens = { A: a, B: 0, C: -a / 100 * a, D: 1 / a };
+    const q = transformQ(qFromWaist({ waistUm: 1000, wavelengthNm: 633, zMm: 148 }), composeMatrices(lens, freeSpaceMatrix(along)));
+    const expected = beamFromQ(q, { wavelengthNm: 633 });
+    close(b.radiusUm, expected.radiusUm, 1e-3 * expected.radiusUm, `h = ${h}: w`);
+    close(b.waistAheadMm, expected.waistAheadMm, 1e-3, `h = ${h}: waist position`);
+    assert.equal(b.m2, 1, 'M² unchanged');
+    assert.ok(!b.issue);
+  }
 });
 
 test('G1: a probe whose circle reaches past an optic reads the beam at the end of its segment', () => {
@@ -434,19 +463,24 @@ test('G1 (review 3): a wide probe circle over two parallel, separate beams reads
 
 test('G1 (review 3): dispersive glass slices the spectrum without converting it', () => {
   // A 100 fs pulse at 800 nm through an N-BK7 thick lens: the tracer slices
-  // its spectrum; the beam continues in the slice that holds 800 nm.
+  // its spectrum. Every slice carries the beam on at its own centre
+  // wavelength; overlapping on the detector they are one beam's spectral
+  // parts, read at the strongest.
   const detector = make('detector', 400, 0);
   traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }),
     make('thicklens', 200, 0, { r1: 60, r2: -60, thickness: 6, glass: 'nbk7' }), detector]);
   const beam = detectorReading(detector.id).beam;
   assert.equal(beam.branches.length, 1, JSON.stringify(beam));
   assert.equal(beam.branches[0].wavelengthNm, 800);
-  // The slices beside it are that beam's own light: no decline here.
+  assert.equal(beam.branches[0].spectralParts, 5);
   assert.deepEqual(beam.declined, []);
-  const reasons = beamTracksFromLastTrace().map(t => t.issue?.reason).filter(Boolean);
-  assert.ok(reasons.length >= 2, 'the other slices carry a reason');
-  assert.ok(reasons.every(r => /it separates the spectrum, and this part no longer holds the source's centre wavelength \(800 nm\)/.test(r)), reasons.join('\n'));
-  assert.ok(!reasons.some(r => /converts/.test(r)));
+  const tracks = beamTracksFromLastTrace();
+  assert.ok(tracks.every(t => !t.issue), tracks.map(t => t.issue?.reason).join('\n'));
+  // Each slice's beam is evaluated at its own wavelength from the lens on.
+  for (const t of tracks.filter(t => t.path.wl !== 800)) {
+    const last = t.q.filter(Boolean).at(-1);
+    assert.equal(last.seed.wavelengthNm, t.path.wl);
+  }
   // A real conversion is still called one.
   const pump = make('detector', 400, 0);
   traceScene([laser({ wavelength: 1064 }), make('crystal', 200, 0, { convert: 'shg' }), pump]);
@@ -487,22 +521,27 @@ test('G1 (review 4): a conversion inside the pump band is still a conversion, wi
   assert.ok(shg.beam.declined.some(d => /converts the wavelength/.test(d.reason)), JSON.stringify(shg.beam));
 });
 
-test('G1 (review 4): a filter keeps the beam while it passes the centre wavelength, and a notch on it stops it', () => {
+test('G1 (review 4): filtered light keeps its beam, at the centre wavelength of what passes', () => {
   const read = filter => {
     const detector = make('detector', 400, 0);
     traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }),
-      make('filter', 200, 0, { trans: 1, ...filter }), detector]);
+      ...(filter ? [make('filter', 200, 0, { trans: 1, ...filter })] : []), detector]);
     return detectorReading(detector.id).beam;
   };
-  // The centroid moves (800.76 and 799.24 nm) but 800 nm still passes.
-  for (const filter of [{ ftype: 'longpass', cutoff: 795 }, { ftype: 'shortpass', cutoff: 805 }]) {
-    const beam = read(filter);
-    assert.deepEqual(beam.branches.map(b => b.wavelengthNm), [800], JSON.stringify(filter));
-    assert.deepEqual(beam.declined, [], JSON.stringify(filter));
-  }
-  // A notch across 800 nm leaves two pieces, neither holding it.
+  const plain = read(null).branches[0];
+  // A long-pass at 795 nm moves the centre to 800.76 nm: the beam there has
+  // the source's waist and a Rayleigh range shorter by 800/800.76.
+  const longpass = read({ ftype: 'longpass', cutoff: 795 });
+  assert.equal(longpass.branches.length, 1);
+  assert.deepEqual(longpass.declined, []);
+  const lp = longpass.branches[0];
+  assert.ok(Math.abs(lp.wavelengthNm - 800.76) < 0.01, String(lp.wavelengthNm));
+  close(lp.waistUm, plain.waistUm, 1e-6, 'same waist');
+  close(lp.rayleighMm / plain.rayleighMm, 800 / lp.wavelengthNm, 1e-9, 'z_R ∝ 1/λ');
+  // A notch across 800 nm leaves two parts, each with its beam: one entry,
+  // the strongest, never a conversion.
   const notched = read({ ftype: 'notch', center: 800, band: 6 });
-  assert.deepEqual(notched.branches, []);
-  assert.match(notched.declined[0].reason, /no longer holds the source's centre wavelength \(800 nm\)/);
-  assert.doesNotMatch(notched.declined[0].reason, /converts/);
+  assert.equal(notched.branches.length, 1, JSON.stringify(notched));
+  assert.equal(notched.branches[0].spectralParts, 2);
+  assert.deepEqual(notched.declined, []);
 });

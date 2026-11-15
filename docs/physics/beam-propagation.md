@@ -67,6 +67,21 @@ step it is about 10⁻⁶ of B through a prism or a grating and 4 × 10⁻⁷ on
 tilted mirror. The determinant of the reduced matrix, which is the companion
 invariant n·(y₁·u₂ − y₂·u₁), is 1 to 10⁻⁶ in every validation case.
 
+**The ideal lens met off its axis.** A lossless optic keeps that determinant
+at 1, and no lens changes a beam's quality M². The ideal lens does not keep
+it where the beam meets it off its axis: its mapping, perfect imaging onto a
+flat focal plane, has determinant cos³θ_out / cos³θ_in in the drawing plane
+(0.7 % at 4°, 5.7 % for a collimated beam 20 mm off the axis of an
+f = 100 mm lens). So the beam is carried, step by step, by the matrix that
+keeps what the drawn rays show, the beam's size (A, the cos θ projection of
+the footprint) and the focusing (C, which puts the waist at the rays' focus),
+with the angle term D = (1 + B·C)/A that makes the step lossless. M² is kept.
+This applies where a step's determinant departs from 1 by more than 10⁻⁴;
+every other step is lossless to the companions' precision and is used as
+measured, since recomputing D there would only add their rounding.
+Rescaling the whole matrix to determinant 1 would not do it: dividing A, B, C
+and D by √det leaves q′ unchanged.
+
 **Fibers.** A fiber whose output mode is known starts a new beam on its end
 face, waist on the face, M² = 1: a step-index fiber whose *single-mode core*
 diameter is set, through the best-coupling Gaussian of its exact LP₀₁ mode at
@@ -80,43 +95,51 @@ mode, starts none, and light that came in with a beam parameter says why.
 
 **What a child inherits.** At a split (beamsplitter, polarizing splitter,
 grating orders, dichroic ports) every branch carries the beam parameter on,
-each with its own companions' replay. A pulsed laser's beam parameter is the
-one at its centre wavelength. Where dispersive glass, a grating, a filter,
-a dichroic, an etalon or an AOTF separates its spectrum, the beam continues
-in each part that still holds the centre wavelength (inside a slice's band,
-or where the part's spectrum has weight there: a long-pass filter that moves
-the centroid keeps the beam, a notch across the centre does not). The other
-parts are the same light, not converted light, and carry the reason G1 does
-not follow them (it does not follow q(λ) wavelength by wavelength), shown
-only where no beam of that source is read. Converted light is told by where
-it comes from, not by its wavelength, since a conversion can land inside the
-pump's own band: every light a crystal set to convert generates is converted
-light, and the pump passing through keeps its beam. Where two branches of one source reach
-the same detector, they add as fields and no single beam parameter describes
-the light: the detector declines. At a wavelength conversion the generated
-light starts no beam parameter in this version; the unconverted pump keeps
-its own. Light a specimen generates is new light and starts none.
+each with its own companions' replay. A laser's beam parameter is evaluated
+at the centre wavelength of the light: where dispersive glass, a grating, a
+filter, a dichroic, an etalon or an AOTF separates its spectrum into parts,
+each part carries the beam on at its own centre wavelength (a long-pass that
+moves the centre to 800.76 nm, the two parts a notch leaves). The source's
+waist is the same at every wavelength, so the Rayleigh range scales as 1/λ
+and the distance from the waist does not change. Parts of one spectrum that
+reach the same place are one beam: they add in power, and the strongest is
+read, marked "strongest of N spectral parts". Converted light is told by
+where it comes from, not by its wavelength, since a conversion can land
+inside the pump's own band: every light a crystal set to convert generates
+is new light, whose beam is not computed, and the pump passing through keeps
+its beam. Light a specimen generates is new light too. Branches of the same
+light (the same wavelength) that reach one place add as fields, and no
+single beam describes them: the readout says they recombine.
 
 ## Readouts
 
-Every detector the beam reaches, and the beam probe's *Gaussian beam size*
-view, report per source and branch: the 1/e² radius w, the wavefront's radius
-of curvature R (converging or diverging), the waist w₀ and how far ahead or
-behind it lies, the Rayleigh range, and the Gouy phase relative to the waist,
-atan(z/z_R). All are in the drawing plane (step A5, `reading.beam` has the
-scope *plane*). The Gouy phase of a beam is half the sum of the phases of its
-two transverse planes; until step G3 supplies the second plane it assumes a
+The beam probe's *Gaussian beam size* view lists, one bullet each, the 1/e²
+radius w, the wavefront (converging or diverging, with its radius of
+curvature R), the waist w₀ and how far ahead or behind it lies, the Rayleigh
+range and the beam quality M². Several beams get one block each, named by
+their wavelength and direction of travel, as the probe's other views name
+beams. A detector shows what that kind of detector could measure, one block
+per beam:
+
+| Detector | Shows |
+|---|---|
+| General detector (DET) | w, wavefront and R, waist, Rayleigh range, M², Gouy phase |
+| Wavefront detector | w, wavefront and R |
+| Camera | w (the beam's size on its face) |
+| Photodetector, PMT, power meter, spectrometer, autocorrelator, polarimeter, eye | none: they do not measure a beam's size or shape |
+
+All of it is in the drawing plane (step A5: `reading.beam` has the scope
+*plane*, shown in the card's Scope row; the reading itself always holds every
+property). The Gouy phase of a beam is half the sum of the phases of its two
+transverse planes; until the out-of-plane size is added it assumes a
 circular beam, and says so beside its value (`gouyScope: 'circular'`).
 
 Only light that is there counts. A dark port of an interferometer keeps its
 traced path with no power on it: neither the probe nor a detector reads a
 beam there. A probe whose circle reaches past the end of a segment reads the
-beam where the segment ends, not beyond the optic that ends it. The probe
-names nothing when one beam crosses it. Several beams are named by their
-wavelength and direction of travel, as the probe's other views name beams,
-and the detector card names them by wavelength (and by source where two
-sources share one). Where light arrives without a Gaussian beam the probe
-says which source sent it and why it starts none.
+beam where the segment ends, not beyond the optic that ends it. Where light
+arrives without a Gaussian beam the probe says which source sent it and why
+it starts none. No readout names an internal step of the roadmap.
 
 A wavefront or general detector on a focus reads FOCUS PLANE as before, from
 the traced cone. Its waist, Rayleigh range and waist position are now the
@@ -162,23 +185,12 @@ the reason (the detector's inspector card, the probe card), at:
   edge's distance and 1.5 w there. A clipped beam diffracts at the edge and is
   no longer Gaussian, so no w, R or waist follows. The 25 drawn rays span only
   ±w, so an edge can clip the beam without stopping a drawn ray;
-- a far-field half-angle above 0.2 rad (the paraxial limit);
-- a measured matrix whose determinant departs from 1 by more than 1 %. Every
-  lossless paraxial optic keeps it at 1 (it is the companions' invariant). The
-  ideal lens does not where it is met off its axis: its mapping, perfect
-  imaging onto a flat focal plane, has determinant cos³θ_out / cos³θ_in in the
-  drawing plane (0.7 % at 4°, 5.7 % for a collimated beam 20 mm off the axis of
-  an f = 100 mm lens), and would change the beam quality by as much. Below the
-  tolerance the beam follows the lens as the rays do. The 1 % is an
-  approximation budget chosen for the app, not a physical threshold or a
-  measure of a real M². Rescaling the matrix to determinant 1 would not help:
-  dividing A, B, C and D by √det leaves q′ unchanged. A tolerance at the
-  companions' numerical error (about 10⁻⁵) would decline the ideal lens beyond
-  about 0.15° off its axis, including the galvo-to-back-pupil example (4°) and
-  the 4f filter's grating orders;
+- a far-field half-angle above 0.2 rad (the paraxial limit: the readout says
+  the beam is focused too steeply for the Gaussian-beam formulas);
 - a companion ray that misses the surface or leaves the central ray's
-  sequence of interactions;
-- a wavelength conversion, and branches of one source that overlap again. On
+  sequence of interactions (the readout says the beam cannot be followed
+  through it);
+- a wavelength conversion, and branches of the same light that overlap again. On
   a detector two branches recombine when their spots overlap (closer than
   1.5 (w₁ + w₂)); separate spots are read one by one. At the probe, branches
   recombine when they travel together through its circle (within 0.1 rad) and
@@ -216,6 +228,7 @@ each propagated track that meets only thin lenses and flat optics with
 free-space and thin-lens Gaussian optics: all 56 vertices met on the lens
 axis agree to 4 × 10⁻⁸, and
 the only differences are beams that cross an ideal lens off its axis, which
-follow the lens as the drawn rays do (the determinant tolerance above). The calculators' closed forms (`calculators/assets/gaussian-beam.js`,
+follow it as described above (`test/beam-propagation.test.js` checks such a
+beam against the q law by hand). The calculators' closed forms (`calculators/assets/gaussian-beam.js`,
 used by the thin and thick lens and fiber-coupling pages) now go through the
 same q law as the canvas.
