@@ -113,7 +113,7 @@
        "elementId": "stage",
        "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
        "sourceId": "excitation",
-       "wavelengthNm": 507
+       "wavelengthNm": 517.169365
       }
      ]
     },

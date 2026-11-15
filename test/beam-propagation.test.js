@@ -569,6 +569,15 @@ test('G1: light declined for a conversion is named by its own wavelength, also a
   const after = detectorReading(turned.id).beam;
   assert.deepEqual(after.branches, []);
   assert.deepEqual(after.declined.map(d => [d.wavelengthNm, /converts the wavelength/.test(d.reason)]), [[532, true]]);
+  // Andrea's review of 9f1cd537: a second conversion of light already
+  // declined names the light it generates (266 nm), not the first one's.
+  const cascade = make('detector', 400, 0);
+  traceScene([pump(), make('crystal', 150, 0, { convert: 'shg', efficiency: 0.3, transmitPump: false }),
+    make('crystal', 250, 0, { convert: 'shg', efficiency: 0.3, transmitPump: false }), cascade]);
+  const fourth = detectorReading(cascade.id).beam;
+  assert.deepEqual(fourth.branches, []);
+  assert.deepEqual(fourth.declined.map(d => [d.wavelengthNm, /converts the wavelength/.test(d.reason)]), [[266, true]], JSON.stringify(fourth.declined));
+  assert.deepEqual(beamAtPoint(350, 0, 5).map(b => [b.wavelengthNm, /converts the wavelength/.test(b.issue?.reason)]), [[266, true]]);
 });
 
 test('G1 (review 4): filtered light keeps its beam, at the centre wavelength of what passes', () => {

@@ -8671,8 +8671,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // Declined upstream: the branch carries the reason from its start.
           childRay.beamSeed = r.beamSeed;
           childRay.beamIssue = { ...r.beamIssue, atVertex: 0 };
-          // ...and the wavelength in force where it was declined.
-          childRay.beamIssueSeed = r.beamIssueSeed || r.beamSeedNow;
+          // ...and the wavelength of the light it carries: the one in force
+          // where it was declined, or the new one a later conversion (or a
+          // part of the spectrum) gives this branch.
+          const held = r.beamIssueSeed || r.beamSeedNow || r.beamSeed;
+          childRay.beamIssueSeed = held && c.wl > 0 && c.wl !== held.wavelengthNm ? { ...held, wavelengthNm: c.wl } : held;
         }
         stack.push(childRay);
       }
