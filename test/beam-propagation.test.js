@@ -733,3 +733,29 @@ test('G1 (review 8): the note also covers a beam converging where the drawn rays
   traceScene([laser({ beamWidth: 2, wavelength: 633 }), make('lens', 100, 0, { f: 100 }), make('lens', 301, 0, { f: 100 }), make('detector', 900, 0)]);
   for (const x of [400, 600, 850]) assert.equal(beamAtPoint(x, 0, 1)[0].drawnRays, undefined, `telescope at ${x}`);
 });
+
+test('G1 (review 9): a part a later filter leaves is taken up again after the band was clipped', () => {
+  // Andrea's case: a 20 mm continuum (400–2000 nm) through a 25.4 mm ND
+  // filter, which clips the band's centre (1.5 w = 15 mm > 12.7 mm), then a
+  // 100 mm short-pass at 600 nm. The 500 nm part it leaves was never clipped
+  // (1.5 w = 6.25 mm): both orders of the two filters give the same beam.
+  for (const ndFirst of [true, false]) {
+    const nd = make('filter', ndFirst ? 150 : 200, 0, { ftype: 'nd', trans: 1 });
+    const sp = make('filter', ndFirst ? 200 : 150, 0, { ftype: 'shortpass', cutoff: 600, trans: 1, length: 100 });
+    const detector = make('detector', 400, 0);
+    detector.id = `det-${ndFirst}`;
+    traceScene([make('sclaser', 0, 0, { beamMode: 'beam', beamWidth: 20, scMin: 400, scMax: 2000 }), nd, sp, detector]);
+    const [part] = beamAtPoint(300, 0, 1);
+    assert.equal(part.issue, undefined, `${ndFirst}: ${part.issue?.reason}`);
+    close(part.wavelengthNm, 500, 1e-6, 'centre of the part');
+    close(part.radiusUm, 10000 * 500 / 1200, 20, 'w at 500 nm');
+    const [branch] = detectorReading(detector.id).beam.branches;
+    close(branch.radiusUm, 10000 * 500 / 1200, 20, 'the detector reads the same part');
+    // Between the ND and the short-pass the whole band is read at its centre,
+    // and that beam is clipped.
+    if (ndFirst) assert.match(beamAtPoint(175, 0, 1)[0].issue?.reason || '', /closer than 1\.5 beam radii \(15 mm here\)/);
+  }
+  // Without a filter after it, the band stays declined to the end.
+  traceScene([make('sclaser', 0, 0, { beamMode: 'beam', beamWidth: 20, scMin: 400, scMax: 2000 }), make('filter', 150, 0, { ftype: 'nd', trans: 1 }), make('lens', 250, 0, { f: 100, dia: 50 }), make('detector', 400, 0)]);
+  for (const x of [200, 300]) assert.match(beamAtPoint(x, 0, 1)[0].issue?.reason || '', /closer than 1\.5 beam radii/, `declined at ${x}`);
+});

@@ -149,7 +149,16 @@ included) and the paraxial limit. A 1750 nm part of a 14 mm continuum
 (centre 1200 nm) that a long-pass leaves is declined at the 25.4 mm
 filter's edge (1.5 w = 15.3 mm), or at an edge before the filter that the
 band's centre passed; a 500 nm part of a 20 mm continuum (1.5 w = 6.25 mm)
-passes the same filter. Parts of one spectrum that
+passes the same filter. A decline that depends on the wavelength (an edge
+within 1.5 w, focusing past the paraxial limit) therefore does not end the
+companions' replay: the beam is declined from there, but a later step that
+leaves a part of the spectrum checks that part along the whole path and
+takes its beam up again. A 25.4 mm ND filter that clips the 20 mm band's
+centre, followed by a 600 nm short-pass, gives the 500 nm part the same
+beam as the two filters in the other order; between them the band, read at
+its centre, is declined. Declines that do not depend on the wavelength
+(companions that part from the central ray, an element with no paraxial
+model) still end the beam. Parts of one spectrum that
 reach the same place are one beam: they add in power, and the strongest is
 read, marked "strongest of N spectral parts". Converted light is told by
 where it comes from, not by its wavelength, since a conversion can land

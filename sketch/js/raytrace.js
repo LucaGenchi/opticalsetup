@@ -7400,7 +7400,13 @@ function beamTrailIssue(trail, seed, surfaces) {
   return null;
 }
 
-// The beam after one more step, from the state after the last.
+// The beam after one more step, from the state after the last. Declines
+// that depend on the wavelength (an edge closer than 1.5 w, focusing past
+// the paraxial limit) are `soft`: the beam is declined from there, but the
+// companions go on, so that a later step that leaves a part of the spectrum
+// at another wavelength can check that part's own beam along the whole path
+// and take it up again. Declines that do not depend on it (companions that
+// part from the central ray) stop the track.
 function advanceBeam(prev, step, sourceSeed, surfaces) {
   const elementId = surfaceOwnerId(step.surface), element = beamElementName(step.surface);
   const fail = reason => ({ ...prev, issue: typeof reason === 'string' ? { elementId, element, reason } : reason });
@@ -7410,17 +7416,6 @@ function advanceBeam(prev, step, sourceSeed, surfaces) {
   const before = prev.seed || sourceSeed;
   const seed = step.seed || before;
   const reseeded = seed !== before;
-  if (reseeded) {
-    const earlier = beamTrailIssue(prev.trail || [], seed, surfaces);
-    if (earlier) return fail(earlier);
-  }
-  const arrivingQ = reseeded ? qForSeed(prev, seed) : prev.q;
-  if (!arrivingQ) return fail('the beam cannot be followed through it');
-  const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
-  if (clip) return fail(clip);
-  const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
-  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces);
-  if (edge) return fail(edge);
   const companions = [];
   for (const companion of prev.companions) {
     const hit = companionHit(companion, step.surface);
@@ -7432,12 +7427,24 @@ function advanceBeam(prev, step, sourceSeed, surfaces) {
   }
   const matrix = measuredMatrix({ p: step.origin, d: step.dout }, companions, step.nOut, seed.n, companionStep);
   const q = matrix && transformQ(seed.q, matrix, seed.n, step.nOut);
-  if (!q) return fail('the beam cannot be followed through it');
-  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
-  if (!(beam.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) return fail(paraxialReason(beam));
+  const arrivingQ = reseeded ? qForSeed(prev, seed) : prev.q;
+  if (!q || !arrivingQ) return fail('the beam cannot be followed through it');
   // The path so far, for a part of the spectrum that a later step leaves.
   const trail = [...(prev.trail || []), { from: prev, step, after: { matrix, n: step.nOut } }];
-  return { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, trail, issue: null };
+  const state = { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, trail, issue: null };
+  // A beam declined at this wavelength stays declined until a part at
+  // another one is left; that part is checked along the whole path first.
+  const earlier = reseeded ? beamTrailIssue(prev.trail || [], seed, surfaces) : prev.issue;
+  if (earlier) return { ...state, issue: { ...earlier, soft: true } };
+  const named = issue => ({ ...(typeof issue === 'string' ? { elementId, element, reason: issue } : issue), soft: true });
+  const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
+  if (clip) return { ...state, issue: named(clip) };
+  const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
+  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces);
+  if (edge) return { ...state, issue: named(edge) };
+  const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
+  if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) return { ...state, issue: named(paraxialReason(beam || { halfDivergenceMrad: Infinity })) };
+  return state;
 }
 
 // Every central path of the last trace with its beam parameter at each of
@@ -7458,23 +7465,28 @@ function propagateBeams(paths, surfaces) {
     const track = { path, seed, issueSeed: path.beamSeedNow || null, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? (path.beamIssue.atVertex ?? 0) : null };
     beamTrackOf.set(path, track);
     tracks.push(track);
-    // The beam a source or fiber starts is held to the paraxial limit too.
+    // The beam a source or fiber starts is held to the paraxial limit too
+    // (a soft decline: a part of its spectrum may still start within it).
     const start = path.beamSeed && beamFromQ(seed.q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: seed.n || 1 });
-    if (start && !(start.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
-      track.issue = {
-        elementId: seed.elementId, element: seed.elementName || 'The source',
-        reason: `the beam it starts spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(start.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`,
-      };
-      track.issueVertex = 0;
+    const startIssue = start && !(start.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000) ? {
+      elementId: seed.elementId, element: seed.elementName || 'The source', soft: true,
+      reason: `the beam it starts spreads too fast for the Gaussian-beam formulas, which hold for small angles: half-angle ${Math.round(start.halfDivergenceMrad)} mrad, above ${PARAXIAL_LIMIT_RAD * 1000} mrad`,
+    } : null;
+    const steps = beamStepsOf(path);
+    if (!steps) {
+      if (startIssue) Object.assign(track, { issue: startIssue, issueVertex: 0 });
       continue;
     }
-    const steps = beamStepsOf(path);
-    if (!steps) continue;
     let state = {
       companions: companionStarts(seed.p, seed.d, companionStep), q: seed.q, n: seed.n, p: seed.p, d: seed.d,
-      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, estimate: null, seed, trail: [], issue: null,
+      elementId: seed.elementId, matrix: { A: 1, B: 0, C: 0, D: 1 }, estimate: null, seed, trail: [], issue: startIssue,
     };
-    if (!steps.length || steps[0].owner === path) track.q[0] = { q: seed.q, n: seed.n, p: seed.p, d: seed.d, elementId: seed.elementId, matrix: state.matrix, seed };
+    if (!startIssue && (!steps.length || steps[0].owner === path)) track.q[0] = { q: seed.q, n: seed.n, p: seed.p, d: seed.d, elementId: seed.elementId, matrix: state.matrix, seed };
+    // A soft decline in force: from which vertex, why, at which wavelength.
+    // A later step that takes the beam up again closes it into
+    // `track.declines`, the stretches where this path has no beam.
+    let open = startIssue ? { issue: startIssue, from: 0, seed } : null;
+    track.declines = [];
     for (const step of steps) {
       let next = memo.get(step);
       if (!next) {
@@ -7482,8 +7494,16 @@ function propagateBeams(paths, surfaces) {
         memo.set(step, next);
       }
       state = next;
+      const vertex = step.owner === path ? step.vertex : 0;
+      if (state.issue?.soft) {
+        if (!open) open = { issue: state.issue, from: vertex, seed: step.seed || state.seed };
+        continue;
+      }
+      if (open) {
+        if (vertex > open.from) track.declines.push({ ...open, to: vertex });
+        open = null;
+      }
       if (state.issue) {
-        const vertex = step.owner === path ? step.vertex : 0;
         if (track.issueVertex === null || vertex <= track.issueVertex) {
           track.issue = state.issue;
           track.issueVertex = vertex;
@@ -7495,6 +7515,12 @@ function propagateBeams(paths, surfaces) {
         track.q[step.vertex] = { q: state.q, n: state.n, p: step.origin, d: step.dout, elementId: state.elementId, matrix: state.matrix, seed: state.seed, estimate: state.estimate };
       }
     }
+    // A soft decline still in force at the end holds to the end of the path.
+    if (open && (track.issueVertex === null || open.from <= track.issueVertex)) {
+      track.issue = open.issue;
+      track.issueVertex = open.from;
+      track.issueSeed = open.seed;
+    }
   }
   for (const track of tracks) {
     for (const hit of beamDetectorHitsOf.get(track.path) || []) addBeamReading(track, hit, surfaces);
@@ -7502,21 +7528,29 @@ function propagateBeams(paths, surfaces) {
   return tracks;
 }
 
-// The beam parameter of a track at a vertex, or null past its decline.
+// The beam parameter of a track at a vertex, or null where it is declined:
+// past its decline, or within a stretch a later step took the beam up
+// again after.
+const trackDeclineAt = (track, vertex) => track.declines?.find(d => vertex >= d.from && vertex < d.to) || null;
 function trackStateAt(track, vertex) {
+  if (trackDeclineAt(track, vertex)) return null;
   if (track.issue && track.issueVertex !== null && vertex >= track.issueVertex) return null;
   for (let j = vertex; j >= 0; j--) if (track.q[j]) return track.q[j];
   return null;
 }
+// Why a track has no beam at a vertex, and the wavelength in force there.
+const trackIssueAt = (track, vertex) => trackDeclineAt(track, vertex)?.issue || track.issue;
+const trackIssueSeedAt = (track, vertex) => trackDeclineAt(track, vertex)?.seed || track.issueSeed;
 
 function addBeamReading(track, hit, surfaces) {
   const id = hit.surface.el?.id;
   if (!id) return;
-  const at = trackStateAt(track, Math.max(0, hit.vertex - 1));
+  const vertex = Math.max(0, hit.vertex - 1);
+  const at = trackStateAt(track, vertex);
   // The beam at the wavelength in force where the light arrives.
-  const seed = at?.seed || track.issueSeed || track.seed;
+  const seed = at?.seed || trackIssueSeedAt(track, vertex) || track.seed;
   const entry = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2, beam: null, issue: null, power: hit.power, p: hit.p };
-  if (!at) entry.issue = track.issue || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this detector' };
+  if (!at) entry.issue = trackIssueAt(track, vertex) || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this detector' };
   else {
     const clip = beamClipIssue(at.p, hit.p, at.q, at.n, seed, surfaces, new Set([id, at.elementId].filter(Boolean)));
     if (clip) entry.issue = clip;
@@ -7535,7 +7569,7 @@ function addBeamReading(track, hit, surfaces) {
 
 // A decline as a readout states it: the element and the reason (the vertex
 // it holds from is the tracer's bookkeeping).
-const beamIssueReading = ({ atVertex, ...issue }) => issue;
+const beamIssueReading = ({ atVertex, soft, ...issue }) => issue;
 
 // A source's drawn rays leave its output parallel, at the edge of the waist
 // (sourceBeamParameter): they are the beam's geometric part, without
@@ -7667,7 +7701,7 @@ const cross = (a, b) => a.x * b.y - a.y * b.x;
 // The beam a track has at `point` on its segment `i`, or why it has none.
 function trackBeamAt(track, i, point) {
   const at = trackStateAt(track, i);
-  const seed = at?.seed || track.issueSeed || track.seed;
+  const seed = at?.seed || trackIssueSeedAt(track, i) || track.seed;
   const base = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2 };
   // The beam where the segment passes closest to the point: a probe whose
   // circle reaches past the segment's end reads the beam at that end, not
@@ -7681,7 +7715,7 @@ function trackBeamAt(track, i, point) {
   const ahead = beamVertexOwnersOf.get(track.path)?.[i + 1] ?? null;
   const clip = at && beamClipIssue(at.p, { x: at.p.x + at.d.x * along, y: at.p.y + at.d.y * along }, at.q, at.n,
     seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
-  if (!at || clip) return { ...base, issue: beamIssueReading(clip || track.issue || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this point' }) };
+  if (!at || clip) return { ...base, issue: beamIssueReading(clip || trackIssueAt(track, i) || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this point' }) };
   const q = propagateQ(at.q, along);
   const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: at.n });
   return { ...base, index: at.n, q, ...beam, ...(at.estimate ? { estimate: at.estimate } : {}), ...beamReadingNotes(at, along, seed, beam) };
