@@ -253,14 +253,26 @@ powers through polarizers never changed.
 
 Every specular reflection (plane, curved, conic and D-shaped mirrors, galvo and polygon
 facets, DMD, deformable and SLM surfaces, dichroic, beamsplitter and etalon
-reflections, reflective grating orders, total internal reflection, and the two mirrors
-of a retroreflector) applies the ideal mirror, diag(1, 1, −1, −1) on (S0, S1, S2, S3):
+reflections, reflective grating orders, total internal reflection at faces that do not
+follow Fresnel, and the two mirrors of a retroreflector) applies the ideal mirror,
+diag(1, 1, −1, −1) on (S0, S1, S2, S3):
 ŝ stays out of the screen while p̂ turns over with the ray, so S1 is kept and S2 and S3
 change sign. A reflection therefore turns right circular light into left circular light
 and one diagonal into the other. Elements that state the outgoing state themselves (a
 polarizing beamsplitter's ports, generated light) and diffuse scattering keep their own
-rule. The mirror is ideal: the retardance of real coatings and metals (step P8) and of
-total internal reflection in glass (step P1) is not modelled yet.
+rule. The mirror is ideal: the retardance of real coatings and metals (step P8) is not
+modelled yet.
+
+Total internal reflection at a face that follows Fresnel (every prism face, and the faces
+of a thick lens, aspheric lens, lens group, freeform glass or glass rod set to *Surfaces:
+Bare glass (Fresnel)*) uses the Fresnel reflection matrix of step A1 in place of the
+ideal mirror (`fresnelReflectionMueller` in `sketch/js/mueller.js`, step P1). No power is
+lost, but s and p come back with different phases: p and s stay p and s, and any other
+state changes, so two reflections at 54.6° in glass of index 1.51 (a Fresnel rhomb) turn
+linear 45° into circular light. Glass on per-surface transmission keeps the ideal mirror.
+Glass carries no coherent carrier phase in the tracer, so only the polarization state
+changes. The model, its sign conventions and its references are in
+[docs/physics/prism-fresnel.md](physics/prism-fresnel.md).
 
 An element's axis angle is fixed to the element and set for light crossing it along its
 forward direction (left to right before the element is rotated), as the inspector
@@ -469,15 +481,16 @@ Freeform glass is a directly editable boundary of straight segments and exact
 three-point circular arcs with constant index or selectable catalogue-glass
 Sellmeier dispersion. Catalogue glass accumulates GDD from the actual traced distance;
 the curves do not add absorption, temperature, or coating behavior. The model also
-supports per-surface transmission (a percentage, like every other optic's transmission
-efficiency), source-inside handling, and total internal reflection. Two glass bodies
+supports a choice of surfaces, per-surface transmission (a percentage, like every other
+optic's transmission efficiency) or bare glass (Fresnel transmission for s and p at the
+traced angle), source-inside handling, and total internal reflection. Two glass bodies
 must not be placed in contact: the tracer cannot resolve interfaces closer than
 0.05 mm and silently skips one of them, so leave at least 0.06 mm between them — the
 inspector warns when anything is closer.
 Clicking adds a straight anchor; pressing, dragging, and releasing adds a point on
 an arc plus its next anchor. Exact corner hits stop safely because their surface
 normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,
-and the model does not include Fresnel reflection, coatings, stress birefringence,
+and the model does not trace the light a face reflects, coatings, stress birefringence,
 phase, or manufacturing tolerances.
 
 ## Site structure
