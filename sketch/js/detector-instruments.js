@@ -1073,7 +1073,7 @@ function panel(sensor, reading, elements, view) {
       const line = (y, text) => `<text x="35" y="${y}" text-anchor="end" font-size="${Math.min(4.6, 74 / Math.max(1, text.length * 0.62)).toFixed(2)}" fill="#a99bd4">${esc(text)}</text>`;
       const at = reading.bandwidth > 0.05 && Number.isFinite(wave.wavelengthNm) ? ` · AT ${Math.round(wave.wavelengthNm)} nm` : '';
       const gaussian = Number.isFinite(wave.waistMm)
-        ? line(5.5, `w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}${wave.waistModel === 'cone' ? ' · CONE EST.' : wave.estimate ? ` · EST. ±${wave.estimate.deviationPercent}%` : ''}`) + line(11, `WAIST ${waistPlace(wave)}`) : '';
+        ? line(5.5, `w₀ ${focusLength(wave.waistMm)} · zR ${focusLength(wave.rayleighMm)}${wave.waistModel === 'cone' ? ' · CONE EST.' : wave.estimate ? ' · EST.' : ''}`) + line(11, `WAIST ${waistPlace(wave)}`) : '';
       const low = `<text x="35" y="16.5" text-anchor="end" font-size="5.2" fill="#d9e8ee">INTENSITY Σw ${compactNumber(reading.signal)}</text>`;
       return header(name, 'WAVEFRONT + INTENSITY', reading.pulse, tag) + `<text x="35" y="-6.5" text-anchor="end" font-size="8.2" font-weight="780" fill="#e9e3ff">${wave.state}</text>${line(0, `CONE ${wave.divergenceDeg.toFixed(2)}°${at}`)}${gaussian}${gaussian ? low : intensity}`;
     }
@@ -1110,7 +1110,7 @@ function panel(sensor, reading, elements, view) {
     // reading is the Gaussian waist, how far either side the beam stays that
     // narrow, and where the waist lies.
     const focused = wavefront.state === 'FOCUS PLANE' && Number.isFinite(wavefront.waistMm);
-    const size = focused ? [wavefront.waistModel === 'cone' ? 'w₀ / zR (CONE EST.)' : wavefront.estimate ? `w₀ / zR (EST. ±${wavefront.estimate.deviationPercent}%)` : 'WAIST w₀ / zR', waistAndRange(wavefront.waistMm, wavefront.rayleighMm)]
+    const size = focused ? [wavefront.waistModel === 'cone' ? 'w₀ / zR (CONE EST.)' : wavefront.estimate ? 'w₀ / zR (EST.)' : 'WAIST w₀ / zR', waistAndRange(wavefront.waistMm, wavefront.rayleighMm)]
       : ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'];
     const shape = focused ? ['FOCUS PLANE', waistPlace(wavefront)] : ['WAVEFRONT', wave];
     return header(name, 'ALL LIGHT PROPERTIES', reading.pulse, tag) + metrics([

@@ -1180,7 +1180,7 @@ const probeArrow = d => PROBE_ARROWS[((Math.round(Math.atan2(d.y, d.x) / (Math.P
 const probeIssueText = issue => (issue.element === 'Here' ? issue.reason : `${issue.element}: ${issue.reason}`);
 // Why a beam's values are an estimate: an ideal lens met far from its axis
 // is not a physical lens there and does not keep the beam quality.
-export const estimateText = estimate => `Estimate: ${estimate.element} is met far from its axis, where an ideal lens does not keep the beam quality (off by ${estimate.deviationPercent} %)`;
+export const estimateText = estimate => `Estimate: ${estimate.element} is met far from its axis, where an ideal lens is not a lossless lens (it would change the beam quality by ${estimate.deviationPercent} %)`;
 // The properties of one beam, one bullet each (a card of run-on lines
 // reads as a paragraph). R is named as the wavefront's radius of curvature.
 function probeBeamBullets(b) {

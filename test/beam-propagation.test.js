@@ -439,7 +439,7 @@ test('G1: a beam meeting an ideal lens far from its axis follows the rays, and i
     if (h === 5) assert.equal(b.estimate, undefined, '0.4 %: no estimate');
     else {
       assert.equal(b.estimate.deviationPercent, 5.7);
-      assert.match(estimateText(b.estimate), /^Estimate: Thin convex lens is met far from its axis, where an ideal lens does not keep the beam quality \(off by 5\.7 %\)$/);
+      assert.match(estimateText(b.estimate), /^Estimate: Thin convex lens is met far from its axis, where an ideal lens is not a lossless lens \(it would change the beam quality by 5\.7 %\)$/);
       const probe = make('probe', 250, h / 2, { prop: 'beam', sampleDiameterMm: 1 });
       traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 }), probe]);
       assert.match(registry.probe.svg(probe, []), /Estimate: Thin convex lens is met far from its axis/);
@@ -584,7 +584,7 @@ test('G1 (review 6): the estimate follows the waist into the zoom and the focus 
   const [focus] = zoomFoci(zoom, traced.paths);
   assert.equal(focus.model, 'propagated');
   assert.equal(focus.estimate.deviationPercent, 5.7);
-  assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: zoomed }), />estimate ±5\.7%</);
+  assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: zoomed }), />estimate</);
   // A general detector with its face on the focus (27 mm behind its centre)
   // and its screen.
   const general = make('generaldetector', 327, 0, { aperture: 30 });
@@ -593,5 +593,6 @@ test('G1 (review 6): the estimate follows the waist into the zoom and the focus 
   traceAll(scene);
   const reading = detectorReading(general.id);
   assert.equal(reading.convergence?.estimate?.deviationPercent, 5.7, JSON.stringify(reading.convergence));
-  assert.match(registry.display.svg(display, scene), /w₀ \/ zR \(EST\. ±5\.7%\)/);
+  assert.match(registry.display.svg(display, scene), /w₀ \/ zR \(EST\.\)/);
+  assert.doesNotMatch(registry.display.svg(display, scene), /±/);
 });

@@ -78,9 +78,11 @@ there. The beam still follows the matrix as measured, which is what the drawn
 rays do: a collimated beam and an already converging one focus where the rays
 cross. Where the determinant along the path has moved more than 1 % from 1,
 every readout of that beam says its values are an estimate: the probe and the
-detector cards name the lens and give the percentage, and the focus screens of
-the wavefront and general detectors and the zoom's note add "EST. ±5.7 %" or
-"estimate ±5.7%" to the waist. (Keeping the size A and the focusing C and choosing
+detector cards name the lens and say by how much it would change the beam
+quality (100·|det − 1|, a measure of how far the ideal lens is from a lossless
+one, not an error bar on w₀, z_R or the waist position, which the model does
+not give), and the focus screens of the wavefront and general detectors and
+the zoom's note mark the waist "EST." or "estimate". (Keeping the size A and the focusing C and choosing
 D = (1 + B·C)/A would make the step lossless, but it keeps only a collimated
 beam's focus: a converging beam then focused 1.3 mm away from the rays'
 crossing in a two-lens case. Rescaling A, B, C and D by 1/√det leaves q
