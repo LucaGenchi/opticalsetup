@@ -12,6 +12,7 @@ import { hollowCoreCoefficients, marcatiliLossDbPerM } from '../sketch/js/fiber.
 import { propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
 import { createElement, estimatedThinLensThicknessMm, thickLensCardinals } from '../sketch/js/elements.js';
 import { traceScene, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
+import { beamFromQ, qFromWaist, transformQ } from '../sketch/js/gaussian-beam.js';
 import { analyzerTransmission, linearStokes, retarder } from '../sketch/js/polarization.js';
 import { finesseForReflectivity, reflectivityForFinesse } from '../sketch/js/etalon.js';
 import { parametricGainCoefficient, parametricPair, parametricSmallSignalGain } from '../sketch/js/parametric.js';
@@ -232,13 +233,19 @@ const APP = {
   // a stated interaction of one beam track (step G1), or a waist after a lens.
   'beam-propagation': ({ kind, elements, vertex, track, waistUm, m2, focalMm, lensX }) => {
     if (kind === 'waist') {
-      const laser = createElement('cwlaser', 0, 0);
-      Object.assign(laser.params, { beamMode: 'beam', beamWidth: 2, wavelength: 1000, beamWaistUm: waistUm, beamWaistPosMm: lensX - 52, beamM2: m2 });
+      // The lens's matrix as the companions measure it from a laser's
+      // output 0.1 mm before it (52 mm past the laser), applied to the
+      // issue's beam, whose waist lies on the lens: a laser's own waist sits
+      // at its output, and the tracer meets a lens from 0.1 mm on.
+      const laser = createElement('cwlaser', lensX - 52.1, 0);
+      Object.assign(laser.params, { beamMode: 'beam', beamWidth: 2 * waistUm / 1000, wavelength: 1000 });
       const lens = createElement('lens', lensX, 0);
       lens.params.f = focalMm;
       traceScene([laser, lens]);
-      const [after] = beamAtPoint(lensX + 0.01, 0, 0.001);
-      return { waistUm: after.waistUm, distanceMm: after.waistAheadMm + 0.01 };
+      const { matrix } = beamTracksFromLastTrace()[0].q[1];
+      const q = transformQ(qFromWaist({ waistUm, wavelengthNm: 1000, m2, zMm: -0.1 }), matrix);
+      const after = beamFromQ(q, { wavelengthNm: 1000, m2 });
+      return { waistUm: after.waistUm, distanceMm: after.waistAheadMm };
     }
     const scene = elements.map(e => {
       const el = createElement(e.type, e.x, e.y);

@@ -493,8 +493,9 @@
       {
        "element": "SP1000",
        "elementId": "eapb46vw",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 780
       }
      ]
     },
@@ -635,8 +636,9 @@
       {
        "element": "SP1000",
        "elementId": "eapb46vw",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 780
       }
      ]
     },
@@ -1086,8 +1088,9 @@
       {
        "element": "SP1000",
        "elementId": "eapb46vw",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 780
       }
      ]
     },

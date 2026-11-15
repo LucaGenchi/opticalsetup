@@ -55,8 +55,9 @@
       {
        "element": "Fiber",
        "elementId": "fiber",
-       "reason": "the fiber starts no beam parameter: the fiber has no single-mode core set, so its output mode is not known",
-       "sourceId": "laser"
+       "reason": "it starts no Gaussian beam: no single-mode core is set, so its output mode is not known",
+       "sourceId": "laser",
+       "wavelengthNm": 633
       }
      ]
     },

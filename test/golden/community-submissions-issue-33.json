@@ -697,8 +697,9 @@
       {
        "element": "Thin convex lens",
        "elementId": "evba3j2u",
-       "reason": "the beam reaches its edge (9.47 mm from the beam's centre along it, within 1.5 beam radii), so it clips the beam",
-       "sourceId": "eega2fx6"
+       "reason": "its edge lies 9.47 mm from the beam's centre along its surface, closer than 1.5 beam radii (10.1 mm here): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "eega2fx6",
+       "wavelengthNm": 644
       }
      ]
     },
@@ -1440,8 +1441,9 @@
       {
        "element": "Filter",
        "elementId": "ezdowt9y",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "eoriz5x9"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "eoriz5x9",
+       "wavelengthNm": 650
       }
      ]
     },
@@ -2061,8 +2063,9 @@
       {
        "element": "Crystal",
        "elementId": "edcwbjkb",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "ealoa8hz"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "ealoa8hz",
+       "wavelengthNm": 1064
       }
      ]
     },
@@ -3058,8 +3061,9 @@
       {
        "element": "SLM",
        "elementId": "e44y00vk",
-       "reason": "it has no paraxial model",
-       "sourceId": "ef7fg21z"
+       "reason": "its pattern reshapes the beam, so the Gaussian beam is not followed past it",
+       "sourceId": "ef7fg21z",
+       "wavelengthNm": 488
       }
      ]
     },
@@ -3851,8 +3855,9 @@
       {
        "element": "Dichroic mirror",
        "elementId": "e7ojxkft",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "el9jqbcq"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "el9jqbcq",
+       "wavelengthNm": 780
       }
      ]
     },
@@ -4416,8 +4421,9 @@
       {
        "element": "Mirror",
        "elementId": "ezohr0hw",
-       "reason": "the beam reaches its edge (12.4 mm from the beam's centre along it, within 1.5 beam radii), so it clips the beam",
-       "sourceId": "edazsscr"
+       "reason": "its edge lies 12.4 mm from the beam's centre along its surface, closer than 1.5 beam radii (15.4 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "edazsscr",
+       "wavelengthNm": 635
       }
      ]
     },
@@ -5173,8 +5179,9 @@
       {
        "element": "Mirror",
        "elementId": "e9y2lyyi",
-       "reason": "the beam reaches its edge (6.93 mm from the beam's centre along it, within 1.5 beam radii), so it clips the beam",
-       "sourceId": "e72y9ybh"
+       "reason": "its edge lies 6.93 mm from the beam's centre along its surface, closer than 1.5 beam radii (7.42 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
+       "sourceId": "e72y9ybh",
+       "wavelengthNm": 470
       }
      ]
     },
@@ -5774,8 +5781,9 @@
       {
        "element": "AOTF",
        "elementId": "e5lbywtr",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "eplwudba"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "eplwudba",
+       "wavelengthNm": 532
       }
      ]
     },
@@ -6339,8 +6347,9 @@
       {
        "element": "AOTF",
        "elementId": "e5lbywtr",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "eplwudba"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "eplwudba",
+       "wavelengthNm": 532
       }
      ]
     },
@@ -7260,8 +7269,9 @@
       {
        "element": "Fiber",
        "elementId": "bpv3aahl",
-       "reason": "the fiber starts no beam parameter: the fiber has no single-mode core set, so its output mode is not known",
-       "sourceId": "e0cr5gu6"
+       "reason": "it starts no Gaussian beam: no single-mode core is set, so its output mode is not known",
+       "sourceId": "e0cr5gu6",
+       "wavelengthNm": 515
       }
      ]
     },
@@ -7825,8 +7835,9 @@
       {
        "element": "Dichroic mirror",
        "elementId": "e5ofjza5",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "e9xej9i6"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "e9xej9i6",
+       "wavelengthNm": 450
       }
      ]
     },

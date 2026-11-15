@@ -9,13 +9,20 @@ size a source had.
 
 ## Model
 
-**Source.** A CW or pulsed laser drawn with a size starts a Gaussian beam from
-what it already has: a 1/e² radius w of half its Beam width, the waist at its
-output and M² = 1. Three optional settings in the collapsed *Gaussian beam*
-section override this: the waist w₀, the waist's distance after the output
-(negative before it) and M². A laser drawn as a simple line has a beam
-parameter only when its waist is set. A supercontinuum, an LED and a point
-source start none. The beam parameter is
+**Source.** A CW or pulsed laser drawn with a size starts a Gaussian beam
+whose 1/e² diameter is its Beam width (0.1 to 60 mm), with the waist at its
+output. The Beam width is the only size setting, so the drawn beam and the
+beam parameter always agree; the collapsed *Gaussian beam* section adds the
+beam quality M² (1 by default) and shows the waist, the Rayleigh range and the
+divergence that follow. A laser drawn as a simple line starts none, and the
+probe says so. A supercontinuum starts none either: it spans many
+wavelengths, and the size and divergence of a beam depend on the wavelength,
+so one beam parameter would misstate most of its spectrum. An LED is an
+incoherent, extended source and a point source radiates in all directions:
+both are described by rays, not by a Gaussian beam. The step guide in
+issue #313 also offered a waist size and a waist position overriding the Beam
+width; Luca's review of the first version removed them, as two size settings
+for one beam were confusing. The beam parameter is
 
 1/q = 1/R − i·M²·λ / (π·n·w²),  q = z + i·z_R
 
@@ -88,6 +95,16 @@ scope *plane*). The Gouy phase of a beam is half the sum of the phases of its
 two transverse planes; until step G3 supplies the second plane it assumes a
 circular beam, and says so beside its value (`gouyScope: 'circular'`).
 
+Only light that is there counts. A dark port of an interferometer keeps its
+traced path with no power on it: neither the probe nor a detector reads a
+beam there. A probe whose circle reaches past the end of a segment reads the
+beam where the segment ends, not beyond the optic that ends it. The probe
+names nothing when one beam crosses it. Several beams are named by their
+wavelength and direction of travel, as the probe's other views name beams,
+and the detector card names them by wavelength (and by source where two
+sources share one). Where light arrives without a Gaussian beam the probe
+says which source sent it and why it starts none.
+
 A wavefront or general detector on a focus reads FOCUS PLANE as before, from
 the traced cone. Its waist, Rayleigh range and waist position are now the
 propagated beam's where exactly one branch arrives (`waistModel:
@@ -122,14 +139,29 @@ the reason (the detector's inspector card, the probe card), at:
   OPO or OPA crystal;
 - an edge within 1.5 beam radii of the central ray, which clips the beam (at
   1.5 w a Gaussian's in-plane profile has 0.13 % of its power beyond the edge
-  on that side): any element's edge near the beam between two interactions,
-  and the rim of the surface the beam meets, its footprint widened by
-  1/cos(incidence) on a tilted surface and followed across smoothly joined
-  facets of the same element;
+  on that side; a circular aperture of radius 1.5 w passes 98.9 %, close to the
+  usual rule that a diameter of π·w passes 99 %): any element's edge near the
+  beam between two interactions, and the rim of the surface the beam meets,
+  its footprint widened by 1/cos(incidence) on a tilted surface and followed
+  across smoothly joined facets of the same element. The readout quotes the
+  edge's distance and 1.5 w there. A clipped beam diffracts at the edge and is
+  no longer Gaussian, so no w, R or waist follows. The 25 drawn rays span only
+  ±w, so an edge can clip the beam without stopping a drawn ray;
 - a far-field half-angle above 0.2 rad (the paraxial limit);
+- a measured matrix whose determinant departs from 1 by more than 1 %. Every
+  lossless paraxial optic keeps it at 1 (it is the companions' invariant). The
+  ideal lens does not where it is met off its axis: its mapping, perfect
+  imaging onto a flat focal plane, has determinant cos³θ_out / cos³θ_in in the
+  drawing plane (0.7 % at 4°, 5.7 % for a collimated beam 20 mm off the axis of
+  an f = 100 mm lens), and would change the beam quality by as much. Below the
+  tolerance the beam follows the lens as the rays do, off by at most 1 %;
 - a companion ray that misses the surface or leaves the central ray's
   sequence of interactions;
-- a wavelength conversion, and branches of one source that recombine.
+- a wavelength conversion, and branches of one source that overlap again. On
+  a detector two branches recombine when their spots overlap (closer than
+  1.5 (w₁ + w₂)); separate spots are read one by one. At the probe, branches
+  that travel together through its circle (within 0.1 rad) recombine, and beams
+  that cross it at larger angles are listed apart.
 
 ## Not modelled
 
@@ -153,6 +185,15 @@ a reflection grating, a Keplerian expander) and the three ideal-thin-lens
 waists of issue #313 (100 µm at 1 µm, waist on the lens): for z_R ≫ f the
 cone estimate; for M² = 1 and f = z_R = 31.416 mm, 70.711 µm at 15.708 mm; for
 M² = 2 and f = z_R = 15.708 mm, 70.711 µm at 7.854 mm, against a cone estimate
-of 50 µm. The calculators' closed forms (`calculators/assets/gaussian-beam.js`,
+of 50 µm. A laser's own waist sits at its output and the tracer meets a lens
+from 0.1 mm on, so these three cases apply the lens matrix the companions
+measure to the issue's beam; a fourth check runs a 0.2 mm laser beam through
+the readout itself, 0.1 mm before the lens, against the q law by hand. An
+independent pass over every bundled scene (outside the suite) recomputed
+each propagated track that meets only thin lenses and flat optics with
+free-space and thin-lens Gaussian optics: all 56 vertices met on the lens
+axis agree to 4 × 10⁻⁸, and
+the only differences are beams that cross an ideal lens off its axis, which
+follow the lens as the drawn rays do (the determinant tolerance above). The calculators' closed forms (`calculators/assets/gaussian-beam.js`,
 used by the thin and thick lens and fiber-coupling pages) now go through the
 same q law as the canvas.

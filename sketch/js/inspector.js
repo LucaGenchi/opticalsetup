@@ -495,19 +495,29 @@ export function fiberMeasurementHTML(beam) {
 // branch, in the drawing plane; or why a beam parameter does not reach it,
 // naming the element and the reason.
 const beamLength = mm => (!Number.isFinite(mm) ? '∞'
-  : Math.abs(mm) < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
-    : Math.abs(mm) < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+  : Math.abs(mm) < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
+    : Math.abs(mm) < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
 export function beamRowsHTML(beam, nameOf = () => '') {
   if (!beam) return '';
   let h = '';
-  const several = beam.branches.length + beam.declined.length > 1;
+  // Several beams are told apart by their colour, as the probe names them,
+  // and by their source where two share one wavelength.
+  const all = [...beam.branches, ...beam.declined];
+  const several = all.length > 1;
+  const label = item => {
+    if (!several) return '';
+    const nm = Number.isFinite(item.wavelengthNm) ? `${Math.round(item.wavelengthNm)} nm` : '';
+    const shared = all.filter(other => other !== item && Math.round(other.wavelengthNm) === Math.round(item.wavelengthNm) && other.sourceId !== item.sourceId).length;
+    const who = shared && nameOf(item.sourceId) ? nameOf(item.sourceId) : '';
+    const text = [nm, who].filter(Boolean).join(', ');
+    return text ? ` · ${esc(text)}` : '';
+  };
   for (const b of beam.branches) {
-    const who = several && nameOf(b.sourceId) ? ` · ${esc(nameOf(b.sourceId))}` : '';
     const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
       : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
     const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
-      : `R ${beamLength(Math.abs(b.curvatureMm))}, ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
-    h += `<dt>Beam radius w${who}</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e², in the drawing plane)</dd>
+      : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${beamLength(Math.abs(b.curvatureMm))}`;
+    h += `<dt>Beam radius w${label(b)}</dt><dd data-beam-radius>${beamLength(b.radiusUm / 1000)} (1/e², in the drawing plane)</dd>
       <dt>Wavefront</dt><dd>${wavefront}</dd>
       <dt>Waist w₀</dt><dd data-beam-waist>${beamLength(b.waistUm / 1000)}, ${ahead}</dd>
       <dt>Rayleigh range</dt><dd>${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>
@@ -515,8 +525,8 @@ export function beamRowsHTML(beam, nameOf = () => '') {
       ${b.m2 > 1 ? `<dt>Beam quality</dt><dd>M² = ${b.m2}</dd>` : ''}`;
   }
   for (const d of beam.declined) {
-    const who = several && nameOf(d.sourceId) ? ` · ${esc(nameOf(d.sourceId))}` : '';
-    h += `<dt>Beam parameter${who}</dt><dd data-beam-declined>Not propagated: ${esc(d.element)}: ${esc(d.reason)}</dd>`;
+    const text = d.element === 'This detector' ? d.reason : `${d.element}: ${d.reason}`;
+    h += `<dt>Gaussian beam${label(d)}</dt><dd data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</dd>`;
   }
   return h;
 }

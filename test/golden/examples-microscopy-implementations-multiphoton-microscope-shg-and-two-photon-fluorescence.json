@@ -219,8 +219,9 @@
       {
        "element": "SP700",
        "elementId": "e227dxsg",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
       }
      ]
     },
@@ -784,8 +785,9 @@
       {
        "element": "SP700",
        "elementId": "e227dxsg",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
       }
      ]
     },
@@ -1439,8 +1441,9 @@
       {
        "element": "SP700",
        "elementId": "e227dxsg",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
-       "sourceId": "evgazbrh"
+       "reason": "it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)",
+       "sourceId": "evgazbrh",
+       "wavelengthNm": 920
       }
      ]
     },

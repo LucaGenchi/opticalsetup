@@ -63,17 +63,6 @@
     "approximations": [],
     "bandMax": null,
     "bandMin": null,
-    "beam": {
-     "branches": [],
-     "declined": [
-      {
-       "element": "This detector",
-       "elementId": "e7ze1i89",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "eyhaorvm"
-      }
-     ]
-    },
     "centroid": null,
     "coherentPaths": 2,
     "color": "#5d7380",
@@ -183,7 +172,6 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
-     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -223,8 +211,9 @@
       {
        "element": "This detector",
        "elementId": "ew068ipo",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "eyhaorvm"
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "eyhaorvm",
+       "wavelengthNm": 532
       }
      ]
     },
@@ -400,8 +389,9 @@
       {
        "element": "This detector",
        "elementId": "e52lzrk9",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "e81mxedc"
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "e81mxedc",
+       "wavelengthNm": 532
       }
      ]
     },
@@ -577,8 +567,9 @@
       {
        "element": "This detector",
        "elementId": "e1xc5sub",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "e81mxedc"
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "e81mxedc",
+       "wavelengthNm": 532
       }
      ]
     },

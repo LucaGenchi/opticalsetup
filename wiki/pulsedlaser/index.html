@@ -236,20 +236,23 @@
 
         <h3>Gaussian beam</h3>
         <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
-        <span class="w">w</span> of half its Beam width, the waist at its output and
-        M²&nbsp;=&nbsp;1. The collapsed <em>Gaussian beam</em> settings override these with a
-        waist <span class="w">w₀</span>, its distance after the output and M²; a laser drawn as a
-        simple line has a beam parameter only when its waist is set. The tracer follows the
-        beam parameter <span class="w">q</span> through every optic with a paraxial model: two
-        companion rays, one displaced and one tilted by a hair, follow the central ray through
-        the same surfaces, and their offsets give each element's in-plane ray-transfer matrix,
-        so the beam cannot disagree with the drawn rays. Detectors, the beam probe and the zoom
-        then report its radius, wavefront curvature, waist, Rayleigh range and Gouy phase, in
-        the drawing plane (the Gouy phase assumes a circular beam). The beam parameter stops,
-        and the readout names the element and the reason, at an optic with no paraxial model
-        (a diffuser, a specimen), where an edge comes within 1.5&nbsp;<span class="w">w</span>
-        of the beam's centre, where the far-field half-angle exceeds 0.2&nbsp;rad, at a
-        wavelength conversion, and where branches of one source recombine.</p>
+        <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
+        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
+        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
+        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
+        every optic with a paraxial model: two companion rays, one displaced and one tilted by
+        a hair, follow the central ray through the same surfaces, and their offsets give each
+        element's in-plane ray-transfer matrix, so the beam cannot disagree with the drawn
+        rays. Detectors, the beam probe and the zoom then report its radius, wavefront
+        curvature, waist, Rayleigh range and Gouy phase, in the drawing plane (the Gouy phase
+        assumes a circular beam). The beam stops, and the readout names the element and the
+        reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
+        comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
+        which is then no longer Gaussian), where the far-field half-angle exceeds
+        0.2&nbsp;rad, where an ideal lens is met so far from its axis that its model would
+        change the beam quality by more than 1&nbsp;%, at a wavelength conversion, and where
+        branches of one source overlap again.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective

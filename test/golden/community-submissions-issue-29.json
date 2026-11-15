@@ -67,7 +67,8 @@
        "element": "Thin convex lens",
        "elementId": "egrpu7l6",
        "reason": "the beam's far-field half-angle after it, 233 mrad, exceeds the paraxial limit of 200 mrad",
-       "sourceId": "efpipbp2"
+       "sourceId": "efpipbp2",
+       "wavelengthNm": 532
       }
      ]
     },

@@ -140,20 +140,23 @@ export const wikiEntries = [
         visibility in their path difference.</p>
         <h3>Gaussian beam</h3>
         <p>A laser drawn with a size also starts a Gaussian beam: a 1/e² radius
-        <span class="w">w</span> of half its Beam width, the waist at its output and
-        M²&nbsp;=&nbsp;1. The collapsed <em>Gaussian beam</em> settings override these with a
-        waist <span class="w">w₀</span>, its distance after the output and M²; a laser drawn as a
-        simple line has a beam parameter only when its waist is set. The tracer follows the
-        beam parameter <span class="w">q</span> through every optic with a paraxial model: two
-        companion rays, one displaced and one tilted by a hair, follow the central ray through
-        the same surfaces, and their offsets give each element's in-plane ray-transfer matrix,
-        so the beam cannot disagree with the drawn rays. Detectors, the beam probe and the zoom
-        then report its radius, wavefront curvature, waist, Rayleigh range and Gouy phase, in
-        the drawing plane (the Gouy phase assumes a circular beam). The beam parameter stops,
-        and the readout names the element and the reason, at an optic with no paraxial model
-        (a diffuser, a specimen), where an edge comes within 1.5&nbsp;<span class="w">w</span>
-        of the beam's centre, where the far-field half-angle exceeds 0.2&nbsp;rad, at a
-        wavelength conversion, and where branches of one source recombine.</p>`,
+        <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
+        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
+        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
+        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
+        every optic with a paraxial model: two companion rays, one displaced and one tilted by
+        a hair, follow the central ray through the same surfaces, and their offsets give each
+        element's in-plane ray-transfer matrix, so the beam cannot disagree with the drawn
+        rays. Detectors, the beam probe and the zoom then report its radius, wavefront
+        curvature, waist, Rayleigh range and Gouy phase, in the drawing plane (the Gouy phase
+        assumes a circular beam). The beam stops, and the readout names the element and the
+        reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
+        comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
+        which is then no longer Gaussian), where the far-field half-angle exceeds
+        0.2&nbsp;rad, where an ideal lens is met so far from its axis that its model would
+        change the beam quality by more than 1&nbsp;%, at a wavelength conversion, and where
+        branches of one source overlap again.</p>`,
       formulas: [
         { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.' },
         { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
@@ -248,20 +251,23 @@ export const wikiEntries = [
       html: `
         <h3>Gaussian beam</h3>
         <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
-        <span class="w">w</span> of half its Beam width, the waist at its output and
-        M²&nbsp;=&nbsp;1. The collapsed <em>Gaussian beam</em> settings override these with a
-        waist <span class="w">w₀</span>, its distance after the output and M²; a laser drawn as a
-        simple line has a beam parameter only when its waist is set. The tracer follows the
-        beam parameter <span class="w">q</span> through every optic with a paraxial model: two
-        companion rays, one displaced and one tilted by a hair, follow the central ray through
-        the same surfaces, and their offsets give each element's in-plane ray-transfer matrix,
-        so the beam cannot disagree with the drawn rays. Detectors, the beam probe and the zoom
-        then report its radius, wavefront curvature, waist, Rayleigh range and Gouy phase, in
-        the drawing plane (the Gouy phase assumes a circular beam). The beam parameter stops,
-        and the readout names the element and the reason, at an optic with no paraxial model
-        (a diffuser, a specimen), where an edge comes within 1.5&nbsp;<span class="w">w</span>
-        of the beam's centre, where the far-field half-angle exceeds 0.2&nbsp;rad, at a
-        wavelength conversion, and where branches of one source recombine.</p>
+        <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
+        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
+        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
+        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
+        every optic with a paraxial model: two companion rays, one displaced and one tilted by
+        a hair, follow the central ray through the same surfaces, and their offsets give each
+        element's in-plane ray-transfer matrix, so the beam cannot disagree with the drawn
+        rays. Detectors, the beam probe and the zoom then report its radius, wavefront
+        curvature, waist, Rayleigh range and Gouy phase, in the drawing plane (the Gouy phase
+        assumes a circular beam). The beam stops, and the readout names the element and the
+        reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
+        comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
+        which is then no longer Gaussian), where the far-field half-angle exceeds
+        0.2&nbsp;rad, where an ideal lens is met so far from its axis that its model would
+        change the beam quality by more than 1&nbsp;%, at a wavelength conversion, and where
+        branches of one source overlap again.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -6482,7 +6488,7 @@ export const wikiEntries = [
     summary: "Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.",
     realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
     inOpticalSetup: {
-      html: `<p>Place the crosshair near a traced beam and select the property to show. The <em>Gaussian beam size</em> view gives the propagated Gaussian beam where the probe stands (its 1/e² radius, wavefront, waist and Rayleigh range, in the drawing plane), or says why the light has no beam parameter there, naming the element. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. With one beam in its sampling circle, the spectrum, wavelength, polarization, duration and time views describe the nearest traced beam. When <strong>several beams</strong> cross the circle, four views describe all of them: the <em>spectrum</em> sums their spectral densities, each weighted by its watts (when a source has no power setting, every beam is weighted by its share of its own source's power instead, and the card says <em>relative</em>); the <em>wavelength</em> view lists each colour; <em>polarization</em> shows one disc per beam, named by its wavelength; and the <em>time</em> view draws every train on one axis and says whether the pulses arrive together (within half a pulse duration — the duration at the probe where it is known, otherwise the source's, and the card then says so), which beam comes first and by how much, or that trains at different repetition rates have no fixed delay. Beams of one kind of light are told apart by the route they took: the sampling rays of one beam are one beam however a lens spreads their path lengths, while two arms of a split pulsed laser are two beams as soon as their pulses arrive apart — 200 fs of arm difference is read as 0.2 ps — so a delay line can be aligned by watching the delay go to zero. Arms that arrive together count as one beam, and so do arms a whole number of repetition periods apart (the round trips of a synchronously pumped cavity), which land on the same pulses — unless a chopper, AOM or other modulator gates the train, since the modulation does not repeat with the laser period and such arms stay apart. The circle is drawn dashed whenever it decides what is read. <strong>Average power</strong> is different: it adds up every beam that crosses the probe's sampling circle (10 mm across unless set otherwise, drawn dashed around the crosshair), each with the watts its own source contributes, exactly as a power meter adds up what reaches its face — so a probe and a meter on the same light read the same. Two beams that overlap, such as an OPA's seed and the gain it received, are read together; widen or narrow the circle to take in several beams or one. A beam is counted where it enters the circle, so light split or reflected inside the circle is not counted twice, and light emitted inside it is not counted.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
+      html: `<p>Place the crosshair near a traced beam and select the property to show. The <em>Gaussian beam size</em> view gives the propagated Gaussian beam where the probe stands (its 1/e² radius, wavefront, waist and Rayleigh range, in the drawing plane), or says why the light there has none: the element that stopped it, two arms of one beam that overlap again, or a source that starts none (a laser drawn as a simple line, a supercontinuum, an LED). Several beams are named by their wavelength and direction of travel. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. With one beam in its sampling circle, the spectrum, wavelength, polarization, duration and time views describe the nearest traced beam. When <strong>several beams</strong> cross the circle, four views describe all of them: the <em>spectrum</em> sums their spectral densities, each weighted by its watts (when a source has no power setting, every beam is weighted by its share of its own source's power instead, and the card says <em>relative</em>); the <em>wavelength</em> view lists each colour; <em>polarization</em> shows one disc per beam, named by its wavelength; and the <em>time</em> view draws every train on one axis and says whether the pulses arrive together (within half a pulse duration — the duration at the probe where it is known, otherwise the source's, and the card then says so), which beam comes first and by how much, or that trains at different repetition rates have no fixed delay. Beams of one kind of light are told apart by the route they took: the sampling rays of one beam are one beam however a lens spreads their path lengths, while two arms of a split pulsed laser are two beams as soon as their pulses arrive apart — 200 fs of arm difference is read as 0.2 ps — so a delay line can be aligned by watching the delay go to zero. Arms that arrive together count as one beam, and so do arms a whole number of repetition periods apart (the round trips of a synchronously pumped cavity), which land on the same pulses — unless a chopper, AOM or other modulator gates the train, since the modulation does not repeat with the laser period and such arms stay apart. The circle is drawn dashed whenever it decides what is read. <strong>Average power</strong> is different: it adds up every beam that crosses the probe's sampling circle (10 mm across unless set otherwise, drawn dashed around the crosshair), each with the watts its own source contributes, exactly as a power meter adds up what reaches its face — so a probe and a meter on the same light read the same. Two beams that overlap, such as an OPA's seed and the gain it received, are read together; widen or narrow the circle to take in several beams or one. A beam is counted where it enters the circle, so light split or reflected inside the circle is not counted twice, and light emitted inside it is not counted.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
       limitations: `<p>This is a diagnostic annotation with direct access to traced properties. It does not represent a laboratory probe's calibration, noise, or disturbance of the beam; its sampling circle is a counting area, not a physical aperture, and a beam that only grazes it counts in full.</p>`,
     }, related: ['display', 'spectrometer', 'polarimeter', 'detector'],
   },

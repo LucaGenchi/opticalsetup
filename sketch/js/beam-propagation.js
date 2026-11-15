@@ -80,28 +80,32 @@ export const PARAXIAL_LIMIT_RAD = 0.2;
 // beyond the edge on that side.
 export const CLIP_RADII = 1.5;
 
-// The beam a laser starts (the issue's "source parameters"): from what the
-// laser already has when it is drawn with a size, a 1/e² radius of half its
-// Beam width, the waist at its output and M² = 1, unless set otherwise.
-// `beamWaistUm`, `beamWaistPosMm` (the waist's distance after the output,
-// negative before it) and `beamM2` override. A laser drawn as a simple line
-// has a beam parameter only when its waist is set. Null without one.
+// The beam a laser starts: a laser drawn with a size is a Gaussian beam
+// whose 1/e² diameter is its Beam width, with the waist at its output and a
+// beam quality M² (1 by default). The Beam width is the only size setting,
+// so the drawn beam and the beam parameter cannot disagree. A laser drawn as
+// a simple line, a supercontinuum, an LED and a point source start none
+// (`noBeamReason` says why). Null without one.
 export const BEAM_SOURCE_TYPES = new Set(['cwlaser', 'pulsedlaser']);
 export function sourceBeamParameter(type, params = {}) {
-  if (!BEAM_SOURCE_TYPES.has(type)) return null;
-  const setWaist = Number(params.beamWaistUm);
-  const waistUm = setWaist > 0 ? setWaist
-    : params.beamMode === 'beam' && Number(params.beamWidth) > 0 ? Number(params.beamWidth) * 500 : null;
+  if (!BEAM_SOURCE_TYPES.has(type) || params.beamMode !== 'beam') return null;
+  const waistUm = Number(params.beamWidth) * 500;
   const wavelengthNm = Number(params.wavelength);
   if (!(waistUm > 0) || !(wavelengthNm > 0)) return null;
   const m2 = Math.max(1, Number(params.beamM2) || 1);
-  const waistPosMm = Number.isFinite(Number(params.beamWaistPosMm)) ? Number(params.beamWaistPosMm) : 0;
-  return {
-    waistUm, waistPosMm, m2, wavelengthNm,
-    // At the output, z = −(distance to the waist).
-    q: qFromWaist({ waistUm, wavelengthNm, m2, index: 1, zMm: -waistPosMm }),
-    derived: !(setWaist > 0),
-  };
+  return { waistUm, m2, wavelengthNm, q: qFromWaist({ waistUm, wavelengthNm, m2, index: 1 }) };
+}
+
+// Why a source starts no Gaussian beam, in a sentence a readout can show;
+// null for a source that starts one.
+export function noBeamReason(type, params = {}) {
+  if (BEAM_SOURCE_TYPES.has(type)) {
+    return params.beamMode === 'beam' ? null : 'this laser is drawn as a simple line; draw it as a beam with size for a Gaussian beam';
+  }
+  if (type === 'sclaser') return 'a supercontinuum spans many wavelengths, each with its own beam size and divergence, so no single Gaussian beam describes it';
+  if (type === 'ledsource') return 'an LED is an incoherent, extended source: it is described by rays, not by a Gaussian beam';
+  if (type === 'pointsource') return 'a point source radiates in all directions: it is described by rays, not by a Gaussian beam';
+  return 'this light does not come from a laser drawn with a size';
 }
 
 // The beam a fiber's output starts, when its mode is known: a hollow-core
@@ -119,7 +123,7 @@ export function fiberBeamParameter(fiber, wavelengthNm, lp01Ratio) {
     return { waistUm: 0.64 * a, m2: 1, wavelengthNm: nm, q: qFromWaist({ waistUm: 0.64 * a, wavelengthNm: nm }), mode: 'HE11' };
   }
   const core = Number(fiber.singleModeCoreUm);
-  if (!(core > 0)) return { issue: 'the fiber has no single-mode core set, so its output mode is not known' };
+  if (!(core > 0)) return { issue: 'no single-mode core is set, so its output mode is not known' };
   const a = core / 2, na = Number(fiber.inputNA);
   const V = 2 * Math.PI * a * 1e-3 * na / (nm * 1e-6);
   if (!(V > 0)) return { issue: 'no numerical aperture' };

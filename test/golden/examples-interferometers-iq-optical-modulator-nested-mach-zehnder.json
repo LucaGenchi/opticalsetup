@@ -71,8 +71,9 @@
       {
        "element": "This detector",
        "elementId": "output",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "laser"
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "laser",
+       "wavelengthNm": 1550
       }
      ]
     },
@@ -248,8 +249,9 @@
       {
        "element": "This detector",
        "elementId": "unused",
-       "reason": "branches of one source recombine here, so no single beam parameter describes the light",
-       "sourceId": "laser"
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "laser",
+       "wavelengthNm": 1550
       }
      ]
     },

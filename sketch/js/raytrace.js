@@ -3431,7 +3431,7 @@ function fiberEmissionRays(c) {
       sourceId: b.id, elementId: b.id, elementName: 'Fiber', fiber: true,
     };
   } else if (central && c.beamCarried) {
-    central.beamIssue = { elementId: b.id, element: 'Fiber', reason: `the fiber starts no beam parameter: ${mode.issue}` };
+    central.beamIssue = { elementId: b.id, element: 'Fiber', reason: `it starts no Gaussian beam: ${mode.issue}` };
   }
   return rays;
 }
@@ -7172,7 +7172,27 @@ function nextPathPhase(r, c, surface) {
 // cannot disagree with the drawn rays.
 
 // Surfaces with no paraxial model: the beam parameter stops there.
-const NO_PARAXIAL_MODEL = new Set(['diffuser', 'dm', 'dmd', 'shaper', 'specimen', 'fluor', 'retina', 'metalens', 'opoin', 'opapump', 'opaseed']);
+// What each of them does to the beam, for the readout.
+const NO_PARAXIAL_MODEL = new Map([
+  ['diffuser', 'it scatters the light into many directions'],
+  ['dm', 'its surface is shaped point by point, not as one curvature'],
+  ['dmd', 'its micromirrors cut the beam into a pattern'],
+  ['shaper', 'its pattern reshapes the beam'],
+  ['specimen', 'the specimen scatters and absorbs the light'],
+  ['fluor', 'the specimen scatters and absorbs the light'],
+  ['retina', 'the retina is a diffuse surface'],
+  ['metalens', 'a metasurface lens has no first-order (ABCD) model here'],
+  ['opoin', 'a parametric crystal generates new beams'],
+  ['opapump', 'a parametric crystal generates new beams'],
+  ['opaseed', 'a parametric crystal generates new beams'],
+]);
+const NOT_FOLLOWED = 'so the Gaussian beam is not followed past it';
+// A lossless paraxial system keeps the determinant of its reduced matrix at
+// 1 (the companions' invariant n·(y₁u₂ − y₂u₁)). The ideal lens met off its
+// axis does not: its mapping (perfect imaging onto a flat focal plane) has
+// determinant cos³θ_out / cos³θ_in, 0.7 % off at 4°. Beyond this tolerance
+// the beam quality would change, so the readout declines.
+export const LOSSLESS_TOLERANCE = 0.01;
 
 function beamElementName(surface) {
   const el = surface?.el;
@@ -7187,14 +7207,13 @@ const surfaceOwnerId = surface => surface?.el?.id ?? surface?.data?.beam?.id ?? 
 
 function beamStepIssue(parent, surface, child) {
   const issue = reason => ({ elementId: surfaceOwnerId(surface), element: beamElementName(surface), reason });
-  if (NO_PARAXIAL_MODEL.has(surface.kind) || (surface.kind === 'attenuate' && surface.data?.specimen)) {
-    return issue('it has no paraxial model');
-  }
+  const kind = surface.kind === 'attenuate' && surface.data?.specimen ? 'specimen' : surface.kind;
+  if (NO_PARAXIAL_MODEL.has(kind)) return issue(`${NO_PARAXIAL_MODEL.get(kind)}, ${NOT_FOLLOWED}`);
   if (child.wl !== undefined && child.wl !== parent.wl) {
-    return issue('it converts the wavelength, and generated light starts no beam parameter in this version');
+    return issue('it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)');
   }
-  if ('sourceId' in child && child.sourceId !== parent.sourceId) return issue('the light leaving it is generated there');
-  if (child.speckle && !parent.speckle) return issue('it scatters the beam');
+  if ('sourceId' in child && child.sourceId !== parent.sourceId) return issue(`the light leaving it is generated there, ${NOT_FOLLOWED}`);
+  if (child.speckle && !parent.speckle) return issue(`it scatters the light, ${NOT_FOLLOWED}`);
   return null;
 }
 
@@ -7243,7 +7262,7 @@ function companionInteract(snapshot, companion, hit) {
   }
 }
 
-const formatBeamMm = mm => (mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`);
+const formatBeamMm = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm` : `${Number(mm.toPrecision(3))} mm`);
 const beamRadiusMm = (q, seed, index) => (beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index })?.radiusUm ?? NaN) / 1000;
 const samePoint = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
 
@@ -7262,7 +7281,7 @@ function beamClipIssue(from, to, q, index, seed, surfaces, exclude) {
     if (Number.isFinite(w) && gap.distance < CLIP_RADII * w) {
       return {
         elementId: surfaceOwnerId(surface), element: beamElementName(surface),
-        reason: `its edge lies ${formatBeamMm(gap.distance)} from the beam's centre, within ${CLIP_RADII} beam radii, so it clips the beam`,
+        reason: `its edge lies ${formatBeamMm(gap.distance)} from the beam's centre, closer than ${CLIP_RADII} beam radii (${formatBeamMm(CLIP_RADII * w)} here): it clips the beam, which is no longer Gaussian past it`,
       };
     }
   }
@@ -7306,7 +7325,7 @@ function hitEdgeIssue(step, w, surfaces) {
     if (reach < need) {
       return {
         elementId: surfaceOwnerId(surface), element: beamElementName(surface),
-        reason: `the beam reaches its edge (${formatBeamMm(reach)} from the beam's centre along it, within ${CLIP_RADII} beam radii), so it clips the beam`,
+        reason: `its edge lies ${formatBeamMm(reach)} from the beam's centre along its surface, closer than ${CLIP_RADII} beam radii (${formatBeamMm(need)} here${need > CLIP_RADII * w * 1.001 ? ', widened by the tilt' : ''}): it clips the beam, which is no longer Gaussian past it`,
       };
     }
   }
@@ -7332,8 +7351,12 @@ function advanceBeam(prev, step, seed, surfaces) {
     companions.push({ p: { x: o.x, y: o.y }, d: norm(child.d) });
   }
   const matrix = measuredMatrix({ p: step.origin, d: step.dout }, companions, step.nOut, seed.n, companionStep);
+  const det = matrix ? matrix.A * matrix.D - matrix.B * matrix.C : NaN;
+  if (matrix && !(Math.abs(det - 1) <= LOSSLESS_TOLERANCE)) {
+    return fail(`it is met too far from its axis for its ideal model: there it would change the beam quality by ${(Math.abs(det - 1) * 100).toFixed(1)} % (a lossless optic changes it by none), ${NOT_FOLLOWED}`);
+  }
   const q = matrix && transformQ(seed.q, matrix, seed.n, step.nOut);
-  if (!q) return fail('the measured ray-transfer matrix does not describe a beam after it');
+  if (!q) return fail(`the measured ray-transfer matrix does not describe a beam after it, ${NOT_FOLLOWED}`);
   const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
   if (!(beam.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
     return fail(`the beam's far-field half-angle after it, ${Math.round(beam.halfDivergenceMrad)} mrad, exceeds the paraxial limit of ${PARAXIAL_LIMIT_RAD * 1000} mrad`);
@@ -7410,9 +7433,9 @@ function addBeamReading(track, hit, surfaces) {
   const id = hit.surface.el?.id;
   if (!id) return;
   const { seed } = track;
-  const entry = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2, beam: null, issue: null };
+  const entry = { sourceId: seed.sourceId, branch: track.path.branch || '', wavelengthNm: seed.wavelengthNm, m2: seed.m2, beam: null, issue: null, power: hit.power, p: hit.p };
   const at = trackStateAt(track, Math.max(0, hit.vertex - 1));
-  if (!at) entry.issue = track.issue || { elementId: null, element: 'The beam', reason: 'no beam parameter reaches this detector' };
+  if (!at) entry.issue = track.issue || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this detector' };
   else {
     const clip = beamClipIssue(at.p, hit.p, at.q, at.n, seed, surfaces, new Set([id, at.elementId].filter(Boolean)));
     if (clip) entry.issue = clip;
@@ -7436,15 +7459,34 @@ const beamBranchReading = entry => ({
   ...entry.beam, gouyScope: 'circular',
 });
 
+// Light below this power (W) is not there: a dark port of an interferometer
+// keeps its path with nothing on it. The probe's other views use the same.
+const LIT_W = 1e-12;
+const RECOMBINE_REASON = 'branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light';
+
+// Groups of branches that overlap: `near(a, b)` joins two.
+function overlapGroups(items, near) {
+  const groups = [];
+  for (const item of items) {
+    const joined = groups.filter(group => group.some(other => near(item, other)));
+    const merged = [item, ...joined.flat()];
+    for (const group of joined) groups.splice(groups.indexOf(group), 1);
+    groups.push(merged);
+  }
+  return groups;
+}
+
 // What a detector reads of the propagated beams that reach it: one entry
 // per source and branch, and the declines, each naming the element and the
-// reason. Two branches of one source on one face add as fields, which no
-// single beam parameter describes.
+// reason. Branches of one source whose spots overlap on the face add as
+// fields, which no single beam parameter describes; separate spots are read
+// one by one. Only light that arrives counts: a dark interference port reads
+// no beam.
 export function detectorBeam(elementId) {
   const entries = beamReadings.get(elementId);
   if (!entries?.length) return null;
   const bySource = new Map();
-  for (const entry of entries.filter(e => e.beam)) {
+  for (const entry of entries) {
     const list = bySource.get(entry.sourceId) || [];
     if (!list.some(other => other.branch === entry.branch)) list.push(entry);
     bySource.set(entry.sourceId, list);
@@ -7453,12 +7495,19 @@ export function detectorBeam(elementId) {
   const decline = item => {
     if (!declined.some(d => d.element === item.element && d.reason === item.reason)) declined.push(item);
   };
+  const near = (a, b) => Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y) < CLIP_RADII * (a.beam.radiusUm + b.beam.radiusUm) / 1000;
   for (const [sourceId, list] of bySource) {
-    if (list.length > 1) decline({ sourceId, elementId, element: 'This detector', reason: 'branches of one source recombine here, so no single beam parameter describes the light' });
-    else branches.push(beamBranchReading(list[0]));
+    if (!list.some(entry => entry.power > LIT_W)) continue;
+    for (const group of overlapGroups(list.filter(entry => entry.beam), near)) {
+      if (!group.some(entry => entry.power > LIT_W)) continue;
+      if (group.length > 1) decline({ sourceId, wavelengthNm: group[0].wavelengthNm, elementId, element: 'This detector', reason: RECOMBINE_REASON });
+      else branches.push(beamBranchReading(group[0]));
+    }
+    for (const entry of list) {
+      if (!entry.beam && entry.issue && entry.power > LIT_W) decline({ sourceId, wavelengthNm: entry.wavelengthNm, ...beamIssueReading(entry.issue) });
+    }
   }
-  for (const entry of entries) if (!entry.beam && entry.issue) decline({ sourceId: entry.sourceId, ...beamIssueReading(entry.issue) });
-  return { branches, declined };
+  return branches.length || declined.length ? { branches, declined } : null;
 }
 
 // A focus plane's waist: the propagated beam's where there is exactly one,
@@ -7471,38 +7520,78 @@ function focusFromBeam(convergence, beam) {
   return Number.isFinite(convergence.waistMm) ? { ...convergence, waistModel: 'cone' } : convergence;
 }
 
-// The propagated beams crossing a circle of `radius` about (x, y), one per
-// source and branch: the beam there, or why there is none.
+// The beam a track has at `point` on its segment `i`, or why it has none.
+function trackBeamAt(track, i, point) {
+  const at = trackStateAt(track, i);
+  const base = { sourceId: track.seed.sourceId, branch: track.path.branch || '', wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2 };
+  // The beam where the segment passes closest to the point: a probe whose
+  // circle reaches past the segment's end reads the beam at that end, not
+  // extrapolated through the element that ends it.
+  const pts = track.path.pts;
+  const along = at ? Math.min(Math.max(dot(sub(point, at.p), at.d), dot(sub(pts[i], at.p), at.d)), dot(sub(pts[i + 1], at.p), at.d)) : 0;
+  // An edge between the last interaction and the probed point clips the
+  // beam there, though the next interaction has not been reached.
+  // The element that ends this segment is checked where the beam meets
+  // it (hitEdgeIssue), not as an edge lying ahead of the probe.
+  const ahead = beamVertexOwnersOf.get(track.path)?.[i + 1] ?? null;
+  const clip = at && beamClipIssue(at.p, { x: at.p.x + at.d.x * along, y: at.p.y + at.d.y * along }, at.q, at.n,
+    track.seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
+  if (!at || clip) return { ...base, issue: beamIssueReading(clip || track.issue || { elementId: null, element: 'The beam', reason: 'no Gaussian beam reaches this point' }) };
+  const q = propagateQ(at.q, along);
+  return { ...base, index: at.n, q, ...beamFromQ(q, { wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2, index: at.n }) };
+}
+
+// The propagated beams crossing a circle of `radius` about (x, y): one
+// entry per source and branch that carries light there, each with its
+// direction of travel; or why there is none. Branches of one source that
+// travel together through the circle add as fields there (the output of an
+// interferometer), so they give one decline, as on a detector; a dark port,
+// whose path carries no light, gives nothing.
 export function beamAtPoint(x, y, radius = 5) {
   const point = { x, y };
-  const found = new Map();
+  const arrivals = [];
+  const seen = new Set();
   for (const track of lastBeamTracks) {
     if (track.path.hidden) continue;
-    const pts = track.path.pts || [];
     const key = `${track.seed.sourceId}|${track.path.branch || ''}`;
-    if (found.has(key)) continue;
+    if (seen.has(key)) continue;
+    const pts = track.path.pts || [];
     for (let i = 0; i < pts.length - 1; i++) {
       if (distToSegment(point, pts[i], pts[i + 1]) > radius) continue;
-      const at = trackStateAt(track, i);
-      const base = { sourceId: track.seed.sourceId, branch: track.path.branch || '', wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2 };
-      const along = at ? dot(sub(point, at.p), at.d) : 0;
-      // An edge between the last interaction and the probed point clips the
-      // beam there, though the next interaction has not been reached.
-      // The element that ends this segment is checked where the beam meets
-      // it (hitEdgeIssue), not as an edge lying ahead of the probe.
-      const ahead = beamVertexOwnersOf.get(track.path)?.[i + 1] ?? null;
-      const clip = at && beamClipIssue(at.p, { x: at.p.x + at.d.x * along, y: at.p.y + at.d.y * along }, at.q, at.n,
-        track.seed, lastBeamSurfaces, new Set([at.elementId, ahead].filter(Boolean)));
-      if (!at || clip) {
-        found.set(key, { ...base, issue: beamIssueReading(clip || track.issue || { elementId: null, element: 'The beam', reason: 'no beam parameter here' }) });
-      } else {
-        const q = propagateQ(at.q, along);
-        found.set(key, { ...base, index: at.n, q, ...beamFromQ(q, { wavelengthNm: track.seed.wavelengthNm, m2: track.seed.m2, index: at.n }) });
-      }
+      seen.add(key);
+      arrivals.push({ track, power: track.path.segmentPowers?.[i] ?? 0, direction: norm(sub(pts[i + 1], pts[i])), reading: trackBeamAt(track, i, point) });
       break;
     }
   }
-  return [...found.values()];
+  const found = [];
+  const bySource = new Map();
+  for (const arrival of arrivals) {
+    const list = bySource.get(arrival.track.seed.sourceId) || [];
+    list.push(arrival);
+    bySource.set(arrival.track.seed.sourceId, list);
+  }
+  // Within the probe's circle two branches overlap; they travel together
+  // when their directions agree to 0.1 rad (crossing beams are listed apart).
+  const together = (a, b) => dot(a.direction, b.direction) > Math.cos(0.1);
+  for (const list of bySource.values()) {
+    if (!list.some(arrival => arrival.power > LIT_W)) continue;
+    for (const group of overlapGroups(list.filter(arrival => !arrival.reading.issue), together)) {
+      const lit = group.filter(arrival => arrival.power > LIT_W);
+      if (!lit.length) continue;
+      const { reading, direction } = lit[0];
+      if (group.length > 1) {
+        found.push({ sourceId: reading.sourceId, branch: reading.branch, wavelengthNm: reading.wavelengthNm, m2: reading.m2, direction,
+          issue: { elementId: null, element: 'Here', reason: RECOMBINE_REASON } });
+      } else found.push({ ...reading, direction });
+    }
+    // Light that lost its beam upstream says why, once per reason.
+    for (const { reading, direction, power } of list) {
+      if (!reading.issue || !(power > LIT_W)) continue;
+      if (found.some(f => f.issue && f.sourceId === reading.sourceId && f.issue.element === reading.issue.element && f.issue.reason === reading.issue.reason)) continue;
+      found.push({ ...reading, direction });
+    }
+  }
+  return found;
 }
 
 // The tracks of the last trace, for tests and the zoom: each with its
@@ -7885,7 +7974,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         recordDetectorHit(r, hit);
         if (r.beamSeed || r.beamIssue) {
           if (!beamDetectorHitsOf.has(r)) beamDetectorHitsOf.set(r, []);
-          beamDetectorHitsOf.get(r).push({ surface: hit.surface, p: { x: hit.p.x, y: hit.p.y }, vertex: r.pts.length - 1 });
+          beamDetectorHitsOf.get(r).push({ surface: hit.surface, p: { x: hit.p.x, y: hit.p.y }, vertex: r.pts.length - 1, power: r.power });
         }
       }
       if (hit.surface.kind === 'phaseplate') {
@@ -8980,8 +9069,7 @@ export function traceScene(elements, beams = [], options = {}) {
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
         ...(beamSource && !r.evan && (r.sample === undefined || r.sample === Math.floor((K - 1) / 2)) ? {
           beamSeed: {
-            ...beamSource, q: initialIor === 1 ? beamSource.q
-              : qFromWaist({ ...beamSource, index: initialIor, zMm: -beamSource.waistPosMm }),
+            ...beamSource, q: initialIor === 1 ? beamSource.q : qFromWaist({ ...beamSource, index: initialIor }),
             p: { x: o.x, y: o.y }, d: { x: d.x, y: d.y }, n: initialIor,
             sourceId: el.id, elementId: el.id, elementName: el.label || registry[el.type]?.label || el.type,
           },

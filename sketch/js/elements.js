@@ -39,7 +39,7 @@ import {
   linewidthForCoherenceLengthNm, resolveSourceSpectrum, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import { coherencePathMm } from './spectral-coherence.js';
-import { sourceBeamParameter } from './beam-propagation.js';
+import { sourceBeamParameter, noBeamReason } from './beam-propagation.js';
 import { beamFromQ } from './gaussian-beam.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -1161,8 +1161,8 @@ function probePolCard(rd) {
 // in the drawing plane; or why there is no beam parameter there, naming the
 // element and the reason in full.
 const probeBeamLength = mm => (!Number.isFinite(mm) ? '∞'
-  : Math.abs(mm) < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
-    : Math.abs(mm) < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+  : Math.abs(mm) < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
+    : Math.abs(mm) < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
 function wrapWords(text, width) {
   const lines = [];
   let line = '';
@@ -1173,27 +1173,64 @@ function wrapWords(text, width) {
   if (line) lines.push(line);
   return lines;
 }
+// The direction a beam travels on the canvas (y grows downwards).
+const PROBE_ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
+const probeArrow = d => PROBE_ARROWS[((Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) % 8) + 8) % 8];
+// A decline as one sentence: the element, then why.
+const probeIssueText = issue => (issue.element === 'Here' ? issue.reason : `${issue.element}: ${issue.reason}`);
 function probeBeamCard(el, elements = []) {
-  const found = beamAtPoint(el.x, el.y, probeSampleDiameterMm(el.params) / 2);
+  const radius = probeSampleDiameterMm(el.params) / 2;
+  const found = beamAtPoint(el.x, el.y, radius);
   const rows = [];
-  const named = found.length > 1;
-  for (const b of found.slice(0, 3)) {
-    const source = elements.find(item => item?.id === b.sourceId);
-    const who = named ? `${source?.label || registry[source?.type]?.label || 'Beam'}: ` : '';
+  const note = text => wrapWords(text, 52).forEach(line => rows.push({ text: line, size: 7, color: '#b45309' }));
+  if (found.length === 1) {
+    // One beam: its numbers in words, no names to decode.
+    const b = found[0];
     if (b.issue) {
-      for (const [i, text] of wrapWords(`${who}not propagated: ${b.issue.element}: ${b.issue.reason}`, 46).entries()) {
-        rows.push({ text, size: 7, color: '#b45309', bold: i === 0 && Boolean(who) });
-      }
-      continue;
+      rows.push({ text: 'No Gaussian beam here', size: 9, color: '#333', bold: true });
+      note(probeIssueText(b.issue));
+    } else {
+      const wave = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
+        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${probeBeamLength(Math.abs(b.curvatureMm))}`;
+      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
+        : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+      rows.push({ text: `Beam radius w ${probeBeamLength(b.radiusUm / 1000)} (1/e²)`, size: 9, color: '#333', bold: true });
+      rows.push({ text: `Wavefront ${wave}`, size: 7.5, color: '#444' });
+      rows.push({ text: `Waist w₀ ${probeBeamLength(b.waistUm / 1000)}, ${ahead}`, size: 7.5, color: '#444' });
+      rows.push({ text: `Rayleigh range ${probeBeamLength(b.rayleighMm)}`, size: 7.5, color: '#444' });
     }
-    const wave = !Number.isFinite(b.curvatureMm) ? 'flat wavefront' : `R ${probeBeamLength(Math.abs(b.curvatureMm))} ${b.curvatureMm < 0 ? 'converging' : 'diverging'}`;
-    const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
-      : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
-    rows.push({ text: `${who}w ${probeBeamLength(b.radiusUm / 1000)} · ${wave}`, size: 9, color: '#333', bold: true });
-    rows.push({ text: `waist ${probeBeamLength(b.waistUm / 1000)} ${ahead} · zR ${probeBeamLength(b.rayleighMm)}`, size: 7.5, color: '#444' });
+  } else if (found.length > 1) {
+    // Several beams: each named by its colour and direction, as the probe's
+    // other views name beams.
+    for (const b of found.slice(0, 3)) {
+      const who = `${Math.round(b.wavelengthNm)} nm ${probeArrow(b.direction)}`;
+      if (b.issue) {
+        rows.push({ text: `${who}: no Gaussian beam`, size: 8, color: '#333', bold: true });
+        note(probeIssueText(b.issue));
+        continue;
+      }
+      const wave = !Number.isFinite(b.curvatureMm) ? 'flat' : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, R ${probeBeamLength(Math.abs(b.curvatureMm))}`;
+      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'here'
+        : `${probeBeamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+      rows.push({ text: `${who}: w ${probeBeamLength(b.radiusUm / 1000)} · ${wave}`, size: 8, color: '#333', bold: true });
+      rows.push({ text: `waist ${probeBeamLength(b.waistUm / 1000)}, ${ahead} · Rayleigh range ${probeBeamLength(b.rayleighMm)}`, size: 7, color: '#444' });
+    }
+    if (found.length > 3) rows.push({ text: `+${found.length - 3} more`, size: 7, color: '#666' });
+  } else {
+    // Light without a Gaussian beam says which source it is and why.
+    const sources = [...new Set(probeBeamsAt(el.x, el.y, radius).map(b => b.originId || b.sourceId).filter(Boolean))]
+      .map(id => elements.find(item => item?.id === id)).filter(Boolean);
+    if (!sources.length) rows.push({ text: 'No light here', size: 8, color: '#9aa2ad' });
+    else {
+      rows.push({ text: 'No Gaussian beam here', size: 9, color: '#333', bold: true });
+      const reasons = [...new Set(sources.map(source => noBeamReason(source.type, source.params)).filter(Boolean))].slice(0, 2);
+      // A laser with a beam whose central ray passes elsewhere: only the
+      // edge of its drawn rays reaches the probe.
+      if (!reasons.length) reasons.push('only the edge of a laser\'s drawn rays passes here; its Gaussian beam follows the beam\'s centre');
+      for (const reason of reasons) note(reason.replace(/^./, c => c.toUpperCase()));
+    }
   }
-  if (!found.length) rows.push({ text: 'no Gaussian beam here', size: 8, color: '#9aa2ad' });
-  else rows.push({ text: 'in the drawing plane', size: 6.5, color: '#8a93a0' });
+  if (found.some(b => !b.issue)) rows.push({ text: 'Gaussian beam, in the drawing plane', size: 6.5, color: '#8a93a0' });
   const w = Math.max(56, ...rows.map(r => r.text.length * r.size * 0.56 + 14));
   let y = 4, body = '';
   for (const r of rows) {
@@ -2498,29 +2535,26 @@ export function galvoAngleAt(params = {}, timeSeconds = 0) {
 // (wl, bw, spec) spectrum resolved by resolveSourceSpectrum().
 const beamShapeParams = beamWidthDef => [
   { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
-  { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
+  { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 0.1, max: 60, step: 0.1, def: beamWidthDef, show: p => p.beamMode === 'beam' },
 ];
 
 // The Gaussian beam a CW or pulsed laser starts (step G1,
-// docs/physics/beam-propagation.md): by default from what the laser already
-// has, a 1/e² radius of half its Beam width with the waist at its output and
-// M² = 1; these three settings override that. A laser drawn as a simple line
-// has a beam parameter only when its waist is set. Collapsed: the defaults
-// keep the beam the laser always drew.
-const formatBeamLength = mm => (mm < 1 ? `${Number((mm * 1000).toPrecision(3))} µm`
-  : mm < 1e4 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+// docs/physics/beam-propagation.md): its Beam width is the beam's 1/e²
+// diameter, the waist sits at the output, and M² sets how much faster than
+// an ideal beam it spreads. Collapsed: the default (M² = 1) is the beam the
+// laser always drew.
+const formatBeamLength = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
+  : mm < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
 const gaussianBeamParams = type => [
   { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
-  { key: 'beamWaistUm', label: 'Waist w₀ (µm, 0 = half the beam width)', type: 'number', min: 0, max: 100000, step: 10, def: 0 },
-  { key: 'beamWaistPosMm', label: 'Waist after the output (mm)', type: 'number', min: -100000, max: 100000, step: 1, def: 0 },
-  { key: 'beamM2', label: 'Beam quality M²', type: 'number', min: 1, max: 100, step: 0.1, def: 1 },
+  { key: 'beamM2', label: 'Beam quality M² (1 = ideal)', type: 'number', min: 1, max: 100, step: 0.1, def: 1, show: p => p.beamMode === 'beam' },
   {
-    key: 'beamParameter', label: 'Beam parameter', type: 'readout',
+    key: 'beamParameter', label: 'Beam', type: 'readout',
     readout: p => {
       const beam = sourceBeamParameter(type, p);
-      if (!beam) return 'None: a simple line has no beam parameter unless its waist is set';
+      if (!beam) return noBeamReason(type, p).replace(/^./, c => c.toUpperCase()) + '.';
       const shape = beamFromQ(beam.q, beam);
-      return `w₀ ${formatBeamLength(beam.waistUm / 1000)}${beam.derived ? ' (half the beam width)' : ''} · zR ${formatBeamLength(shape.rayleighMm)} · θ ${Number(shape.halfDivergenceMrad.toPrecision(3))} mrad`;
+      return `w₀ ${formatBeamLength(beam.waistUm / 1000)} at the output (1/e², half the beam width) · z_R ${formatBeamLength(shape.rayleighMm)} · θ ${Number(shape.halfDivergenceMrad.toPrecision(3))} mrad`;
     },
   },
 ];

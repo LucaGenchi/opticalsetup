@@ -183,8 +183,9 @@
       {
        "element": "eye (f = 25 mm, 6 mm pupil)",
        "elementId": "eoph0eye",
-       "reason": "it has no paraxial model",
-       "sourceId": "eoph0src"
+       "reason": "the retina is a diffuse surface, so the Gaussian beam is not followed past it",
+       "sourceId": "eoph0src",
+       "wavelengthNm": 840
       }
      ]
     },

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import { traceScene, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
-import { sourceBeamParameter, fiberBeamParameter, measuredMatrix, companionStarts, segmentGap } from '../sketch/js/beam-propagation.js';
+import { sourceBeamParameter, noBeamReason, fiberBeamParameter, measuredMatrix, companionStarts, segmentGap } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, composeMatrices } from '../sketch/js/gaussian-beam.js';
 import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { lp01 } from '../sketch/js/lp01.js';
@@ -29,38 +29,42 @@ const close = (a, b, tol, label = '') => assert.ok(Math.abs(a - b) <= tol, `${la
 
 test('G1: a laser drawn with a size starts its beam from its Beam width, waist at the output', () => {
   const beam = sourceBeamParameter('cwlaser', { beamMode: 'beam', beamWidth: 4, wavelength: 1064 });
+  // The Beam width is the 1/e² diameter: the only size setting.
   assert.equal(beam.waistUm, 2000);
-  assert.equal(beam.waistPosMm, 0);
   assert.equal(beam.m2, 1);
-  assert.equal(beam.derived, true);
   close(beam.q.re, 0, 0);
   close(beam.q.im, Math.PI * 4 / 1064e-6, 1e-6, 'z_R');
-  // The three settings override it; the waist position is after the output.
-  const set = sourceBeamParameter('pulsedlaser', { beamMode: 'beam', beamWidth: 4, wavelength: 800, beamWaistUm: 50, beamWaistPosMm: 120, beamM2: 1.3 });
-  assert.equal(set.derived, false);
-  close(set.q.re, -120, 1e-12, 'at the output, 120 mm before the waist');
-  close(set.q.im, Math.PI * 0.05 ** 2 / (1.3 * 800e-6), 1e-9, 'z_R with M²');
-  // A simple line has a beam parameter only when its waist is set.
+  // M² is the one beam setting a laser adds.
+  const poor = sourceBeamParameter('pulsedlaser', { beamMode: 'beam', beamWidth: 4, wavelength: 800, beamM2: 1.3 });
+  close(poor.q.im, Math.PI * 2 ** 2 / (1.3 * 800e-6), 1e-9, 'z_R with M²');
+  // A simple line has none, and says how to get one.
   assert.equal(sourceBeamParameter('cwlaser', { beamMode: 'line', beamWidth: 4, wavelength: 532 }), null);
-  assert.ok(sourceBeamParameter('cwlaser', { beamMode: 'line', wavelength: 532, beamWaistUm: 300 }));
-  // Sources without a defined spatial mode start none.
-  for (const type of ['sclaser', 'ledsource', 'pointsource']) assert.equal(sourceBeamParameter(type, { beamMode: 'beam', beamWidth: 4, wavelength: 532 }), null, type);
-  // Every laser offers the settings, collapsed, defaulting to today's beam.
+  assert.match(noBeamReason('cwlaser', { beamMode: 'line' }), /simple line/);
+  assert.equal(noBeamReason('cwlaser', { beamMode: 'beam' }), null);
+  // Sources without one spatial mode start none, each with its reason.
+  for (const [type, why] of [['sclaser', /many wavelengths/], ['ledsource', /incoherent/], ['pointsource', /all directions/]]) {
+    assert.equal(sourceBeamParameter(type, { beamMode: 'beam', beamWidth: 4, wavelength: 532 }), null, type);
+    assert.match(noBeamReason(type, {}), why, type);
+  }
+  // Every laser offers M² alone, collapsed, defaulting to an ideal beam;
+  // the old waist settings are gone.
   for (const type of ['cwlaser', 'pulsedlaser']) {
     const params = registry[type].params;
     assert.equal(params.find(p => p.key === 'beamHeading')?.open, false, `${type}: collapsed`);
+    assert.ok(!params.some(p => p.key === 'beamWaistUm' || p.key === 'beamWaistPosMm'), type);
     const el = createElement(type, 0, 0);
-    assert.equal(el.params.beamWaistUm, 0);
-    assert.equal(el.params.beamWaistPosMm, 0);
     assert.equal(el.params.beamM2, 1);
+    assert.match(params.find(p => p.key === 'beamParameter').readout(el.params), /^w₀ [0-9.]+ mm at the output \(1\/e², half the beam width\) · z_R [0-9.]+ m · θ [0-9.]+ mrad$/);
+    // A beam of 0.1 mm can be drawn, so small waists need no other setting.
+    assert.equal(params.find(p => p.key === 'beamWidth').min, 0.1);
   }
 });
 
-test('G1: a saved laser without the new settings opens with the beam its width implies', () => {
+test('G1: a saved laser opens with the beam its width implies', () => {
   const saved = { version: 1, elements: [{ id: 'l1', type: 'cwlaser', x: 0, y: 0, rot: 0, params: { beamMode: 'beam', beamWidth: 6, wavelength: 633 } }], beams: [] };
   const scene = parseSketch(JSON.stringify(saved), registry);
   const el = scene.elements[0];
-  assert.equal(el.params.beamWaistUm, 0);
+  assert.equal(el.params.beamM2, 1);
   assert.equal(sourceBeamParameter(el.type, el.params).waistUm, 3000);
 });
 
@@ -106,10 +110,12 @@ test('G1: matrices from companion offsets, and the companion invariant', () => {
 
 test('G1: the readout follows the propagated waist, not the cone estimate, where they differ', () => {
   // The issue's cases: 100 µm at 1 µm, waist on an ideal thin lens.
+  // The lens's measured matrix applied to that beam (a laser's own waist
+  // sits at its output, 52 mm past the laser, here 0.1 mm before the lens).
   const waistAfter = (f, m2) => {
-    traceScene([laser({ beamWaistUm: 100, beamWaistPosMm: 148, beamM2: m2 }), make('lens', 200, 0, { f })]);
-    const [after] = beamAtPoint(200.01, 0, 0.001);
-    return { waistUm: after.waistUm, distanceMm: after.waistAheadMm + 0.01 };
+    traceScene([make('cwlaser', 147.9, 0, { beamMode: 'beam', beamWidth: 0.2, wavelength: 1000 }), make('lens', 200, 0, { f })]);
+    const q = transformQ(qFromWaist({ waistUm: 100, wavelengthNm: 1000, m2, zMm: -0.1 }), beamTracksFromLastTrace()[0].q[1].matrix);
+    return { waistUm: beamFromQ(q, { wavelengthNm: 1000, m2 }).waistUm, distanceMm: beamFromQ(q, { wavelengthNm: 1000, m2 }).waistAheadMm };
   };
   const longRange = waistAfter(1, 1);
   close(longRange.waistUm / (1e-3 * 1 / (Math.PI * 0.1) * 1e3), 1, 1e-3, 'meets λf/(πw) for z_R ≫ f');
@@ -119,6 +125,13 @@ test('G1: the readout follows the propagated waist, not the cone estimate, where
   close(quality.waistUm, 70.711, 5e-4, 'w0 with M² = 2'); close(quality.distanceMm, 7.854, 5e-4, 'distance');
   // The cone estimate λf/(πw) would have said 50 µm here.
   assert.ok(Math.abs(quality.waistUm - 50) > 20);
+  // Through the readout itself: a 0.2 mm beam width (a 100 µm waist at the
+  // output) with M² = 2, the lens 0.1 mm on, against the q law by hand.
+  traceScene([laser({ beamWidth: 0.2, beamM2: 2 }), make('lens', 52.1, 0, { f: 15.707963267948966 })]);
+  const [read] = beamAtPoint(52.2, 0, 0.001);
+  const byHand = beamFromQ(transformQ(qFromWaist({ waistUm: 100, wavelengthNm: 1000, m2: 2, zMm: 0.1 }), thinLensMatrix(15.707963267948966)), { wavelengthNm: 1000, m2: 2 });
+  close(read.waistUm, byHand.waistUm, 1e-4, 'readout w0');
+  close(read.waistAheadMm + 0.1, byHand.waistAheadMm, 1e-4, 'readout waist distance');
 });
 
 test('G1: every readout states the beam in the drawing plane, with the Gouy phase marked circular', () => {
@@ -162,7 +175,7 @@ test('G1: an element without a paraxial model stops the beam and is named', () =
   const beam = detectorReading(detector.id).beam;
   assert.equal(beam.branches.length, 0);
   assert.equal(beam.declined[0].element, registry.diffuser.label);
-  assert.match(beam.declined[0].reason, /no paraxial model/);
+  assert.match(beam.declined[0].reason, /scatters the light into many directions, so the Gaussian beam is not followed past it/);
   // Before the diffuser the beam is still there.
   assert.ok(beamAtPoint(120, 0, 1)[0].waistUm > 0);
 });
@@ -208,7 +221,7 @@ test('G1: a fiber output starts a beam from its mode where it is known', () => {
   assert.equal(beam.mode, 'LP01');
   // Multimode at this wavelength, or no core set: declined, with the reason.
   assert.match(fiberBeamParameter({ ...fiber, singleModeCoreUm: 50 }, 633, V => lp01(V).best.ratio).issue, /more than one mode/);
-  assert.match(fiberBeamParameter({ fiberModel: 'linear', inputNA: 0.12 }, 633, () => 1).issue, /no single-mode core/);
+  assert.match(fiberBeamParameter({ fiberModel: 'linear', inputNA: 0.12 }, 633, () => 1).issue, /no single-mode core is set/);
   // A hollow-core capillary: 0.64 of its core radius.
   close(fiberBeamParameter({ fiberModel: 'argon', coreDiameterUm: 250 }, 800, () => 1).waistUm, 80, 1e-12);
 });
@@ -227,14 +240,21 @@ test('G1: the probe can show the Gaussian beam where it stands', () => {
   const elements = [laser(), make('lens', 200, 0, { f: 100 }), probe];
   traceScene(elements);
   const svg = registry.probe.svg(probe, elements);
-  assert.match(svg, /w [0-9.]+ µm/);
-  assert.match(svg, /in the drawing plane/);
+  assert.match(svg, /Beam radius w [0-9.]+ µm \(1\/e²\)/);
+  assert.match(svg, /Wavefront (converging|diverging), R /);
+  assert.match(svg, /Gaussian beam, in the drawing plane/);
+  // One beam: no source name to decode.
+  assert.doesNotMatch(svg, /Laser|CW laser/);
   // Just behind a diffuser, where the scattered central ray still passes
   // whatever direction the diffuser gave it.
-  const behind = make('probe', 202, 0, { prop: 'beam' });
+  const behind = make('probe', 203, 0, { prop: 'beam', sampleDiameterMm: 2 });
   const blocked = [laser(), make('diffuser', 200, 0), behind];
   traceScene(blocked);
-  assert.match(registry.probe.svg(behind, blocked), /not propagated/);
+  const scattered = registry.probe.svg(behind, blocked);
+  assert.match(scattered, /No Gaussian beam here/);
+  assert.match(scattered, /scatters the light/);
+  // Branches without a beam do not count as recombining.
+  assert.doesNotMatch(scattered, /recombine/);
 });
 
 test('G1: a fiber relaunches a beam from its mode, not clipped by its own connector', () => {
@@ -284,13 +304,14 @@ test('G1 (review): a decline on the continuing ray holds from that interaction, 
   const [before] = beamAtPoint(120, 0, 1);
   assert.ok(!before.issue && before.radiusUm > 0, `before the sample: ${JSON.stringify(before)}`);
   const beam = detectorReading(detector.id)?.beam;
-  assert.ok(beam?.declined.some(d => /no paraxial model/.test(d.reason)), JSON.stringify(beam));
+  assert.ok(beam?.declined.some(d => /specimen scatters and absorbs/.test(d.reason)), JSON.stringify(beam));
 });
 
 test('G1 (review): the beam a source starts is held to the paraxial limit', () => {
-  // A line laser with a 1 µm waist at 1 µm: θ = 318 mrad.
+  // A 2 µm beam (below the 0.1 mm the inspector allows) has a 1 µm waist:
+  // at 1 µm, θ = 318 mrad.
   const detector = make('detector', 300, 0);
-  traceScene([make('cwlaser', 0, 0, { beamMode: 'line', wavelength: 1000, beamWaistUm: 1 }), detector]);
+  traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.002, wavelength: 1000 }), detector]);
   const beam = detectorReading(detector.id).beam;
   assert.equal(beam.branches.length, 0);
   assert.match(beam.declined[0].reason, /318 mrad, beyond the paraxial limit/);
@@ -337,4 +358,65 @@ test('G1 (review): a probe just before a lens wide enough for the beam reads the
   // A block that ends the beam is not reported as clipping it before it is reached.
   traceScene([laser(), make('blocker', 200, 0, { w: 16, h: 60 })]);
   assert.ok(!beamAtPoint(191.5, 0, 0.001)[0].issue, "0.5 mm before the block's face at 192 mm");
+});
+
+// Luca's manual check (round 5): a probe above the Mach-Zehnder of the test
+// scene listed a beam of its dark port, and the probe on its output listed
+// both arms while the detector there declined.
+test('G1 (Luca): a dark interference port gives no beam, and a probe on an output agrees with the detector', () => {
+  const laser633 = make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 633 });
+  const out = make('detector', 420, -100);
+  const elements = [laser633, make('bs', 200, 0), make('bs', 300, 0), make('bs', 200, -100), make('bs', 300, -100), out];
+  traceScene(elements);
+  // The unused output travels up through x = 300 and carries no light.
+  assert.deepEqual(beamAtPoint(300, -300, 5), []);
+  const above = make('probe', 300, -300, { prop: 'beam' });
+  assert.match(registry.probe.svg(above, [...elements, above]), /No light here/);
+  // On the lit output both arms travel together: one decline, as the
+  // detector's.
+  const onOutput = beamAtPoint(360, -100, 5);
+  assert.equal(onOutput.length, 1, JSON.stringify(onOutput));
+  assert.match(onOutput[0].issue.reason, /recombine here/);
+  assert.match(detectorReading(out.id).beam.declined[0].reason, /recombine here/);
+});
+
+test('G1 (Luca): separate spots of one source on one detector are read one by one', () => {
+  // A splitter and a fold send two parallel beams 30 mm apart onto one wide
+  // detector: they do not overlap, so each keeps its beam.
+  const wide = make('detector', 400, -15, { aperture: 60 });
+  traceScene([laser({ wavelength: 633 }), make('bs', 200, 0), make('bs', 200, -30, { ratio: 0 }), wide]);
+  const beam = detectorReading(wide.id).beam;
+  assert.equal(beam.branches.length, 2, JSON.stringify(beam));
+  assert.deepEqual(beam.declined, []);
+  // The card names them by colour, not by the laser's internal name.
+  const html = beamRowsHTML(beam, () => 'Laser 5');
+  assert.match(html, /Beam radius w · 633 nm/);
+  assert.doesNotMatch(html, /Laser 5/);
+});
+
+test('G1: an ideal lens met far from its axis, where its model is not lossless, is declined', () => {
+  // A collimated beam h above the axis leaves at θ = atan(h/f); the ideal
+  // lens's matrix there has determinant cos³θ (0.4 % at h = 5 mm, 5.7 % at
+  // 20 mm), against 1 for any lossless paraxial optic.
+  const read = h => {
+    const detector = make('detector', 260, h * 0.4, { aperture: 100 });
+    traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 }), detector]);
+    const m = beamTracksFromLastTrace()[0].q[1]?.matrix;
+    return { beam: detectorReading(detector.id).beam, det: m && m.A * m.D - m.B * m.C };
+  };
+  const near = read(5);
+  close(near.det, Math.cos(Math.atan(0.05)) ** 3, 1e-6, 'determinant cos³θ');
+  assert.equal(near.beam.branches.length, 1);
+  const far = read(20);
+  assert.equal(far.beam.branches.length, 0);
+  assert.match(far.beam.declined[0].reason, /too far from its axis for its ideal model: there it would change the beam quality by 5\.7 %/);
+});
+
+test('G1: a probe whose circle reaches past an optic reads the beam at the end of its segment', () => {
+  // A probe 3 mm after a diffuser with a 10 mm circle also crosses the beam
+  // that arrives: that beam is read where it meets the diffuser.
+  traceScene([laser(), make('diffuser', 200, 0)]);
+  const lit = beamAtPoint(203, 0, 5).find(b => !b.issue);
+  const [atDiffuser] = (traceScene([laser()]), beamAtPoint(200, 0, 0.01));
+  close(lit.radiusUm, atDiffuser.radiusUm, 1e-9, 'w at the diffuser');
 });
