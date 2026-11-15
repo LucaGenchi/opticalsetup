@@ -5171,9 +5171,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "Filter",
-       "elementId": "ew0779i7",
-       "reason": "it converts the wavelength, and generated light starts no beam parameter in this version",
+       "element": "Mirror",
+       "elementId": "e9y2lyyi",
+       "reason": "the beam reaches its edge (6.93 mm from the beam's centre along it, within 1.5 beam radii), so it clips the beam",
        "sourceId": "e72y9ybh"
       }
      ]

@@ -64,9 +64,9 @@
      "branches": [],
      "declined": [
       {
-       "element": "sample",
-       "elementId": "ewk2yb95",
-       "reason": "it has no paraxial model",
+       "element": "Thin convex lens",
+       "elementId": "egrpu7l6",
+       "reason": "the beam's far-field half-angle after it, 233 mrad, exceeds the paraxial limit of 200 mrad",
        "sourceId": "efpipbp2"
       }
      ]

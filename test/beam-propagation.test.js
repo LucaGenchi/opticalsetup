@@ -13,6 +13,7 @@ import { createElement, registry } from '../sketch/js/elements.js';
 import { traceScene, detectorReading, beamAtPoint, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
 import { sourceBeamParameter, fiberBeamParameter, measuredMatrix, companionStarts, segmentGap } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, composeMatrices } from '../sketch/js/gaussian-beam.js';
+import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { lp01 } from '../sketch/js/lp01.js';
 import { beamRowsHTML } from '../sketch/js/inspector.js';
 import { parseSketch } from '../sketch/js/state.js';
@@ -262,4 +263,63 @@ test('G1: a fiber relaunches a beam from its mode, not clipped by its own connec
   traceScene(plain.elements, plain.beams);
   assert.match(detectorReading('D').beam.declined[0].reason, /no single-mode core/);
   assert.equal(detectorReading('D').beam.declined[0].element, 'Fiber');
+});
+
+test('G1 (review): the probe declines where an edge between interactions clips the beam', () => {
+  // A 2 mm beam (w = 1 mm); a block's edge 1.2 mm from the axis at x = 200.
+  const elements = [laser(), make('blocker', 200, 31.2, { w: 16, h: 60 }), make('detector', 400, 0)];
+  traceScene(elements);
+  const [after] = beamAtPoint(300, 0, 1);
+  assert.ok(after.issue, JSON.stringify(after));
+  assert.match(after.issue.reason, /clips the beam/);
+  // Before the block the beam is still read.
+  const [before] = beamAtPoint(120, 0, 1);
+  close(before.radiusUm, 1000, 1, 'w before the block');
+});
+
+test('G1 (review): a decline on the continuing ray holds from that interaction, not from the source', () => {
+  // A transmitting sample with no channels has no paraxial model.
+  const detector = make('detector', 400, 0);
+  traceScene([laser(), make('sample', 200, 0, {}, 90), detector]);
+  const [before] = beamAtPoint(120, 0, 1);
+  assert.ok(!before.issue && before.radiusUm > 0, `before the sample: ${JSON.stringify(before)}`);
+  const beam = detectorReading(detector.id)?.beam;
+  assert.ok(beam?.declined.some(d => /no paraxial model/.test(d.reason)), JSON.stringify(beam));
+});
+
+test('G1 (review): the beam a source starts is held to the paraxial limit', () => {
+  // A line laser with a 1 µm waist at 1 µm: θ = 318 mrad.
+  const detector = make('detector', 300, 0);
+  traceScene([make('cwlaser', 0, 0, { beamMode: 'line', wavelength: 1000, beamWaistUm: 1 }), detector]);
+  const beam = detectorReading(detector.id).beam;
+  assert.equal(beam.branches.length, 0);
+  assert.match(beam.declined[0].reason, /318 mrad, beyond the paraxial limit/);
+  assert.equal(beam.declined[0].element, registry.cwlaser.label);
+  assert.ok(beamAtPoint(200, 0, 1)[0].issue);
+});
+
+test('G1 (review): a thin lens inside a medium of index n bends the reduced slope by n/f', () => {
+  // n = 1.5, w0 = 100 µm at 1 µm, waist on an f = 50 mm lens (Self's form:
+  // z_R = π w0² n/λ = 47.12 mm, magnification 1/√(1 + (z_R/f)²)).
+  const focus = thinLensFocus(gaussianBeam({ waistUm: 100, wavelengthNm: 1000, index: 1.5 }), 0, 50);
+  close(focus.beam.waistUm, 72.7727, 5e-4, 'w0');
+  close(focus.distanceMm, 23.5207, 5e-4, 'distance');
+  const m = thinLensMatrix(50, 1.5);
+  assert.equal(m.C, -1.5 / 50);
+});
+
+test('G1 (review): no readout writer can record while companions replay an interaction', async () => {
+  // Every writer interact() can reach returns at once in companion mode.
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../sketch/js/raytrace.js', import.meta.url), 'utf8');
+  for (const name of ['recordCompressor', 'recordMetalensHit', 'recordProbeBeam', 'recordOpo', 'recordMix', 'recordSrsNote',
+    'recordSpecimenTiming', 'recordObjectivePupil', 'recordPhasePlateSpan', 'markIncompleteCoherence', 'noteWeakLightShortfall']) {
+    const body = source.slice(source.indexOf(`function ${name}(`));
+    const firstLines = body.split('\n').slice(1, 3).join('\n');
+    assert.match(firstLines, /companionMode/, `${name} is guarded`);
+  }
+  // The inline writes in interact() too.
+  for (const line of source.split('\n').filter(l => /(supercontinuumStates|opoStates)\.set\(/.test(l) && !/^function|^\s*if \(elementId\) opoStates/.test(l))) {
+    assert.match(line, /companionMode/, line.trim());
+  }
 });

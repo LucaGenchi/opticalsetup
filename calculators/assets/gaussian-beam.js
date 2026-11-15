@@ -47,7 +47,8 @@ export function beamAt(beam, zMm) {
 // way: magnification 1/√((1 − s/f)² + (z_R/f)²).
 export function thinLensFocus(beam, distanceMm, focalMm) {
   const atLens = propagateQ(qFromWaist(beam), distanceMm);
-  const after = transformQ(atLens, thinLensMatrix(focalMm), beam.index ?? 1, beam.index ?? 1);
+  const index = beam.index ?? 1;
+  const after = transformQ(atLens, thinLensMatrix(focalMm, index), index, index);
   const waist = beamFromQ(after, beam);
   return {
     beam: gaussianBeam({ ...beam, waistUm: waist.waistUm }), magnification: waist.waistUm / beam.waistUm,

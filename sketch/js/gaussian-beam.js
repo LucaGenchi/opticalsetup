@@ -76,7 +76,9 @@ export function beamFromQ(q, { wavelengthNm, m2 = 1, index = 1 }) {
 
 // Ray-transfer matrices of the analytic elements, on the reduced ray.
 export const freeSpaceMatrix = (lengthMm, index = 1) => ({ A: 1, B: lengthMm / index, C: 0, D: 1 });
-export const thinLensMatrix = focalMm => ({ A: 1, B: 0, C: -1 / focalMm, D: 1 });
+// A thin lens of focal length f in a medium of index n bends the slope by
+// −y/f, so the reduced slope n·u by −n·y/f.
+export const thinLensMatrix = (focalMm, index = 1) => ({ A: 1, B: 0, C: -index / focalMm, D: 1 });
 export const composeMatrices = (...matrices) => matrices.reduce((m, next) => ({
   A: next.A * m.A + next.B * m.C, B: next.A * m.B + next.B * m.D,
   C: next.C * m.A + next.D * m.C, D: next.C * m.B + next.D * m.D,
