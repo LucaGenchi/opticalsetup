@@ -552,6 +552,25 @@ test('G1 (review 4): a conversion inside the pump band is still a conversion, wi
   assert.ok(shg.beam.declined.some(d => /converts the wavelength/.test(d.reason)), JSON.stringify(shg.beam));
 });
 
+// Luca's check of the test scene: the light an SHG crystal generates was
+// headed with the pump's 1064 nm on the detector and the probe.
+test('G1: light declined for a conversion is named by its own wavelength, also after a mirror', () => {
+  const pump = () => make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 1064 });
+  const detector = make('detector', 400, 0);
+  traceScene([pump(), make('crystal', 200, 0, { convert: 'shg', efficiency: 0.3, transmitPump: true }), detector]);
+  const beam = detectorReading(detector.id).beam;
+  assert.deepEqual(beam.branches.map(b => b.wavelengthNm), [1064], 'the pump keeps its beam');
+  assert.deepEqual(beam.declined.map(d => d.wavelengthNm), [532], JSON.stringify(beam.declined));
+  assert.deepEqual(beamAtPoint(300, 0, 5).map(b => [b.wavelengthNm, !!b.issue]), [[1064, false], [532, true]]);
+  // Boundary: a branch of the declined light (a mirror after the crystal)
+  // still carries the wavelength it was declined at, not the source's.
+  const turned = make('detector', 300, 150, {}, 90);
+  traceScene([pump(), make('crystal', 150, 0, { convert: 'shg', efficiency: 0.3, transmitPump: false }), make('mirror', 300, 0, {}, -45), turned]);
+  const after = detectorReading(turned.id).beam;
+  assert.deepEqual(after.branches, []);
+  assert.deepEqual(after.declined.map(d => [d.wavelengthNm, /converts the wavelength/.test(d.reason)]), [[532, true]]);
+});
+
 test('G1 (review 4): filtered light keeps its beam, at the centre wavelength of what passes', () => {
   const read = filter => {
     const detector = make('detector', 400, 0);

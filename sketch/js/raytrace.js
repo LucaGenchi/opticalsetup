@@ -7227,6 +7227,10 @@ function continueBeam(target, parent, parentSteps, base, child, childIndex, vert
     // path on (a child's from its start).
     beamStepLists.set(target, parentSteps);
     target.beamIssue = { ...issue, atVertex: vertex };
+    // The wavelength the readout names is the one of the light that is
+    // declined: a crystal's generated light carries its own, not the pump's.
+    const before = parent.beamSeedNow || parent.beamSeed;
+    if (before && child.wl > 0 && child.wl !== before.wavelengthNm) target.beamIssueSeed = { ...before, wavelengthNm: child.wl };
     return;
   }
   // A part of the spectrum already present (dispersive glass, a grating, a
@@ -7463,7 +7467,7 @@ function propagateBeams(paths, surfaces) {
     // The wavelength in force where the beam stops: the path's own at its end
     // (a part a filter left keeps its centre past a diffuser), or the one at
     // the step that declines.
-    const track = { path, seed, issueSeed: path.beamSeedNow || null, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? (path.beamIssue.atVertex ?? 0) : null };
+    const track = { path, seed, issueSeed: path.beamIssueSeed || path.beamSeedNow || null, q: [], issue: path.beamIssue || null, issueVertex: path.beamIssue ? (path.beamIssue.atVertex ?? 0) : null };
     beamTrackOf.set(path, track);
     tracks.push(track);
     // The beam a source or fiber starts is held to the paraxial limit too
@@ -8667,6 +8671,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // Declined upstream: the branch carries the reason from its start.
           childRay.beamSeed = r.beamSeed;
           childRay.beamIssue = { ...r.beamIssue, atVertex: 0 };
+          // ...and the wavelength in force where it was declined.
+          childRay.beamIssueSeed = r.beamIssueSeed || r.beamSeedNow;
         }
         stack.push(childRay);
       }

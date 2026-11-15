@@ -221,7 +221,7 @@
        "elementId": "e17so0o1",
        "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
        "sourceId": "evgazbrh",
-       "wavelengthNm": 920
+       "wavelengthNm": 507
       }
      ]
     },
@@ -1443,7 +1443,7 @@
        "elementId": "e17so0o1",
        "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
        "sourceId": "evgazbrh",
-       "wavelengthNm": 920
+       "wavelengthNm": 507
       },
       {
        "element": "Objective",
