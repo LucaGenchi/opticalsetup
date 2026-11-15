@@ -7432,10 +7432,11 @@ function advanceBeam(prev, step, sourceSeed, surfaces) {
   // The path so far, for a part of the spectrum that a later step leaves.
   const trail = [...(prev.trail || []), { from: prev, step, after: { matrix, n: step.nOut } }];
   const state = { companions, q, n: step.nOut, p: step.origin, d: step.dout, elementId, matrix, estimate: beamEstimate(matrix, prev, step), seed, trail, issue: null };
-  // A beam declined at this wavelength stays declined until a part at
-  // another one is left; that part is checked along the whole path first.
+  // A beam declined at this wavelength stays declined, with the same
+  // decline, until a part at another one is left; that part is checked
+  // along the whole path first, and a decline it meets is its own.
   const earlier = reseeded ? beamTrailIssue(prev.trail || [], seed, surfaces) : prev.issue;
-  if (earlier) return { ...state, issue: { ...earlier, soft: true } };
+  if (earlier) return { ...state, issue: earlier.soft ? earlier : { ...earlier, soft: true } };
   const named = issue => ({ ...(typeof issue === 'string' ? { elementId, element, reason: issue } : issue), soft: true });
   const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
   if (clip) return { ...state, issue: named(clip) };
@@ -7496,7 +7497,13 @@ function propagateBeams(paths, surfaces) {
       state = next;
       const vertex = step.owner === path ? step.vertex : 0;
       if (state.issue?.soft) {
-        if (!open) open = { issue: state.issue, from: vertex, seed: step.seed || state.seed };
+        // The same decline carried on, or a new one: a part at another
+        // wavelength declined for its own reason starts a stretch of its
+        // own, and the earlier explanation keeps only the stretch before.
+        if (open?.issue !== state.issue) {
+          if (open && vertex > open.from) track.declines.push({ ...open, to: vertex });
+          open = { issue: state.issue, from: vertex, seed: step.seed || state.seed };
+        }
         continue;
       }
       if (open) {

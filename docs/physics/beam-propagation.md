@@ -156,7 +156,11 @@ leaves a part of the spectrum checks that part along the whole path and
 takes its beam up again. A 25.4 mm ND filter that clips the 20 mm band's
 centre, followed by a 600 nm short-pass, gives the 500 nm part the same
 beam as the two filters in the other order; between them the band, read at
-its centre, is declined. Declines that do not depend on the wavelength
+its centre, is declined. A part that is itself declined (the same 500 nm
+part through a 10 mm short-pass, whose 5 mm half-aperture is inside its
+1.5 w = 6.25 mm) is declined for its own reason, at its own wavelength,
+from the step that leaves it; the band's decline holds only before it.
+Declines that do not depend on the wavelength
 (companions that part from the central ray, an element with no paraxial
 model) still end the beam. Parts of one spectrum that
 reach the same place are one beam: they add in power, and the strongest is

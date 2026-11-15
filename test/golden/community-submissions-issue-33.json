@@ -1443,7 +1443,7 @@
        "elementId": "ecyp262p",
        "reason": "its edge lies 13.2 mm from the beam's centre along its surface, closer than 1.5 beam radii (13.8 mm here, widened by the tilt): it clips the beam, which is no longer Gaussian past it",
        "sourceId": "eoriz5x9",
-       "wavelengthNm": 650
+       "wavelengthNm": 649.187584
       }
      ]
     },

@@ -759,3 +759,30 @@ test('G1 (review 9): a part a later filter leaves is taken up again after the ba
   traceScene([make('sclaser', 0, 0, { beamMode: 'beam', beamWidth: 20, scMin: 400, scMax: 2000 }), make('filter', 150, 0, { ftype: 'nd', trans: 1 }), make('lens', 250, 0, { f: 100, dia: 50 }), make('detector', 400, 0)]);
   for (const x of [200, 300]) assert.match(beamAtPoint(x, 0, 1)[0].issue?.reason || '', /closer than 1\.5 beam radii/, `declined at ${x}`);
 });
+
+test('G1 (review 10): a part a filter leaves that is declined for its own reason says so, at its own wavelength', () => {
+  // Andrea's case: the ND clips the 20 mm band's centre (15 mm > 12.7 mm);
+  // the 500 nm part passes it (6.25 mm) but the 10 mm short-pass clips it
+  // (5 mm). Past the short-pass the decline is the short-pass's, at 500 nm;
+  // between the two the band's, at the ND.
+  for (const ndLength of [25.4, 100]) {
+    const nd = make('filter', 150, 0, { ftype: 'nd', trans: 1, length: ndLength });
+    nd.label = 'ND';
+    const sp = make('filter', 200, 0, { ftype: 'shortpass', cutoff: 600, trans: 1, length: 10 });
+    sp.label = 'Short-pass';
+    const detector = make('detector', 400, 0);
+    detector.id = `det-nd-${ndLength}`;
+    traceScene([make('sclaser', 0, 0, { beamMode: 'beam', beamWidth: 20, scMin: 400, scMax: 2000 }), nd, sp, detector]);
+    const [part] = beamAtPoint(300, 0, 1);
+    close(part.wavelengthNm, 500, 1e-6, `ND ${ndLength}: λ`);
+    assert.equal(part.issue?.element, 'Short-pass', `ND ${ndLength}`);
+    assert.match(part.issue.reason, /its edge lies 5 mm from the beam's centre along its surface, closer than 1\.5 beam radii \(6\.25 mm here\)/);
+    const [declined] = detectorReading(detector.id).beam.declined;
+    assert.equal(declined.element, 'Short-pass');
+    close(declined.wavelengthNm, 500, 1e-6, 'detector λ');
+    const [between] = beamAtPoint(175, 0, 1);
+    close(between.wavelengthNm, 1200, 1e-6, 'the band between the filters');
+    if (ndLength === 25.4) assert.equal(between.issue?.element, 'ND');
+    else assert.equal(between.issue, undefined);
+  }
+});
