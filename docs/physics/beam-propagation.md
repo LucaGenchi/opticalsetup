@@ -68,19 +68,21 @@ tilted mirror. The determinant of the reduced matrix, which is the companion
 invariant n·(y₁·u₂ − y₂·u₁), is 1 to 10⁻⁶ in every validation case.
 
 **The ideal lens met off its axis.** A lossless optic keeps that determinant
-at 1, and no lens changes a beam's quality M². The ideal lens does not keep
-it where the beam meets it off its axis: its mapping, perfect imaging onto a
-flat focal plane, has determinant cos³θ_out / cos³θ_in in the drawing plane
-(0.7 % at 4°, 5.7 % for a collimated beam 20 mm off the axis of an
-f = 100 mm lens). So the beam is carried, step by step, by the matrix that
-keeps what the drawn rays show, the beam's size (A, the cos θ projection of
-the footprint) and the focusing (C, which puts the waist at the rays' focus),
-with the angle term D = (1 + B·C)/A that makes the step lossless. M² is kept.
-This applies where a step's determinant departs from 1 by more than 10⁻⁴;
-every other step is lossless to the companions' precision and is used as
-measured, since recomputing D there would only add their rounding.
-Rescaling the whole matrix to determinant 1 would not do it: dividing A, B, C
-and D by √det leaves q′ unchanged.
+at 1, and an aberration-free lens keeps a beam's quality M² (a real lens met
+off its axis adds aberrations, which raise M²; this model has none). The
+ideal lens does not keep the determinant where the beam meets it off its
+axis: its mapping, perfect imaging onto a flat focal plane, has determinant
+cos³θ_out / cos³θ_in in the drawing plane (0.7 % at 4°, 5.7 % for a beam
+20 mm off the axis of an f = 100 mm lens), so it is not a physical lens
+there. The beam still follows the matrix as measured, which is what the drawn
+rays do: a collimated beam and an already converging one focus where the rays
+cross. Where the determinant along the path has moved more than 1 % from 1,
+every readout of that beam says its values are an estimate, names the lens and
+gives the percentage. (Keeping the size A and the focusing C and choosing
+D = (1 + B·C)/A would make the step lossless, but it keeps only a collimated
+beam's focus: a converging beam then focused 1.3 mm away from the rays'
+crossing in a two-lens case. Rescaling A, B, C and D by 1/√det leaves q
+unchanged, and M²·det would fall below 1, which no beam can have.)
 
 **Fibers.** A fiber whose output mode is known starts a new beam on its end
 face, waist on the face, M² = 1: a step-index fiber whose *single-mode core*

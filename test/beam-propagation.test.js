@@ -16,6 +16,7 @@ import { beamFromQ, qFromWaist, transformQ, thinLensMatrix, freeSpaceMatrix, com
 import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 import { lp01 } from '../sketch/js/lp01.js';
 import { beamRowsHTML } from '../sketch/js/inspector.js';
+import { estimateText } from '../sketch/js/elements.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
 import { parseSketch } from '../sketch/js/state.js';
 
@@ -416,31 +417,55 @@ test('G1 (Luca): separate spots of one source on one detector are read one by on
   assert.doesNotMatch(html, /Laser 5/);
 });
 
-test('G1: a beam meeting an ideal lens far from its axis keeps its quality and focuses where the rays do', () => {
+test('G1: a beam meeting an ideal lens far from its axis follows the rays, and is marked an estimate', () => {
   // A collimated 2 mm beam h above the axis of an f = 100 mm lens leaves at
-  // θ = atan(h/f) towards the focal point. The ideal lens's own matrix there
-  // has determinant cos³θ, not 1; no lens changes a beam's M², so the beam
-  // takes the size the rays give (w cos θ across the tilted beam) and their
-  // focus, at f / cos θ along the ray.
+  // θ = atan(h/f). The ideal lens's matrix there, as the rays see it, has
+  // A = cos θ, C = −cos²θ/f, D = cos²θ and determinant cos³θ: it is not a
+  // lossless lens, so beyond 1 % the readout says its values are an estimate.
   for (const h of [5, 20]) {
     traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 })]);
     const m = beamTracksFromLastTrace()[0].q[1].matrix;
-    const theta = Math.atan(h / 100);
-    close(m.A * m.D - m.B * m.C, Math.cos(theta) ** 3, 1e-6, `h = ${h}: the ideal lens's determinant`);
-    // At x = 250 (half way to the focal plane) by the q law.
+    const theta = Math.atan(h / 100), a = Math.cos(theta);
+    close(m.A * m.D - m.B * m.C, a ** 3, 1e-6, `h = ${h}: the ideal lens's determinant`);
     const [b] = beamAtPoint(250, h / 2, 0.5);
-    // By hand: 148 mm from the laser's waist to the lens, then the lens as
-    // the rays see it (size × cos θ, focal length f / cos θ along the ray,
-    // lossless: D = 1/A), then 50 mm / cos θ on.
-    const a = Math.cos(theta), along = 50 / a;
-    const lens = { A: a, B: 0, C: -a / 100 * a, D: 1 / a };
-    const q = transformQ(qFromWaist({ waistUm: 1000, wavelengthNm: 633, zMm: 148 }), composeMatrices(lens, freeSpaceMatrix(along)));
+    // By hand: 148 mm from the laser's waist, the lens, 50 mm / cos θ on.
+    const lens = { A: a, B: 0, C: -a * a / 100, D: a * a };
+    const q = transformQ(qFromWaist({ waistUm: 1000, wavelengthNm: 633, zMm: 148 }), composeMatrices(lens, freeSpaceMatrix(50 / a)));
     const expected = beamFromQ(q, { wavelengthNm: 633 });
     close(b.radiusUm, expected.radiusUm, 1e-3 * expected.radiusUm, `h = ${h}: w`);
     close(b.waistAheadMm, expected.waistAheadMm, 1e-3, `h = ${h}: waist position`);
-    assert.equal(b.m2, 1, 'M² unchanged');
-    assert.ok(!b.issue);
+    assert.equal(b.m2, 1);
+    if (h === 5) assert.equal(b.estimate, undefined, '0.4 %: no estimate');
+    else {
+      assert.equal(b.estimate.deviationPercent, 5.7);
+      assert.match(estimateText(b.estimate), /^Estimate: Thin convex lens is met far from its axis, where an ideal lens does not keep the beam quality \(off by 5\.7 %\)$/);
+      const probe = make('probe', 250, h / 2, { prop: 'beam', sampleDiameterMm: 1 });
+      traceScene([make('cwlaser', 0, h, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 200, 0, { f: 100, dia: 100 }), probe]);
+      assert.match(registry.probe.svg(probe, []), /Estimate: Thin convex lens is met far from its axis/);
+    }
   }
+});
+
+test('G1 (review 5): after an off-axis lens a converging beam focuses where the drawn rays cross', () => {
+  // Andrea's case: a 10 mm beam focused by a lens on its axis, then met 20 mm
+  // above the axis of a second f = 100 mm lens. The rays cross 33.993 mm
+  // after it; a lossless correction of D had put the waist at 32.67 mm.
+  traceScene([make('cwlaser', 0, 20, { beamMode: 'beam', beamWidth: 10, wavelength: 633 }), make('lens', 200, 20, { f: 100, dia: 100 }), make('lens', 250, 0, { f: 100, dia: 100 })]);
+  const at = beamTracksFromLastTrace()[0].q[2];
+  const [b] = beamAtPoint(at.p.x + 1e-3 * at.d.x, at.p.y + 1e-3 * at.d.y, 1e-4);
+  close(b.waistAheadMm + 1e-3, 33.9935, 2e-4, 'waist at the rays\' crossing');
+  assert.equal(b.estimate.deviationPercent, 5.7);
+});
+
+test('G1 (review 5): past a decline the readout keeps the wavelength the light has', () => {
+  // A long-pass moves the centre to 800.76 nm; a diffuser then stops the beam.
+  const detector = make('detector', 400, 0);
+  traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }),
+    make('filter', 150, 0, { ftype: 'longpass', cutoff: 795, trans: 1 }), make('diffuser', 250, 0), detector]);
+  const before = beamAtPoint(200, 0, 0.5)[0].wavelengthNm;
+  assert.ok(Math.abs(before - 800.76) < 0.01);
+  assert.equal(detectorReading(detector.id).beam.declined[0].wavelengthNm, before);
+  assert.equal(beamAtPoint(260, 0, 8)[0].wavelengthNm, before);
 });
 
 test('G1: a probe whose circle reaches past an optic reads the beam at the end of its segment', () => {

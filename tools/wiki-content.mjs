@@ -152,8 +152,9 @@ export const wikiEntries = [
         wavefront's radius of curvature, the waist, the Rayleigh range and M², in the drawing
         plane; a camera shows the beam's size and a wavefront detector its size and wavefront.
         Where filters or dispersive glass separate the spectrum, each part keeps the beam at
-        its own centre wavelength, and where an ideal lens is met far from its axis the beam
-        keeps its M² and focuses where the drawn rays do. The beam stops, and the readout names the element and the
+        its own centre wavelength. Where an ideal lens is met far from its axis the beam follows
+        the drawn rays, and the readout says its values are an estimate, because an ideal lens
+        met that far off its axis does not keep the beam quality. The beam stops, and the readout names the element and the
         reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
         comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
         which is then no longer Gaussian), where the far-field half-angle exceeds
@@ -265,8 +266,9 @@ export const wikiEntries = [
         wavefront's radius of curvature, the waist, the Rayleigh range and M², in the drawing
         plane; a camera shows the beam's size and a wavefront detector its size and wavefront.
         Where filters or dispersive glass separate the spectrum, each part keeps the beam at
-        its own centre wavelength, and where an ideal lens is met far from its axis the beam
-        keeps its M² and focuses where the drawn rays do. The beam stops, and the readout names the element and the
+        its own centre wavelength. Where an ideal lens is met far from its axis the beam follows
+        the drawn rays, and the readout says its values are an estimate, because an ideal lens
+        met that far off its axis does not keep the beam quality. The beam stops, and the readout names the element and the
         reason, at an optic with no paraxial model (a diffuser, a specimen), where an edge
         comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
         which is then no longer Gaussian), where the far-field half-angle exceeds

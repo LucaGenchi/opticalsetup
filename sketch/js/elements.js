@@ -1178,6 +1178,9 @@ const PROBE_ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 const probeArrow = d => PROBE_ARROWS[((Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) % 8) + 8) % 8];
 // A decline as one sentence: the element, then why.
 const probeIssueText = issue => (issue.element === 'Here' ? issue.reason : `${issue.element}: ${issue.reason}`);
+// Why a beam's values are an estimate: an ideal lens met far from its axis
+// is not a physical lens there and does not keep the beam quality.
+export const estimateText = estimate => `Estimate: ${estimate.element} is met far from its axis, where an ideal lens does not keep the beam quality (off by ${estimate.deviationPercent} %)`;
 // The properties of one beam, one bullet each (a card of run-on lines
 // reads as a paragraph). R is named as the wavefront's radius of curvature.
 function probeBeamBullets(b) {
@@ -1199,7 +1202,12 @@ function probeBeamCard(el, elements = []) {
   const found = beamAtPoint(el.x, el.y, radius);
   const rows = [];
   const note = text => wrapWords(text, 52).forEach(line => rows.push({ text: line, size: 7, color: '#b45309' }));
-  const bullets = b => probeBeamBullets(b).forEach(text => rows.push({ text: `• ${text}`, size: 7.5, color: '#333' }));
+  // Past an ideal lens met far from its axis the values are an estimate,
+  // and the card says why and by how much.
+  const bullets = b => {
+    probeBeamBullets(b).forEach(text => rows.push({ text: `• ${text}`, size: 7.5, color: '#333' }));
+    if (b.estimate) note(estimateText(b.estimate));
+  };
   // Light spread over parts of its spectrum (a dispersive element, a filter)
   // is read at its strongest part, and says so.
   const parts = b => (b.spectralParts > 1 ? ` (strongest of ${b.spectralParts} spectral parts)` : '');

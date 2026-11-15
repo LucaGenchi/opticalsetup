@@ -12,7 +12,7 @@ import {
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
-  isVolumeSpecimen, isRotatable,
+  isVolumeSpecimen, isRotatable, estimateText,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
@@ -541,7 +541,8 @@ export function beamRowsHTML(beam, nameOf = () => '', kind = 'general') {
         quality: `<dt>Beam quality M²</dt><dd>${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}</dd>`,
         gouy: `<dt>Gouy phase</dt><dd>${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>`,
       };
-      body = `<dl class="measurement-grid">${rows.map(key => cells[key]).join('')}</dl>`;
+      body = `<dl class="measurement-grid">${rows.map(key => cells[key]).join('')}</dl>`
+        + (b.estimate ? `<div class="beam-block-note" data-beam-estimate>${esc(estimateText(b.estimate))}</div>` : '');
     } else {
       const text = item.element === 'This detector' ? item.reason : `${item.element}: ${item.reason}`;
       body = `<div class="beam-block-note" data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</div>`;
