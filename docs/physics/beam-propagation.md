@@ -81,12 +81,17 @@ mode, starts none, and light that came in with a beam parameter says why.
 **What a child inherits.** At a split (beamsplitter, polarizing splitter,
 grating orders, dichroic ports) every branch carries the beam parameter on,
 each with its own companions' replay. A pulsed laser's beam parameter is the
-one at its centre wavelength. Where dispersive glass, a grating or a filter
-separates its spectrum into slices, the beam continues in the slice that
-holds the centre wavelength; the other slices are the same light, not
-converted light, and carry the reason G1 does not follow them (it does not
-follow q(λ) wavelength by wavelength), shown only where no beam of that
-source is read. Where two branches of one source reach
+one at its centre wavelength. Where dispersive glass, a grating, a filter,
+a dichroic, an etalon or an AOTF separates its spectrum, the beam continues
+in each part that still holds the centre wavelength (inside a slice's band,
+or where the part's spectrum has weight there: a long-pass filter that moves
+the centroid keeps the beam, a notch across the centre does not). The other
+parts are the same light, not converted light, and carry the reason G1 does
+not follow them (it does not follow q(λ) wavelength by wavelength), shown
+only where no beam of that source is read. Converted light is told by where
+it comes from, not by its wavelength, since a conversion can land inside the
+pump's own band: every light a crystal set to convert generates is converted
+light, and the pump passing through keeps its beam. Where two branches of one source reach
 the same detector, they add as fields and no single beam parameter describes
 the light: the detector declines. At a wavelength conversion the generated
 light starts no beam parameter in this version; the unconverted pump keeps

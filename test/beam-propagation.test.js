@@ -444,7 +444,7 @@ test('G1 (review 3): dispersive glass slices the spectrum without converting it'
   assert.deepEqual(beam.declined, []);
   const reasons = beamTracksFromLastTrace().map(t => t.issue?.reason).filter(Boolean);
   assert.ok(reasons.length >= 2, 'the other slices carry a reason');
-  assert.ok(reasons.every(r => /dispersion separates the spectrum into slices; the Gaussian beam is followed at the source's centre wavelength \(800 nm\)/.test(r)), reasons.join('\n'));
+  assert.ok(reasons.every(r => /it separates the spectrum, and this part no longer holds the source's centre wavelength \(800 nm\)/.test(r)), reasons.join('\n'));
   assert.ok(!reasons.some(r => /converts/.test(r)));
   // A real conversion is still called one.
   const pump = make('detector', 400, 0);
@@ -462,4 +462,46 @@ test('G1 (review 3): the zoom keeps the cone estimate where an edge clips the be
   // The block's edge is 600 µm from the beam's centre, inside 1.5 w = 872 µm.
   assert.equal(focus(true)[0].model, 'cone');
   assert.match(beamAtPoint(290, 0, 0.5)[0].issue.reason, /clips the beam/);
+});
+
+// Andrea's review of d11ad0fb: conversion is told by provenance, and a part
+// of the spectrum keeps the beam where it still holds the centre wavelength.
+test('G1 (review 4): a conversion inside the pump band is still a conversion, with or without the residual pump', () => {
+  const pulsed = (fs = 100) => make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: fs });
+  const read = (crystal, fs) => {
+    const detector = make('detector', 400, 0);
+    traceScene([pulsed(fs), make('crystal', 200, 0, crystal), detector]);
+    return { beam: detectorReading(detector.id).beam, probe: beamAtPoint(300, 0, 5) };
+  };
+  // A custom 805 nm output lies inside the 100 fs pump's band.
+  const alone = read({ convert: 'custom', outWl: 805, efficiency: 0.3, transmitPump: false });
+  assert.deepEqual(alone.beam.branches, []);
+  assert.match(alone.beam.declined[0].reason, /converts the wavelength/);
+  const withPump = read({ convert: 'custom', outWl: 805, efficiency: 0.3, transmitPump: true });
+  assert.deepEqual(withPump.beam.branches.map(b => b.wavelengthNm), [800]);
+  assert.ok(withPump.beam.declined.some(d => /converts the wavelength/.test(d.reason)), 'the generated light is named');
+  assert.ok(withPump.probe.some(b => !b.issue) && withPump.probe.some(b => /converts the wavelength/.test(b.issue?.reason)), JSON.stringify(withPump.probe));
+  // SHG of a 1 fs pulse: its band reaches the harmonic, still a conversion.
+  const shg = read({ convert: 'shg', efficiency: 0.3, transmitPump: true }, 1);
+  assert.ok(shg.beam.declined.some(d => /converts the wavelength/.test(d.reason)), JSON.stringify(shg.beam));
+});
+
+test('G1 (review 4): a filter keeps the beam while it passes the centre wavelength, and a notch on it stops it', () => {
+  const read = filter => {
+    const detector = make('detector', 400, 0);
+    traceScene([make('pulsedlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 800, pulseWidthFs: 100 }),
+      make('filter', 200, 0, { trans: 1, ...filter }), detector]);
+    return detectorReading(detector.id).beam;
+  };
+  // The centroid moves (800.76 and 799.24 nm) but 800 nm still passes.
+  for (const filter of [{ ftype: 'longpass', cutoff: 795 }, { ftype: 'shortpass', cutoff: 805 }]) {
+    const beam = read(filter);
+    assert.deepEqual(beam.branches.map(b => b.wavelengthNm), [800], JSON.stringify(filter));
+    assert.deepEqual(beam.declined, [], JSON.stringify(filter));
+  }
+  // A notch across 800 nm leaves two pieces, neither holding it.
+  const notched = read({ ftype: 'notch', center: 800, band: 6 });
+  assert.deepEqual(notched.branches, []);
+  assert.match(notched.declined[0].reason, /no longer holds the source's centre wavelength \(800 nm\)/);
+  assert.doesNotMatch(notched.declined[0].reason, /converts/);
 });

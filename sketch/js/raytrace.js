@@ -7205,26 +7205,46 @@ function beamElementName(surface) {
 // What a surface belongs to: its element, or the fiber whose connector it is.
 const surfaceOwnerId = surface => surface?.el?.id ?? surface?.data?.beam?.id ?? null;
 
+// Whether a part of a spectrum still holds the wavelength `centre`: inside
+// a slice's own band (half-open, so of two adjacent slices one holds it),
+// else where its spectrum (its own, or the one it keeps from the parent)
+// has weight there, else within half the width of a line.
+function beamWavelengthKept(child, parent, centre) {
+  if (!(centre > 0)) return false;
+  if (Number.isFinite(child.spectralLo) && Number.isFinite(child.spectralHi)) {
+    return centre >= child.spectralLo - 1e-9 && (centre < child.spectralHi - 1e-9 || Math.abs(child.spectralHi - child.spectralLo) < 1e-9);
+  }
+  const spec = 'spec' in child ? child.spec : parent.spec;
+  if (spec) {
+    const support = spectrumSupport(spec);
+    return Boolean(support) && centre >= support[0] - 1e-9 && centre <= support[1] + 1e-9 && spectrumWeight(spec, centre) > 0;
+  }
+  const wl = child.wl ?? parent.wl;
+  const bw = 'bw' in child ? child.bw : parent.bw;
+  return Math.abs(wl - centre) <= Math.max(1e-6, (Number(bw) || 0) / 2);
+}
+
 function beamStepIssue(parent, surface, child) {
   const issue = reason => ({ elementId: surfaceOwnerId(surface), element: beamElementName(surface), reason });
   const kind = surface.kind === 'attenuate' && surface.data?.specimen ? 'specimen' : surface.kind;
   if (NO_PARAXIAL_MODEL.has(kind)) return issue(`${NO_PARAXIAL_MODEL.get(kind)}, ${NOT_FOLLOWED}`);
-  if (child.wl !== undefined && child.wl !== parent.wl) {
-    // A slice of the spectrum already present (dispersive glass, a grating
-    // or a filter separating it) is not new light. The beam parameter is
-    // followed at the source's centre wavelength, so it continues in the
-    // slice that holds it; G1 does not follow q(λ) in the other slices.
-    const lo = Number.isFinite(parent.spectralLo) ? parent.spectralLo : parent.wl - 1.5 * (parent.bw || 0);
-    const hi = Number.isFinite(parent.spectralHi) ? parent.spectralHi : parent.wl + 1.5 * (parent.bw || 0);
-    if (child.sliceSpec || (child.wl >= lo - 1e-9 && child.wl <= hi + 1e-9)) {
-      const centre = parent.beamSeed?.wavelengthNm;
-      const holds = Number.isFinite(child.spectralLo) && Number.isFinite(child.spectralHi)
-        ? centre >= child.spectralLo - 1e-9 && centre <= child.spectralHi + 1e-9
-        : Math.abs(child.wl - centre) < 1e-9;
-      if (holds) return null;
-      return { ...issue(`its dispersion separates the spectrum into slices; the Gaussian beam is followed at the source's centre wavelength (${Math.round(centre)} nm), not in this slice (${Math.round(child.wl)} nm), as G1 does not follow the beam wavelength by wavelength`), slice: true };
-    }
+  // Converted light is told by where it comes from, not by its wavelength
+  // (a conversion can land inside the pump's own band): a crystal set to
+  // convert hands every light it generates an explicit wavelength, while
+  // the pump passing through keeps the one it had.
+  const converting = surface.kind === 'transmit' && surface.data?.convert && surface.data.convert !== 'none';
+  if (converting && child.wl !== undefined) {
     return issue('it converts the wavelength: the light it generates starts no Gaussian beam in this version (the unconverted light keeps its own)');
+  }
+  if (child.wl !== undefined && child.wl !== parent.wl) {
+    // Anything else is a part of the spectrum already present (dispersive
+    // glass, a grating, a filter, a dichroic, an etalon or an AOTF
+    // separating it), not new light. The beam parameter is followed at the
+    // source's centre wavelength, so it continues where that wavelength is
+    // still in the light; G1 does not follow q(λ) in the other parts.
+    const centre = parent.beamSeed?.wavelengthNm;
+    if (beamWavelengthKept(child, parent, centre)) return null;
+    return { ...issue(`it separates the spectrum, and this part no longer holds the source's centre wavelength (${Math.round(centre)} nm), at which the Gaussian beam is followed: G1 does not follow the beam wavelength by wavelength`), slice: true };
   }
   if ('sourceId' in child && child.sourceId !== parent.sourceId) return issue(`the light leaving it is generated there, ${NOT_FOLLOWED}`);
   if (child.speckle && !parent.speckle) return issue(`it scatters the light, ${NOT_FOLLOWED}`);
