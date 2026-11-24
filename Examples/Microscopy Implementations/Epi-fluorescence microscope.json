@@ -143,6 +143,7 @@
       "kind": "fluor",
       "wl": 507,
       "eff": 0.2928932188134524,
+      "nrays": 20,
       "epi": false,
       "epiRatio": 0.15,
       "autoWl": true,

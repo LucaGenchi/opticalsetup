@@ -176,16 +176,19 @@
       ray weight of about 0.02&nbsp;a.u. — the tracer's relative weight, not a
       calibrated power — which its gain of 10<sup>4</sup> turns into 237&nbsp;a.u.
       at its output. Its spectrum lies between 500 and 535&nbsp;nm.</p>
-      <p>Things to try. Widen the pinhole to 2&nbsp;mm: the PMT's input rises from
-      0.024 to 0.032&nbsp;a.u. The extra quarter is light from the parts of the
+      <p>Things to try. Widen the pinhole to 2&nbsp;mm: the PMT's amplified output
+      rises from 237 to 316&nbsp;a.u. The extra light comes from the parts of the
       2&nbsp;mm fluorescent layer above and below the focus. Then set the active
       sample thickness to 0.5&nbsp;mm and the stage to Z: with the 0.5&nbsp;mm pinhole
       the PMT lights up only while the thin layer crosses the focus. Move the
       emission filter's centre to 620&nbsp;nm, clear of GFP's band, and the PMT goes
       dark, because no excitation was leaking through for it to pass instead. Move
       the dichroic edge below 488&nbsp;nm and the laser goes straight through it and
-      never reaches the sample. Lower the objective's NA to 0.10 and the collected
-      signal falls to 0.016&nbsp;a.u.</p>
+      never reaches the sample. Lower the objective's NA to 0.10 and its back pupil
+      shrinks to 4&nbsp;mm, narrower than the 6&nbsp;mm beam: the objective's inspector
+      reports it overfilled, about 44% through, and the PMT's output falls to
+      161&nbsp;a.u. That drop is excitation lost at the pupil, not light the objective
+      fails to collect.</p>
         <div class="limitations"><span class="lbl">What you won't see</span><p>The fluorescence is qualitative. The sample converts a set
       fraction per millimetre of the excitation that reaches it into the dye's
       emission band and radiates it isotropically in the plane of the drawing, from
@@ -195,7 +198,11 @@
       2D fraction, not the solid angle of a real objective: with the pinhole removed,
       raising the NA from 0.25 to 0.65 multiplies it by about 2.6 here, against about 7.5
       for a real one (the
-      fluorescence calculator gives the real fraction).</p>
+      fluorescence calculator gives the real fraction). These 2D numbers are coarse: each
+      point of the sample sends out 20 rays (the stage's "Emission rays"), and only a
+      couple of them fall inside the objective's cone, so that factor, the share the
+      pinhole passes and the shape of the optical section all change when that number
+      changes.</p>
       <p>The filters and the dichroic are ideal: full transmission inside the band,
       none outside, edges that do not move with angle. So the excitation rejection
       here is perfect, where a real filter set is specified by how many orders of
@@ -205,10 +212,10 @@
       resolution, so the confocal's sharper image is not shown, only its rejection of
       light from outside the focus. That optical section is a step here, and
       millimetres thick at the drawing's scale: a layer is either seen through the
-      pinhole or not. A real section falls off smoothly, about a micrometre thick, and
-      is set by the pinhole's size in Airy units. The stage motion is a display
-      animation of the sample under the focus, and a uniform sample gives the same
-      reading everywhere.</p></div>
+      pinhole or not (with more emission rays it becomes a staircase). A real section
+      falls off smoothly, about a micrometre thick, and is set by the pinhole's size in
+      Airy units. Scanning the stage sideways moves a uniform sample under the focus,
+      so the reading stays the same; scanning it along Z changes it, as above.</p></div>
       </div>
 
 
