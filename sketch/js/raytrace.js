@@ -68,9 +68,10 @@ import {
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import {
-  CLIP_RADII, COMPANION_STEP, PARAXIAL_LIMIT_RAD, companionStarts, fiberBeamParameter, measuredMatrix, segmentGap, sourceBeamParameter,
+  CLIP_RADII, COMPANION_STEP, PARAXIAL_LIMIT_RAD, beamDisplayOf, companionStarts, fiberBeamParameter, measuredMatrix, segmentGap, sourceBeamParameter,
 } from './beam-propagation.js';
 import { beamFromQ, composeMatrices, propagateQ, qFromWaist, transformQ } from './gaussian-beam.js';
+import { envelopeBand } from './beam-envelope.js';
 import { lp01 } from './lp01.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
@@ -484,6 +485,18 @@ let beamTrackOf = new WeakMap();
 // owner of the surface hit there), so a probe on a segment can leave out the
 // element that ends it, as advanceBeam does.
 let beamVertexOwnersOf = new WeakMap();
+// The surface a ray carrying a beam parameter met at each vertex of its
+// path (a branch's first vertex is the surface it left), so the beam's
+// envelope can end on it.
+let beamVertexSurfacesOf = new WeakMap();
+// The segments of each path on which the beam's envelope was drawn, for a
+// zoom that would otherwise draw the same waist again.
+let envelopeSegmentsOf = new WeakMap();
+// Which emission (a source's, or a fiber's relaunch) traced each path: a
+// route's history string starts afresh in every emission, so the envelope
+// matches the rays' fill to its route within one emission only.
+let emissionOfPath = new WeakMap();
+let emissionCount = 0;
 // The surfaces of the last trace, for clip checks up to a probed point.
 let lastBeamSurfaces = [];
 // The beam parameter starts with no steps on a ray that carries a seed.
@@ -7813,11 +7826,108 @@ export function beamOnPathSegment(path, segment) {
   const seed = at.seed || track.seed;
   return {
     q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: seed.wavelengthNm, m2: seed.m2, estimate: at.estimate || null,
+    // Whether the bench draws this beam's envelope on the segment (step G2).
+    drawnAsEnvelope: envelopeSegmentsOf.get(path)?.has(segment) || false,
     // Whether an edge clips the beam before `distanceMm` past the segment's
     // start: the zoom asks up to its drawn stretch and the waist.
     clipWithin: distanceMm => beamClipIssue(at.p, { x: start.x + at.d.x * distanceMm, y: start.y + at.d.y * distanceMm },
       at.q, at.n, seed, lastBeamSurfaces, exclude),
   };
+}
+
+// The direction along a surface at a point on it: along a facet, or square
+// to an arc's radius. Null for a surface without one (an asphere's profile,
+// which the band then meets square to the beam).
+function surfaceTangentAt(surface, p) {
+  if (!surface || surface.data?.asphere) return null;
+  const arc = surface.data?.arc;
+  if (arc) {
+    const r = norm(sub(p, { x: arc.cx, y: arc.cy }));
+    return Number.isFinite(r.x) ? { x: -r.y, y: r.x } : null;
+  }
+  if (!surface.a || !surface.b) return null;
+  const e = sub(surface.b, surface.a), len = Math.hypot(e.x, e.y);
+  return len > 1e-12 ? { x: e.x / len, y: e.y / len } : null;
+}
+
+// How far along a segment its beam runs before an edge clips it, to 1e-9 of
+// the segment: the band ends there, as the probe's reading does.
+function clipDistance(segment, length) {
+  let lo = 0, hi = length;
+  for (let k = 0; k < 32; k++) {
+    const mid = (lo + hi) / 2;
+    if (segment.clipWithin(mid)) hi = mid;
+    else lo = mid;
+  }
+  return lo;
+}
+
+// The beam envelope of every source set to draw it (step G2), added to the
+// drawables: on each segment of a traced path that carries light and a beam
+// parameter, the band ±w(z) about the central ray (beamOnPathSegment, the
+// beam the probe and the zoom read), its edges, a mark at each waist and, on
+// request, at a Rayleigh range either side. "Envelope" fills the band in
+// place of the rays' fill wherever the beam is defined; where it is not
+// (past a diffuser, a clipping edge or a recombination, on a stretch whose
+// light the readouts decline), the rays stay drawn, so no light disappears
+// from the drawing. "Both" draws the band's edges, dashed, over the rays,
+// as "Envelope" does on a stretch an edge clips part-way.
+function drawBeamEnvelopes(tracks, elements, drawables) {
+  const byId = new Map(elements.map(el => [el.id, el]));
+  const covered = new Set();
+  for (const track of tracks) {
+    const path = track.path;
+    if (path.hidden) continue;
+    const origin = byId.get(path.originId);
+    const display = beamDisplayOf(origin);
+    if (display === 'rays') continue;
+    const color = rayColor(path, origin.params.autoColor === false && origin.params.color ? origin.params.color : null);
+    const pts = path.pts || [];
+    const surfacesAt = beamVertexSurfacesOf.get(path) || [];
+    const face = (vertex, p) => {
+      const t = surfaceTangentAt(surfacesAt[vertex], p);
+      return t ? { at: p, t } : null;
+    };
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (!(path.segmentPowers?.[i] > LIT_W)) continue;
+      const segment = beamOnPathSegment(path, i);
+      if (!segment) continue;
+      const a = pts[i], b = pts[i + 1];
+      const length = Math.hypot(b.x - a.x, b.y - a.y);
+      if (!(length > 1e-6)) continue;
+      const clipAt = segment.clipWithin(length) ? clipDistance(segment, length) : null;
+      const shape = beamFromQ(segment.q, { wavelengthNm: segment.wavelengthNm, m2: segment.m2, index: segment.index });
+      const band = envelopeBand({
+        start: a, d: segment.d, length: clipAt ?? length, shape,
+        faces: [face(i, a), clipAt === null ? face(i + 1, b) : null],
+        rayleigh: origin.params.beamRayleighTicks === true,
+      });
+      if (!band) continue;
+      // A stretch an edge clips part-way keeps its rays (the beam is not
+      // Gaussian past the edge), so the band is drawn there as over rays.
+      const filled = display === 'envelope' && clipAt === null;
+      if (filled) {
+        drawables.push({ type: 'poly', pts: band.outline, color, opacity: beamFillOpacity(path, path.segmentIntensities?.[i] ?? path.intensity) });
+      }
+      const edge = filled ? { w: 1.2, opacity: 0.75 } : { w: 1.2, opacity: 0.85, dash: '5 3' };
+      for (const side of [band.left, band.right]) drawables.push({ type: 'path', pts: side, color, ...edge });
+      if (band.waist) drawables.push({ type: 'path', pts: band.waist.pts, color, w: 1.6, opacity: 0.95 });
+      for (const tick of band.rayleigh) drawables.push({ type: 'path', pts: tick.pts, color, w: 1, opacity: 0.85 });
+      if (!envelopeSegmentsOf.has(path)) envelopeSegmentsOf.set(path, new Set());
+      envelopeSegmentsOf.get(path).add(i);
+      // The rays' fill on this route is left out only where the band covers
+      // the whole segment; a chopped beam keeps its chopped rays.
+      const emission = emissionOfPath.get(path);
+      if (filled && !path.chopped && emission !== undefined) covered.add(`${emission}|${path.segmentHistories?.[i] ?? path.sig}`);
+    }
+  }
+  let kept = 0;
+  for (const d of drawables) {
+    if (d.beamRoute !== undefined && covered.has(d.beamRoute)) continue;
+    delete d.beamRoute;
+    drawables[kept++] = d;
+  }
+  drawables.length = kept;
 }
 
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
@@ -8064,6 +8174,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       if (r.beamSeed) {
         if (!beamVertexOwnersOf.has(r)) beamVertexOwnersOf.set(r, []);
         beamVertexOwnersOf.get(r)[r.pts.length - 1] = surfaceOwnerId(hit.surface);
+        if (!beamVertexSurfacesOf.has(r)) beamVertexSurfacesOf.set(r, []);
+        beamVertexSurfacesOf.get(r)[r.pts.length - 1] = hit.surface;
       }
       const interactionKey = surfaceInteractionKey(hit.surface);
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
@@ -8666,6 +8778,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (beamStep) {
           childRay.beamSeed = r.beamSeed;
           childRay.beamSeedNow = r.beamSeedNow;
+          beamVertexSurfacesOf.set(childRay, [hit.surface]);
           continueBeam(childRay, r, beamSteps, beamStep, c, ci, 0, { x: ox, y: oy });
         } else if (r.beamIssue) {
           // Declined upstream: the branch carries the reason from its start.
@@ -8713,8 +8826,48 @@ function rayColor(r, fixedColor) {
 
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
+// The opacity of a beam's fill between two of its sampling rays, from the
+// light the segment carries; the beam envelope (step G2) uses the same.
+function beamFillOpacity(ra, intensity = ra.intensity) {
+  // A broadband ray split into N spectral samples is still one beam
+  // where those samples coincide. Flooring every sample at the
+  // single-ray minimum made eight translucent colours stack to full
+  // coverage of a red-plus-violet blend, so a white supercontinuum
+  // turned purple the moment it crossed any dispersive glass. Sharing
+  // the floor keeps the overlap near the composite and still lets the
+  // colours show where they genuinely separate.
+  // 1/sqrt(N) rather than 1/N: where the samples coincide (a lens) the
+  // stack is thin enough to read as the mixed light it physically is,
+  // and where they separate (a prism) each colour is still drawn boldly
+  // enough to be a rainbow rather than a wash.
+  const siblings = Math.max(1, ra.spectralCount || 1);
+  // The floor keeps a dim-but-real beam visible instead of fading it to
+  // nothing. It was sized for the 2%-100% band, because MIN_INT used to
+  // terminate anything weaker before it could be drawn at all. Coherent
+  // cancellation now produces genuine sub-percent ports, and holding
+  // those at 40% brightness draws a nearly extinguished arm as if it
+  // were live -- the contradiction between figure and readout that this
+  // work exists to remove. Fade the floor away below the old threshold:
+  // at and above MIN_INT every previously drawable beam is untouched.
+  // Weak light is drawn, though, not lost: however faint, a traced
+  // beam keeps at least a tenth of a full-strength beam's opacity, or
+  // an ND-attenuated beam that is part of the setup could not be seen.
+  // Only a port whose power is an interference sum keeps fading, so a
+  // nearly dark fringe never looks live: its faintness is the result,
+  // not an attenuation the user put in.
+  const fadingFloor = (0.4 / Math.sqrt(siblings))
+    * Math.min(1, Math.max(0, intensity) / MIN_INT);
+  const interferenceResult = ra.coherentlySuppressed || ra.fieldGroupCount > 1;
+  const visibilityFloor = interferenceResult ? fadingFloor
+    : Math.max(fadingFloor, MIN_VISIBLE_FRACTION / Math.sqrt(siblings));
+  return 0.28 * Math.max(visibilityFloor, intensity);
+}
+
 function assembleDrawables(paths, opts, drawables) {
-  const { K, isBeam, fixedColor } = opts;
+  const { K, isBeam, fixedColor, emission } = opts;
+  // The route a piece of the rays' fill belongs to, which the beam envelope
+  // may draw in its place (drawBeamEnvelopes).
+  const routeOf = r => (emission === undefined ? undefined : `${emission}|${r.renderHistory}`);
   const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
   // Whether a ray is chunked is decided where the chunking is asked for -- by
@@ -8840,38 +8993,8 @@ function assembleDrawables(paths, opts, drawables) {
       if (ra.speckle) { pushRay(ra, 0, 0, true); continue; } // grains, no fill
       const rb = nextByHistory.get(ra.renderHistory);
       if (rb && !rb.speckle) {
-        // A broadband ray split into N spectral samples is still one beam
-        // where those samples coincide. Flooring every sample at the
-        // single-ray minimum made eight translucent colours stack to full
-        // coverage of a red-plus-violet blend, so a white supercontinuum
-        // turned purple the moment it crossed any dispersive glass. Sharing
-        // the floor keeps the overlap near the composite and still lets the
-        // colours show where they genuinely separate.
-        // 1/sqrt(N) rather than 1/N: where the samples coincide (a lens) the
-        // stack is thin enough to read as the mixed light it physically is,
-        // and where they separate (a prism) each colour is still drawn boldly
-        // enough to be a rainbow rather than a wash.
-        const siblings = Math.max(1, ra.spectralCount || 1);
-        // The floor keeps a dim-but-real beam visible instead of fading it to
-        // nothing. It was sized for the 2%-100% band, because MIN_INT used to
-        // terminate anything weaker before it could be drawn at all. Coherent
-        // cancellation now produces genuine sub-percent ports, and holding
-        // those at 40% brightness draws a nearly extinguished arm as if it
-        // were live -- the contradiction between figure and readout that this
-        // work exists to remove. Fade the floor away below the old threshold:
-        // at and above MIN_INT every previously drawable beam is untouched.
-        // Weak light is drawn, though, not lost: however faint, a traced
-        // beam keeps at least a tenth of a full-strength beam's opacity, or
-        // an ND-attenuated beam that is part of the setup could not be seen.
-        // Only a port whose power is an interference sum keeps fading, so a
-        // nearly dark fringe never looks live: its faintness is the result,
-        // not an attenuation the user put in.
-        const fadingFloor = (0.4 / Math.sqrt(siblings))
-          * Math.min(1, Math.max(0, ra.intensity) / MIN_INT);
-        const interferenceResult = ra.coherentlySuppressed || ra.fieldGroupCount > 1;
-        const visibilityFloor = interferenceResult ? fadingFloor
-          : Math.max(fadingFloor, MIN_VISIBLE_FRACTION / Math.sqrt(siblings));
-        const op = 0.28 * Math.max(visibilityFloor, ra.intensity);
+        const op = beamFillOpacity(ra);
+        const route = routeOf(ra);
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
@@ -8879,10 +9002,10 @@ function assembleDrawables(paths, opts, drawables) {
           const startA = ra.chopped.startMm || 0;
           const startB = rb.chopped ? rb.chopped.startMm || 0 : startA;
           for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, startA, startB)) {
-            drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
+            drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op, beamRoute: route });
           }
         } else {
-          drawables.push({ type: 'poly', pts: A.concat([...B].reverse()), color: colorOf(ra), opacity: op });
+          drawables.push({ type: 'poly', pts: A.concat([...B].reverse()), color: colorOf(ra), opacity: op, beamRoute: route });
         }
       }
     }
@@ -8894,7 +9017,7 @@ function assembleDrawables(paths, opts, drawables) {
   // outline strokes on the outer edges of the beam only
   for (const i of [0, K - 1]) {
     for (const r of bySample.get(i) || []) {
-      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
+      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r), dashOffset: dashOffsetOf(r), beamRoute: routeOf(r) });
     }
   }
 }
@@ -9159,6 +9282,10 @@ export function traceScene(elements, beams = [], options = {}) {
   beamDetectorHitsOf = new WeakMap();
   beamTrackOf = new WeakMap();
   beamVertexOwnersOf = new WeakMap();
+  beamVertexSurfacesOf = new WeakMap();
+  envelopeSegmentsOf = new WeakMap();
+  emissionOfPath = new WeakMap();
+  emissionCount = 0;
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -9301,8 +9428,10 @@ export function traceScene(elements, beams = [], options = {}) {
     lastPaths.push(...paths);
     lastPowerPaths.push(...allPaths);
     const drawableStart = drawables.length;
+    const emission = ++emissionCount;
+    for (const r of allPaths) emissionOfPath.set(r, emission);
     assembleDrawables(paths, {
-      K, isBeam: p.beamMode === 'beam',
+      K, isBeam: p.beamMode === 'beam', emission,
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
     }, drawables);
     if (options.pointSourceCanvas && el.type === 'pointsource' && K >= POINT_SOURCE_CANVAS_THRESHOLD) {
@@ -9434,7 +9563,9 @@ export function traceScene(elements, beams = [], options = {}) {
         lastPowerPaths.push(...traced);
         const paths = traced.filter(r => !r.hidden);
         lastPaths.push(...paths);
-        assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
+        const emission = ++emissionCount;
+        for (const r of traced) emissionOfPath.set(r, emission);
+        assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null, emission }, drawables);
         collectPulseTracks(paths, rays0.length, null, pulseTracks);
       }
     }
@@ -9442,6 +9573,7 @@ export function traceScene(elements, beams = [], options = {}) {
   }
   emitFibers(true);
   lastBeamTracks = propagateBeams(lastPowerPaths, surfaces);
+  drawBeamEnvelopes(lastBeamTracks, elements, drawables);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the

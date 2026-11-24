@@ -141,9 +141,9 @@ export const wikiEntries = [
         <h3>Gaussian beam</h3>
         <p>A laser drawn with a size also starts a Gaussian beam: a 1/e² radius
         <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
-        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
-        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
-        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        with the waist at its output. The collapsed <em>Gaussian beam</em> section adds the
+        beam quality M² (1 for an ideal beam; a larger value spreads faster, as a multimode or
+        diode laser does) and how the beam is drawn (below). A laser drawn as a simple line starts no
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
@@ -165,7 +165,23 @@ export const wikiEntries = [
         comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
         which is then no longer Gaussian), where the far-field half-angle exceeds
         0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
-        again.</p>`,
+        again.</p>
+        <h3>Drawing the Gaussian beam</h3>
+        <p><em>Draw the beam as</em>, in the <em>Gaussian beam</em> section, chooses how this
+        source's light is drawn: as its rays (the default), as its Gaussian beam, or both. The
+        Gaussian beam is a band of half-width <span class="w">w</span>(<span class="w">z</span>),
+        the 1/e² radius, around the central ray, in the beam's colour, with a short bar across it
+        at each waist; tick <em>Mark a Rayleigh range either side of each waist</em> for two
+        thinner bars one Rayleigh range from it, where the beam is √2 times its waist. Where the
+        beam is collimated the band lies on the outermost rays. Near a focus the rays cross at
+        a point while the band narrows to the waist, and a narrow beam's band shows where it
+        really focuses, which its rays do not (see above). The band is the beam the readouts
+        report, and it ends on each mirror or lens as the rays do. Where the beam stops (past a
+        diffuser, an edge that clips it, a wavelength conversion, or where arms meet again)
+        the rays are drawn instead, so no light disappears from the drawing; across a stretch
+        where an edge clips the beam part-way, the band's edges are drawn dashed over the
+        rays, as they are everywhere with <em>both</em>. Light a fibre relaunches is drawn as
+        the source that sent it in. Exported figures draw the same.</p>`,
       formulas: [
         { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.' },
         { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
@@ -261,9 +277,9 @@ export const wikiEntries = [
         <h3>Gaussian beam</h3>
         <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
         <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
-        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
-        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
-        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        with the waist at its output. The collapsed <em>Gaussian beam</em> section adds the
+        beam quality M² (1 for an ideal beam; a larger value spreads faster, as a multimode or
+        diode laser does) and how the beam is drawn (below). A laser drawn as a simple line starts no
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
@@ -286,6 +302,22 @@ export const wikiEntries = [
         which is then no longer Gaussian), where the far-field half-angle exceeds
         0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
         again.</p>
+        <h3>Drawing the Gaussian beam</h3>
+        <p><em>Draw the beam as</em>, in the <em>Gaussian beam</em> section, chooses how this
+        source's light is drawn: as its rays (the default), as its Gaussian beam, or both. The
+        Gaussian beam is a band of half-width <span class="w">w</span>(<span class="w">z</span>),
+        the 1/e² radius, around the central ray, in the beam's colour, with a short bar across it
+        at each waist; tick <em>Mark a Rayleigh range either side of each waist</em> for two
+        thinner bars one Rayleigh range from it, where the beam is √2 times its waist. Where the
+        beam is collimated the band lies on the outermost rays. Near a focus the rays cross at
+        a point while the band narrows to the waist, and a narrow beam's band shows where it
+        really focuses, which its rays do not (see above). The band is the beam the readouts
+        report, and it ends on each mirror or lens as the rays do. Where the beam stops (past a
+        diffuser, an edge that clips it, a wavelength conversion, or where arms meet again)
+        the rays are drawn instead, so no light disappears from the drawing; across a stretch
+        where an edge clips the beam part-way, the band's edges are drawn dashed over the
+        rays, as they are everywhere with <em>both</em>. Light a fibre relaunches is drawn as
+        the source that sent it in. Exported figures draw the same.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -523,6 +555,11 @@ export const wikiEntries = [
         leaves, centred at 500&nbsp;nm, starts 0.83&nbsp;mm wide. The readouts give the beam
         at one wavelength, the band's centre or the centre of the part that is there, and say
         so. The drawn rays keep the Beam width at every colour.</p>
+        <p><em>Draw the beam as</em>, in the same section, draws the Gaussian beam as a band
+        of half-width <span class="w">w</span>(<span class="w">z</span>), the 1/e² radius, as the
+        CW Laser describes. Before anything separates the band, one band is drawn for the
+        band's centre; each part a filter, a dichroic or a prism separates gets a band of its
+        own, in its colour and with its own waist.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective

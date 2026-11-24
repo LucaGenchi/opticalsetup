@@ -115,6 +115,18 @@ export function sourceBeamParameter(type, params = {}) {
   };
 }
 
+// How a source's beam is drawn (decision 9 of the Physics in 2D track, step
+// G2): as its rays, the default; as its Gaussian envelope, the 1/e² radius
+// w(z) around the central ray (sketch/js/beam-envelope.js); or both. Only a
+// source that starts a beam has the choice; light that a fiber relaunches is
+// drawn as the source that put it in was set to draw it.
+export const BEAM_DISPLAYS = Object.freeze(['rays', 'envelope', 'both']);
+export function beamDisplayOf(el) {
+  const p = el?.params;
+  if (!el || !BEAM_SOURCE_TYPES.has(el.type) || p?.beamMode !== 'beam') return 'rays';
+  return BEAM_DISPLAYS.includes(p.beamDisplay) ? p.beamDisplay : 'rays';
+}
+
 // Why a source starts no Gaussian beam, in a sentence a readout can show;
 // null for a source that starts one.
 export function noBeamReason(type, params = {}) {

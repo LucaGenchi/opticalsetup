@@ -257,6 +257,62 @@ propagated value. Two cases the tests hold:
   1.48 m, is not long against f, and the waist, 409 µm, lies 1.30 m before the
   geometric focus, where the cone estimate put 677 µm.
 
+## Drawing the beam (step G2)
+
+Lasers are drawn as rays by default (decision 9). *Draw the beam as*, in the
+collapsed *Gaussian beam* section of a CW laser, a pulsed laser or a
+supercontinuum drawn with a size, offers *Gaussian beam (1/e² radius)* and
+*Rays and Gaussian beam*. The envelope is the beam the readouts report: on each
+segment of a traced path that carries light and a beam parameter, the tracer
+takes the beam at the segment's start from `beamOnPathSegment` (the function
+the zoom's waist uses) and `sketch/js/beam-envelope.js` draws the band
+±w(z) about the central ray, w(z) = w₀·√(1 + (z/z_R)²) in the local medium,
+sampled evenly in asinh(z/z_R) so the samples crowd where the curve bends.
+The zoom's focus is drawn by the same function (`envelopeEdges`).
+
+- **Ends.** A band ends on the surface the beam meets or leaves, along it,
+  as the drawn rays do: on a tilted mirror the incoming and reflected bands
+  meet on the mirror line without a gap or an overlap. The footprint is the
+  same on both sides of any surface (w/cos θᵢ = w′/cos θₜ), so this holds at
+  a tilted refracting surface too. A face met within about 6° of grazing, an
+  asphere's profile and a path's free ends are cut square to the beam.
+- **Marks.** A bar across the band marks each waist that lies on a segment,
+  reaching 1.6 w₀ either side of the axis and at least 1.2 mm, so that a
+  micron-sized waist can be found on the bench. With *Mark a Rayleigh range
+  either side of each waist*, two thinner bars stand one Rayleigh range from
+  it, where the beam is √2 w₀.
+- **Gaussian beam.** The band is filled in the beam's colour, with the
+  opacity the rays' fill has for the same light, and its edges are drawn;
+  it replaces the rays' fill on every segment it covers whole, matched by
+  route (the sequence of interactions) within one emission. Where the beam is
+  not defined (past a diffuser, a wavelength conversion, recombining arms,
+  a dark port, or a stretch a soft decline holds) the rays stay drawn, so no
+  light disappears from the drawing. On a segment that an edge clips
+  part-way, the band stops where the edge comes within 1.5 w and is drawn
+  as edges only, over the rays, which stay on the whole segment. A chopped
+  beam keeps its chopped rays.
+- **Rays and Gaussian beam.** The band's edges are drawn dashed over the
+  rays, with the marks.
+- **Branches and fibers.** Each branch of a splitter gets its own band. Light
+  a fiber relaunches is drawn as the source that sent it in is set to draw
+  it; where the fiber starts no beam (no single-mode core set, a focusing
+  output), its rays are drawn. A supercontinuum gets one band before
+  anything separates its spectrum, and each part a filter, a dichroic or a
+  prism separates gets its own, at its own centre wavelength.
+- **Zoom and exports.** The canvas, the SVG, PNG and GIF exports and a
+  zoom's enlarged view all draw the tracer's drawables, so they show the same
+  band. A zoom whose focus is a propagated waist already drawn as a band does
+  not draw its own waist again; its note (w₀, z_R) stays.
+- **Collimated space.** A laser's drawn rays span ±w at its output, so where
+  the beam stays collimated (a Rayleigh range long beside the bench) the band
+  lies on the outermost rays; near a focus the rays cross at a point while
+  the band narrows to the waist, and for a narrow beam the band is narrowest
+  where the beam focuses, not where its rays cross.
+
+The bundled examples *Pinhole spatial filter* and *Coupling a laser into a
+single-mode fiber* draw their main laser this way; their golden snapshots
+record the band.
+
 ## Declines
 
 The beam parameter stops, and every readout downstream names the element and
@@ -296,7 +352,7 @@ the reason (the detector's inspector card, the probe card), at:
 - Clipping: a clipped beam is declined, not truncated.
 - The beam's own effect on the drawn rays: the 25 rays of a sized laser still
   sample its width uniformly and leave out diffraction (the readouts say
-  where that matters); the envelope drawing is step G2.
+  where that matters); the envelope can be drawn in their place (above).
 - A supercontinuum fiber's mode growing with wavelength, a lens collimator's
   chromatic focal shift, and the wavelength dependence of a fiber output's
   LP₀₁ mode within one beam (a part a filter leaves keeps the fiber's waist).

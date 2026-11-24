@@ -511,6 +511,11 @@ export const exampleEntries = [
       the side, on the plate, and stops there; the enlarged view shows both. The
       second lens makes the beam parallel again, now 8&nbsp;mm wide. The power
       meter reads 10.0&nbsp;mW: all of the beam, none of the other light.</p>
+      <p>The 10&nbsp;mW laser is drawn as its Gaussian beam rather than as rays
+      (<em>Draw the beam as</em>, in the laser's <em>Gaussian beam</em>
+      section): a band of its 1/e² radius, which narrows to the waist in the gap,
+      where a short bar marks it, and widens again to the second lens. The
+      light at 6° is drawn as rays, as every source is unless set otherwise.</p>
       <p>Things to try. Open the gap to 11&nbsp;mm or more: the light at 6° gets
       through as well and the meter reads 11.0&nbsp;mW. Set the gap back to
       0.5&nbsp;mm and move the pinhole 0.3&nbsp;mm to the side: the meter goes
@@ -529,7 +534,9 @@ export const exampleEntries = [
       set by diffraction, and the pinhole is chosen a little larger than it. The
       tracer follows the laser's Gaussian beam beside the rays: a beam probe set
       to <em>Gaussian beam size</em> in the gap reads a waist of 5.04&nbsp;µm,
-      about 10&nbsp;µm across at 1/e², fifty times narrower than the gap. Light
+      about 10&nbsp;µm across at 1/e², fifty times narrower than the gap; the
+      band drawn for the laser narrows to that waist, too small to see at this
+      scale. Light
       scattered at small angles lands within that spot's surroundings, close to the
       axis; here the unwanted light is one beam at one large angle, chosen so that
       the drawing shows it. The smooth, nearly Gaussian profile a real filter
@@ -639,6 +646,11 @@ export const exampleEntries = [
       fibre's input NA is 0.12, an acceptance half-angle of 6.9°; the beam
       converges at arctan(1/11) = 5.2°. The fibre is set to no loss and emits
       from its far end into the same NA, onto a power meter.</p>
+      <p>The laser is drawn as its Gaussian beam (<em>Draw the beam as</em>, in
+      its <em>Gaussian beam</em> section): a band of its 1/e² radius that folds
+      along each mirror and narrows to the waist at the end face. Past the
+      fibre the light is drawn as rays, because this fibre has no mode set and
+      relaunches no Gaussian beam.</p>
       <p>The meter reads 1.00&nbsp;mW. What that number means matters: the tracer
       couples every ray that lands on the end face of the fibre's connector
       within the acceptance angle, and here all 25 rays of the beam do. It is the

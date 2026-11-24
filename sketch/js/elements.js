@@ -2592,6 +2592,14 @@ const formatBeamLength = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(
   : mm < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
 const gaussianBeamParams = type => [
   { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
+  // How the beam is drawn (decision 9, step G2): rays by default, or the
+  // band of its 1/e² radius w(z) with a mark at each waist, or both.
+  {
+    key: 'beamDisplay', label: 'Draw the beam as', type: 'select', def: 'rays',
+    options: [['rays', 'Rays'], ['envelope', 'Gaussian beam (1/e² radius)'], ['both', 'Rays and Gaussian beam']],
+    show: p => p.beamMode === 'beam',
+  },
+  { key: 'beamRayleighTicks', label: 'Mark a Rayleigh range either side of each waist', type: 'checkbox', def: false, show: p => p.beamMode === 'beam' && (p.beamDisplay === 'envelope' || p.beamDisplay === 'both') },
   { key: 'beamM2', label: 'Beam quality M² (1 = ideal)', type: 'number', min: 1, max: 100, step: 0.1, def: 1, show: p => p.beamMode === 'beam' },
   {
     key: 'beamParameter', label: 'Beam', type: 'readout', wide: true,

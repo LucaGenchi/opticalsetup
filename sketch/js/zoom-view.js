@@ -119,7 +119,8 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
     const span = Math.hypot(focus.point.x - zoom.x, focus.point.y - zoom.y) + reach;
     const outline = focusEnvelope(focus, Math.max(focus.from, -span), Math.min(focus.to, span)).map(map);
     if (!outline.length) continue;
-    svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
+    // A beam the bench draws as its envelope is in the view already.
+    if (!focus.drawnAsEnvelope) svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
     // size still has room for them.
     if (named) {

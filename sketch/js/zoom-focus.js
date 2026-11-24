@@ -24,6 +24,7 @@
 // focus says which of the two it shows (`model`: 'propagated' or 'cone').
 
 import { beamFromQ } from './gaussian-beam.js';
+import { envelopeEdges } from './beam-envelope.js';
 import { beamOnPathSegment } from './raytrace.js';
 import { bundleFocus } from './sectioning.js';
 import { wavelengthToColor } from './util.js';
@@ -130,6 +131,9 @@ export function zoomFoci(zoom, paths = []) {
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
       model: found.model || 'cone', estimate: found.estimate || null,
+      // The bench already draws this beam's envelope (step G2), and the
+      // view magnifies it: the waist is not drawn a second time.
+      drawnAsEnvelope: found.model === 'propagated' && Boolean(group.beam?.drawnAsEnvelope),
     });
   }
   return foci;
@@ -196,23 +200,13 @@ function clipToSide(outline, { at, n }) {
 }
 
 // The 1/e² envelope of a focus on the bench, as a closed outline: both
-// edges from `from` to `to` along the beam, measured from the focus,
-// sampled densely near the waist (evenly in asinh(z/zR)) where the curve
-// bends, then cut along the optics' faces in `focus.ends`, when given.
+// edges from `from` to `to` along the beam, measured from the focus, as the
+// bench's beam envelope draws them (envelopeEdges), then cut along the
+// optics' faces in `focus.ends`, when given.
 export function focusEnvelope(focus, from, to, samples = 48) {
-  const { point, axis, w0Mm, zRMm } = focus;
-  if (!(from < to)) return [];
-  const nx = -axis.y, ny = axis.x;
-  const u0 = Math.asinh(from / zRMm), u1 = Math.asinh(to / zRMm);
-  const left = [], right = [];
-  for (let k = 0; k <= samples; k++) {
-    const z = zRMm * Math.sinh(u0 + (u1 - u0) * k / samples);
-    const w = w0Mm * Math.sqrt(1 + (z / zRMm) ** 2);
-    const cx = point.x + z * axis.x, cy = point.y + z * axis.y;
-    left.push({ x: cx + w * nx, y: cy + w * ny });
-    right.push({ x: cx - w * nx, y: cy - w * ny });
-  }
-  let outline = left.concat(right.reverse());
+  const edges = envelopeEdges(focus, from, to, samples);
+  if (!edges) return [];
+  let outline = edges.left.concat([...edges.right].reverse());
   for (const face of focus.ends || []) outline = clipToSide(outline, face);
   return outline.length >= 3 && outline.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? outline : [];
 }
