@@ -1,0 +1,467 @@
+{
+ "app": "sketch/js/faraday.js: rotationForCrossingDeg, isolatorFigures; sketch/js/raytrace.js: the 'faraday' surface traced through a polarizing beamsplitter, a waveplate and a mirror",
+ "cases": [
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": -150.21466544
+   },
+   "inputs": {
+    "along": true,
+    "fieldT": 1.0,
+    "kind": "rotation",
+    "lengthMm": 20.0,
+    "material": "tgg",
+    "wavelengthNm": 632
+   },
+   "name": "TGG rotator, 1.0 T, 20.0 mm, 632 nm, light along the field",
+   "note": "theta = V B L, the turn about the field; negative V (TGG) turns light along the field to lower azimuth",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": -42.9760183195
+   },
+   "inputs": {
+    "along": true,
+    "fieldT": 1.0,
+    "kind": "rotation",
+    "lengthMm": 20.0,
+    "material": "tgg",
+    "wavelengthNm": 1064
+   },
+   "name": "TGG rotator, 1.0 T, 20.0 mm, 1064 nm, light along the field",
+   "note": "theta = V B L, the turn about the field; negative V (TGG) turns light along the field to lower azimuth",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": 42.9760183195
+   },
+   "inputs": {
+    "along": false,
+    "fieldT": 1.0,
+    "kind": "rotation",
+    "lengthMm": 20.0,
+    "material": "tgg",
+    "wavelengthNm": 1064
+   },
+   "name": "TGG rotator, 1.0 T, 20.0 mm, 1064 nm, light against the field",
+   "note": "theta = V B L, the turn about the field; negative V (TGG) turns light along the field to lower azimuth",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": -63.9503180821
+   },
+   "inputs": {
+    "along": true,
+    "fieldT": 0.5,
+    "kind": "rotation",
+    "lengthMm": 30.0,
+    "material": "tgg",
+    "wavelengthNm": 800
+   },
+   "name": "TGG rotator, 0.5 T, 30.0 mm, 800 nm, light along the field",
+   "note": "theta = V B L, the turn about the field; negative V (TGG) turns light along the field to lower azimuth",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": -44.9999996879
+   },
+   "inputs": {
+    "along": true,
+    "fieldT": 1.0,
+    "kind": "rotation",
+    "lengthMm": 20.941912,
+    "material": "tgg",
+    "wavelengthNm": 1064
+   },
+   "name": "TGG rotator, 1.0 T, 20.941912 mm, 1064 nm, light along the field",
+   "note": "theta = V B L, the turn about the field; negative V (TGG) turns light along the field to lower azimuth",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "rotationDeg": 21.772396215
+   },
+   "inputs": {
+    "along": true,
+    "fieldT": 2.0,
+    "kind": "rotation",
+    "lengthMm": 50.0,
+    "material": "custom",
+    "verdetCustom": 3.8,
+    "wavelengthNm": 1550
+   },
+   "name": "custom Verdet constant +3.8 rad/(T m), 2 T, 50 mm, light along the field",
+   "note": "a custom constant is the same at every wavelength",
+   "tolerance": {
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.0
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "faradayDeg": 0,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 0 deg, rotator 0 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.116977778441
+   },
+   "inputs": {
+    "axisDeg": 10,
+    "faradayDeg": 0,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 10 deg, rotator 0 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.482550251649
+   },
+   "inputs": {
+    "axisDeg": 22,
+    "faradayDeg": 0,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 22 deg, rotator 0 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.924024048078
+   },
+   "inputs": {
+    "axisDeg": 37,
+    "faradayDeg": 0,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 37 deg, rotator 0 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.75
+   },
+   "inputs": {
+    "axisDeg": 60,
+    "faradayDeg": 0,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 60 deg, rotator 0 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 1.0
+   },
+   "inputs": {
+    "axisDeg": 10,
+    "faradayDeg": 45,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 10 deg, rotator 45 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 1.0
+   },
+   "inputs": {
+    "axisDeg": 37,
+    "faradayDeg": 45,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 90
+   },
+   "name": "Faraday mirror: retarder 90 deg at 37 deg, rotator 45 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 1.0
+   },
+   "inputs": {
+    "axisDeg": 30,
+    "faradayDeg": 45,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 180
+   },
+   "name": "Faraday mirror: retarder 180 deg at 30 deg, rotator 45 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 1.0
+   },
+   "inputs": {
+    "axisDeg": 12,
+    "faradayDeg": 45,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 73
+   },
+   "name": "Faraday mirror: retarder 73 deg at 12 deg, rotator 45 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "returnFraction": 0.5
+   },
+   "inputs": {
+    "axisDeg": 30,
+    "faradayDeg": 22.5,
+    "kind": "faraday-mirror",
+    "retardanceDeg": 180
+   },
+   "name": "Faraday mirror: retarder 180 deg at 30 deg, rotator 22.5 deg per pass, return to the polarizing beamsplitter's return port",
+   "note": "W^T R(theta)^2 W in laboratory axes (Martinelli 1989); 1 whatever W for 45 deg per pass",
+   "tolerance": {
+    "returnFraction": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.0001,
+    "forward": 1.0,
+    "rotationDeg": 45.0
+   },
+   "inputs": {
+    "designWl": 1064,
+    "extinctionDb": 40,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 1064
+   },
+   "name": "isolator designed at 1064 nm, light at 1064 nm, polarizers 40 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.0164546827978,
+    "forward": 0.983645317202,
+    "rotationDeg": 52.3477857705
+   },
+   "inputs": {
+    "designWl": 1064,
+    "extinctionDb": 40,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 1000
+   },
+   "name": "isolator designed at 1064 nm, light at 1000 nm, polarizers 40 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.00247774225736,
+    "forward": 0.997622257743,
+    "rotationDeg": 47.7951106856
+   },
+   "inputs": {
+    "designWl": 800,
+    "extinctionDb": 40,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 780
+   },
+   "name": "isolator designed at 800 nm, light at 780 nm, polarizers 40 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.00532829943664,
+    "forward": 0.995671700563,
+    "rotationDeg": 41.2259066053
+   },
+   "inputs": {
+    "designWl": 800,
+    "extinctionDb": 30,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 830
+   },
+   "name": "isolator designed at 800 nm, light at 830 nm, polarizers 30 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.001,
+    "forward": 1.0,
+    "rotationDeg": 45.0
+   },
+   "inputs": {
+    "designWl": 800,
+    "extinctionDb": 30,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 800
+   },
+   "name": "isolator designed at 800 nm, light at 800 nm, polarizers 30 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.0103750438217,
+    "forward": 0.989624956178,
+    "rotationDeg": 50.8461700845
+   },
+   "inputs": {
+    "designWl": 800,
+    "extinctionDb": 200,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 760
+   },
+   "name": "isolator designed at 800 nm, light at 760 nm, polarizers 200 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "backward": 0.145692116674,
+    "forward": 0.854307883326,
+    "rotationDeg": 67.4387991909
+   },
+   "inputs": {
+    "designWl": 1064,
+    "extinctionDb": 200,
+    "inputAxis": 0,
+    "kind": "isolator",
+    "material": "tgg",
+    "wavelengthNm": 900
+   },
+   "name": "isolator designed at 1064 nm, light at 900 nm, polarizers 200 dB",
+   "note": "cos^2(delta) and sin^2(delta) with ideal polarizers (200 dB here); partial polarizers otherwise",
+   "tolerance": {
+    "backward": 1e-09,
+    "forward": 1e-09,
+    "rotationDeg": 1e-09
+   }
+  }
+ ],
+ "citations": [
+  "D. Vojna, O. Slezak, A. Lucianetti and T. Mocek, 'Verdet constant of magneto-active materials developed for high-power Faraday devices,' Appl. Sci. 9, 3160 (2019), Eq. (13) and Table 2 (CC BY 4.0)",
+  "M. Martinelli, 'A universal compensator for polarization changes induced by birefringence on a retracing beam,' Opt. Commun. 72, 341-344 (1989)",
+  "R. J. Potton, 'Reciprocity in optics,' Rep. Prog. Phys. 67, 717-754 (2004)"
+ ],
+ "convergence": "Closed forms and 2x2 matrix products; no discretisation.",
+ "domain": "Six rotation cases; ten Faraday-mirror cases (quarter-wave, half-wave and 73 degree retarders, 0, 22.5 and 45 degrees per pass); seven isolator cases.",
+ "fidelity": "computed",
+ "id": "faraday",
+ "outside_scope": "The rotator's index, length, path delay, dispersion and surface reflections; temperature; a Verdet constant outside 500-1100 nm for TGG; a broadband ray's polarization, which carries the turn at its centre wavelength (the isolator weighs each wavelength of the spectrum).",
+ "provenance": "The TGG model is evaluated here from Vojna's printed parameters; the Faraday mirror and isolator are matrix products written here in laboratory axes, a convention independent of the app's ray-frame basis.",
+ "reference": "theta = V B L with Vojna's TGG model; Jones matrices in laboratory axes for the Faraday mirror and the isolator's partial polarizers",
+ "reference_file": "validation/reference/faraday.py",
+ "scope": "The rotation of a thin Faraday element for light along or against its field; the round trip through a retarder, a Faraday rotator and a mirror, traced by the app; the forward transmission and back leakage of a polarizer-rotator-polarizer isolator with partial polarizers.",
+ "title": "Faraday rotator, Faraday mirror and physical optical isolator",
+ "tolerance_rationale": "1e-9: closed forms and matrix products, evaluated in double precision on both sides."
+}

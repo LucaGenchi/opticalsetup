@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optical isolator across a pulse spectrum — Examples | OpticalSetup</title>
+<meta name="description" content="An isolator turns light by exactly 45° at one wavelength only: a short pulse, tens of nanometres wide, leaks back at the wings of its spectrum.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/optical-isolator-isolation-across-a-pulse-spectrum/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Optical isolator across a pulse spectrum — OpticalSetup Examples">
+<meta property="og:description" content="An isolator turns light by exactly 45° at one wavelength only: a short pulse, tens of nanometres wide, leaks back at the wings of its spectrum.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/optical-isolator-isolation-across-a-pulse-spectrum/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Ultrashort Pulses / Optical isolator across a pulse spectrum</div>
+      <h1>Optical isolator across a pulse spectrum</h1>
+      <p class="tagline" style="margin-top: 10px;">An isolator turns light by exactly 45° at one wavelength only: a short pulse, tens of nanometres wide, leaks back at the wings of its spectrum.</p>
+
+      <a class="place-cta" href="../../sketch/?example=optical-isolator-isolation-across-a-pulse-spectrum">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=optical-isolator-isolation-across-a-pulse-spectrum&amp;embed=1"
+          title="Optical isolator across a pulse spectrum — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+
+      <p>An optical isolator lets light through one way and blocks it the other.
+      It is an input polarizer, a Faraday rotator that turns the polarization by
+      45°, and an output polarizer at 45° to the first. Going forward the light
+      arrives aligned with the output polarizer; coming back it is turned a
+      further 45° in the same sense and reaches the input polarizer crossed,
+      because the Faraday rotation is fixed by the magnet's field, not by the
+      direction the light travels<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>The rotation is the Verdet constant of the rotator's material times the
+      field times the length, and the Verdet constant depends on wavelength: in
+      terbium gallium garnet (TGG) it falls roughly as the inverse square of the
+      wavelength<sup class="cite">[<a href="#ref-2">2</a>]</sup>. An isolator is therefore built for one wavelength.
+      Away from it the turn is wrong by an angle δ, the forward transmission
+      falls as cos²δ and the backward leakage rises as sin²δ. A narrow laser line
+      barely notices; a femtosecond pulse, whose spectrum is tens of nanometres
+      wide, does.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+
+      <p>A Ti:sapphire laser sends 1&nbsp;W of 15&nbsp;fs pulses at 800&nbsp;nm,
+      a spectrum about 63&nbsp;nm wide, through a 90:10 pick-off and an
+      <a href="../../wiki/isolator/">optical isolator</a> set to its physical
+      model: TGG, designed for 800&nbsp;nm, with polarizers of 40&nbsp;dB
+      extinction. A mirror sends the beam back. What the isolator lets through
+      on the way back is picked off onto a
+      <a href="../../wiki/spectrometer/">spectrometer</a>.</p>
+      <p>The isolator's inspector gives its figures: a field-length product of
+      0.0106&nbsp;T·m makes the turn 45° at 800&nbsp;nm, where the isolation is the
+      polarizers' 40.0&nbsp;dB; at 768.6 and 831.4&nbsp;nm, half the pulse's
+      bandwidth either side, it is only 22.0 and 23.2&nbsp;dB. The spectrometer
+      reads 0.352&nbsp;mW, and its spectrum is two humps, at 761 and 836&nbsp;nm,
+      with a hole at 800&nbsp;nm: the light that comes back is the light whose
+      wavelength the isolator was not built for.</p>
+      <p>Things to try. Each starts from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change</th><th>Spectrometer</th></tr></thead>
+        <tbody>
+          <tr><td>Isolator model to the ideal one-way gate</td><td>nothing</td></tr>
+          <tr><td>Design wavelength to 780&nbsp;nm: the hole moves there</td><td>0.473&nbsp;mW</td></tr>
+          <tr><td>Polarizer extinction to 30&nbsp;dB</td><td>0.432&nbsp;mW</td></tr>
+          <tr><td>Laser pulse to 100&nbsp;fs, about 9&nbsp;nm wide</td><td>16.6&nbsp;µW</td></tr>
+          <tr><td>Laser pulse to 1000&nbsp;fs, under 1&nbsp;nm wide</td><td>9.08&nbsp;µW</td></tr>
+        </tbody>
+      </table></div>
+      <p>The last line is the isolator at its best: 1&nbsp;W × 0.9 × 0.1 × 10⁻⁴,
+      the 40&nbsp;dB of its polarizers. The 15&nbsp;fs pulse returns 39 times
+      more.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The isolator's rotator uses the Verdet constant of one TGG
+      sample at room temperature, measured between 500 and 1100&nbsp;nm; other
+      samples read up to about 19&nbsp;% higher, which moves the figures away from
+      the design wavelength. Each wavelength of the spectrum is weighed on its own,
+      but the polarizers are ideal apart from their extinction, which is the same at
+      every wavelength, and absorption, thermal effects at high power, the rotator's
+      dispersion of the pulse and the pick-off's own polarization dependence are not
+      modelled. The light that the isolator lets back and the pick-off does not take
+      ends at the laser: there is no feedback into it.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/isolator/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-23" y="-11" width="46" height="22" rx="11" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/><path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>Optical isolator</a><a href="../../wiki/faraday/"><svg viewBox="-22 -22 44 44" aria-hidden="true"><rect x="-10" y="-5" width="20" height="10" fill="#d9f99d" stroke="#4d7c0f" stroke-width="1.3"/><rect x="-10" y="-10" width="5" height="20" rx="1.5" fill="#475569" stroke="#334155" stroke-width="1"/><rect x="5" y="-10" width="5" height="20" rx="1.5" fill="#475569" stroke="#334155" stroke-width="1"/><path d="M -4,0 L 4,0 M 4,0 L 0.5,-2.6 M 4,0 L 0.5,2.6" stroke="#3f6212" stroke-width="1.4" fill="none" stroke-linecap="round"/><text x="0" y="-14" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#3f6212" font-style="italic" >B</text></svg>Faraday rotator</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/spectrometer/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#fde68a" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">SPEC</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Spectrometer</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/faraday_isolators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Faraday Isolators</a></li><li id="ref-2"><a href="https://doi.org/10.3390/app9153160" target="_blank" rel="noopener">D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Applied Sciences 9, 3160 (2019) — open access (CC BY 4.0)</a></li>
+      </ol>
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are written and maintained with the project. For setups shared by users, see the <a href="../../community/">community section</a>; for how each component works, see the <a href="../../wiki/">wiki</a>.</footer>
+</body>
+</html>

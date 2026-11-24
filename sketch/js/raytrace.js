@@ -72,6 +72,7 @@ import {
 } from './beam-propagation.js';
 import { beamFromQ, composeMatrices, propagateQ, qFromWaist, transformQ } from './gaussian-beam.js';
 import { lp01 } from './lp01.js';
+import { isolatorCrossing, rotateStokes, rotationForCrossingDeg } from './faraday.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm, coincidenceGate } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 import { imageOfPoint, objectImagingSteps, principalRays } from './object-imaging.js';
@@ -113,7 +114,7 @@ let pathFamilySeq = 0;
 // meets anything else keeps each ray's glass GDD instead.
 const PATH_PHASE_SURFACES = new Set([
   'mirror', 'conicmirror', 'cmirror', 'refract', 'grating', 'lens', 'gdd', 'attenuate',
-  'dichroic', 'filter', 'split', 'polarizer', 'wp', 'retarder', 'pbs', 'isolator', 'chop',
+  'dichroic', 'filter', 'split', 'polarizer', 'wp', 'retarder', 'pbs', 'isolator', 'faraday', 'chop',
   'delay', 'phasemod', 'phaseplate', 'detector',
 ]);
 // Arriving samples that differ in direction or position by more than this are
@@ -355,6 +356,11 @@ export function specimenSrsNote(elementId) {
 // volume specimen element id -> each arriving beam's focus: where it lies and
 // whether it is inside the specimen (see sectioning.js).
 let specimenFocusReadings = new Map();
+// The light that crossed each Faraday rotator and physical isolator in the
+// last trace (step P2): its wavelength, band, direction and power, one entry
+// per distinct light, for the readouts that give the rotation and the
+// isolation at each wavelength present.
+let faradayCrossings = new Map();
 
 export function specimenFocusReading(elementId) {
   return specimenFocusReadings.get(elementId) || null;
@@ -4542,6 +4548,40 @@ const withGate = (pulse, gate) => ({ ...pulse, gates: [...(pulse.gates || []), g
 // crosses it backwards sees the reciprocal element, which for a retarder or
 // a polarizer is the same element at −θ (mueller.js, reciprocalMueller). The
 // angle is measured from p̂ = ŝ × k̂, and p̂ turns over with the ray.
+// Step P2. Light crossing a Faraday rotator or a physical isolator is noted
+// for their readouts, once per distinct light: the companion rays of a
+// beam parameter are not light.
+function noteFaradayCrossing(surface, ray, forward) {
+  const id = surface.el?.id;
+  if (companionMode || !id || !(ray.wl > 0)) return;
+  const list = faradayCrossings.get(id) || [];
+  const bw = Number(ray.bw) || 0;
+  const same = list.find(c => c.forward === forward && Math.abs(c.wl - ray.wl) < 1e-6 && Math.abs(c.bw - bw) < 1e-6);
+  if (same) same.power += Number(ray.power) || 0;
+  else list.push({ wl: ray.wl, bw, forward, power: Number(ray.power) || 0 });
+  faradayCrossings.set(id, list);
+}
+// The light that crossed a Faraday rotator or a physical isolator in the
+// last trace: [{ wl, bw, forward, power }], forward meaning along its arrow.
+export const faradayReading = elementId => faradayCrossings.get(elementId) || [];
+
+// The caveats a Faraday rotator leaves on the light it turned: where it has
+// no Verdet constant, and where a band turns over a range that one state
+// cannot hold. Faraday rotation within a band varies by more than this (°)
+// before the second is said.
+const FARADAY_BAND_SPREAD_DEG = 1;
+const faradayUnknownNote = issue => `Polarization not computed past a Faraday rotator: ${issue}; the state shown is the one that arrived`;
+const faradayIsolatorNote = issue => `Isolation not computed at an optical isolator: ${issue}; this light passed as through an ideal one-way gate`;
+function faradayBandNote(data, ray, forward, centreDeg) {
+  const bw = Number(ray.bw) || 0;
+  if (!(bw > 0)) return null;
+  const ends = [ray.wl - bw / 2, ray.wl + bw / 2].map(wl => rotationForCrossingDeg(data, wl, forward));
+  if (ends.some(e => e.issue)) return null;
+  const [lo, hi] = [Math.min(ends[0].deg, ends[1].deg), Math.max(ends[0].deg, ends[1].deg)];
+  if (!(hi - lo > FARADAY_BAND_SPREAD_DEG)) return null;
+  return `Faraday rotation taken at the band's centre (${centreDeg.toFixed(1)}°): across the band's width it runs from ${lo.toFixed(1)}° to ${hi.toFixed(1)}°, which one polarization state cannot hold`;
+}
+
 function crossingAxisDeg(surface, d, axisDeg) {
   const forward = rotPt(1, 0, surface.el?.rot || 0);
   return dot(d, forward) < 0 ? -axisDeg : axisDeg;
@@ -6022,7 +6062,58 @@ function interact(ray, hit) {
     }
     case 'isolator': {
       const fwd = rotPt(1, 0, (s.el && s.el.rot) || 0);
-      return dot(d, fwd) > 0 ? [{ d }] : [];
+      const forward = dot(d, fwd) > 0;
+      if (data?.model !== 'physical') return forward ? [{ d }] : [];
+      // Step P2: an input polarizer, a Faraday rotator turning forward light
+      // by 45° at the design wavelength, and an output polarizer at 45°,
+      // weighed wavelength by wavelength across the light's spectrum. Where
+      // the rotator's material has no Verdet constant the light passes as
+      // through the ideal gate, and says so.
+      noteFaradayCrossing(s, ray, forward);
+      const axisFor = a => crossingAxisDeg(s, d, a);
+      const gate = forward ? 1 : 0;
+      const through = (stokes, wl) => isolatorCrossing(data, wl, stokes, forward, axisFor);
+      const share = (stokes, wl) => {
+        const c = through(stokes, wl);
+        return c.issue ? gate : c.transmission;
+      };
+      const centre = through(ray.stokes, ray.wl);
+      const stokes = centre.issue ? cloneStokes(ray.stokes) : centre.stokes;
+      const caveat = centre.issue ? { approximation: faradayIsolatorNote(centre.issue) } : {};
+      if (ray.polMod) {
+        const m = polModThrough(ray, st => share(st, ray.wl));
+        if (!ray.pulse) {
+          if (m.mean <= MIN_RETAINED_POWER_INT) return [];
+          return [{ d, intensity: ray.intensity * m.mean, stokes, pol: legacyPolarization(stokes), polMod: null, retainWeak: true, tag: 'iso', ...caveat }];
+        }
+        if (Math.max(m.high, m.low) <= MIN_RETAINED_POWER_INT) return [];
+        return [{ d, stokes, pol: legacyPolarization(stokes), polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'iso', ...caveat }];
+      }
+      const T = wl => share(ray.stokes, wl);
+      const kept = ray.spec?.kind === 'lines' ? lineTransmission(ray.spec, T) : applyTransmission(ray.spec, ray.wl, T);
+      if (!kept || !(kept.fraction > MIN_RETAINED_POWER_INT)) return [];
+      return [{
+        d, intensity: ray.intensity * kept.fraction, stokes, pol: legacyPolarization(stokes), retainWeak: true, tag: 'iso', ...caveat,
+        ...(ray.spec ? { wl: kept.wl, bw: kept.bw, spec: kept.spec } : {}),
+      }];
+    }
+    case 'faraday': {
+      // Step P2: the polarization turns by V·B·L about the field, which
+      // light travelling against the field sees as the opposite turn in its
+      // own basis (sketch/js/faraday.js). A broadband ray carries one state:
+      // the turn at its centre wavelength.
+      const forward = dot(d, rotPt(1, 0, (s.el && s.el.rot) || 0)) > 0;
+      noteFaradayCrossing(s, ray, forward);
+      const turn = rotationForCrossingDeg(data, ray.wl, forward);
+      if (turn.issue) return [{ d, tag: 'far', approximation: faradayUnknownNote(turn.issue) }];
+      if (!ray.stokes && !ray.polMod) return [{ d, tag: 'far' }];
+      const stokes = rotateStokes(ray.stokes, turn.deg);
+      const band = ray.stokes ? faradayBandNote(data, ray, forward, turn.deg) : null;
+      return [{
+        d, stokes, pol: legacyPolarization(stokes), tag: 'far',
+        ...(band ? { approximation: band } : {}),
+        ...(ray.polMod ? { polMod: { ...ray.polMod, stokesHigh: rotateStokes(ray.polMod.stokesHigh, turn.deg), stokesLow: rotateStokes(ray.polMod.stokesLow, turn.deg) } } : {}),
+      }];
     }
     case 'dmd': {
       const mid = mul(add(s.a, s.b), 0.5);
@@ -6965,7 +7056,7 @@ const LOOP_DIRECTION = 1e-9;
 const LOOP_MAX_GAIN = 1 - 1e-9;
 const PASSIVE_LOOP_SURFACES = new Set([
   'mirror', 'cmirror', 'conicmirror', 'dm', 'lens', 'metalens', 'refract', 'dichroic', 'filter',
-  'etalon', 'split', 'pbs', 'grating', 'polarizer', 'wp', 'retarder', 'isolator', 'attenuate',
+  'etalon', 'split', 'pbs', 'grating', 'polarizer', 'wp', 'retarder', 'isolator', 'faraday', 'attenuate',
   'gdd', 'delay', 'phaseplate', 'transmit',
 ]);
 
@@ -9152,6 +9243,7 @@ export function traceScene(elements, beams = [], options = {}) {
   specimenTimingStates = new Map();
   specimenSrsNotes = new Map();
   specimenFocusReadings = new Map();
+  faradayCrossings = new Map();
   lastBeamTracks = [];
   beamReadings = new Map();
   companionStep = options.companionStep || COMPANION_STEP;

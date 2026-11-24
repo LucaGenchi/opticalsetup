@@ -1,0 +1,150 @@
+{
+ "elements": 9,
+ "beams": 0,
+ "drawables": {
+  "count": 234,
+  "byType": {
+   "poly": 216,
+   "path": 18
+  },
+  "colors": {
+   "#8b1a1a": 234
+  },
+  "points": 900,
+  "sum": [
+   223900,
+   230300
+  ],
+  "bbox": [
+   21,
+   249,
+   520,
+   356
+  ],
+  "digest": "4853a961"
+ },
+ "drawnElements": {
+  "textlabel:title": "d72fabc5",
+  "textlabel:note": "987b347a",
+  "cwlaser:laser": "2bbe6fcb",
+  "pbs:pbs": "cb43c238",
+  "qwp:plate": "2a7eef7d",
+  "faraday:rotator": "8ea19f45",
+  "mirror:mirror": "2117715e",
+  "powermeter:meter": "1f9e3db2",
+  "display:screen": "ec990730"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "readouts": {
+  "powermeter:meter": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 1064,
+    "bandMin": 1064,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 9764.61616,
+       "gouyDeg": 18.6057871,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.338681719,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1055.14595,
+       "rayleighMm": 2952.62467,
+       "sourceId": "laser",
+       "waistAheadMm": -994,
+       "waistUm": 1000,
+       "wavelengthNm": 1064
+      }
+     ],
+     "declined": []
+    },
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff3030",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 0,
+     "slopePerMm": 0
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.999999988,
+    "detectorType": "Power meter",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": -1,
+     "s2": 1.2246468e-16,
+     "s3": 0
+    },
+    "outputSignal": 0.999999988,
+    "polarization": "Linear 90°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "power",
+    "samples": 25,
+    "saturated": false,
+    "scope": {
+     "bandMax": "plane",
+     "bandMin": "plane",
+     "beam": "plane",
+     "centroid": "plane",
+     "convergence": "plane",
+     "darkOutput": "plane",
+     "depositedProfile": "plane",
+     "depositedSignal": "plane",
+     "gain": "plane",
+     "interference": "plane",
+     "normalizedStokes": "plane",
+     "outputSignal": "plane",
+     "polarization": "plane",
+     "profile": "plane",
+     "pulse": "plane",
+     "saturated": "plane",
+     "signal": "plane",
+     "snr": "plane",
+     "sourceFractions": "plane",
+     "spectrum": "plane",
+     "spotSpan": "plane",
+     "wavelength": "plane"
+    },
+    "signal": 0.999999988,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.999999988,
+      "sourceId": "laser"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#8b1a1a",
+      "continuum": false,
+      "power": 0.999999988,
+      "sourceId": "laser",
+      "wavelength": 1064,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 2,
+    "wavelength": 1064
+   }
+  }
+ },
+ "fibers": {}
+}

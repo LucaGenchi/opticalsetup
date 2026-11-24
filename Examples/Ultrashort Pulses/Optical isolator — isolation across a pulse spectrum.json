@@ -1,0 +1,147 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -50,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Optical isolator: isolation across a pulse spectrum**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -50,
+   "y": 90,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "A 15 fs pulse at 800 nm is about 63 nm wide. The isolator turns light by 45° at 800 nm only:\nits wings come back. The spectrometer shows what returns past the pick-off, with a hole at 800 nm.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "pulsedlaser",
+   "x": -25,
+   "y": 250,
+   "rot": 0,
+   "label": "Ti:sapphire, 800 nm, 15 fs, 1 W",
+   "showLabel": true,
+   "params": {
+    "wavelength": 800,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "transformLimited": true,
+    "pulseWidthFs": 15,
+    "pulseShape": "gauss",
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "pickoff",
+   "type": "bs",
+   "x": 125,
+   "y": 250,
+   "rot": 0,
+   "label": "90:10 pick-off",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.9,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "isolator",
+   "type": "isolator",
+   "x": 275,
+   "y": 250,
+   "rot": 0,
+   "label": "Isolator, TGG, designed for 800 nm",
+   "showLabel": true,
+   "params": {
+    "aperture": 22,
+    "isolatorModel": "physical",
+    "material": "tgg",
+    "designWl": 800,
+    "inputAxis": 0,
+    "extinctionDb": 40
+   }
+  },
+  {
+   "id": "reflector",
+   "type": "mirror",
+   "x": 450,
+   "y": 250,
+   "rot": 0,
+   "label": "A surface that reflects back",
+   "showLabel": true,
+   "params": {
+    "length": 40,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "dump",
+   "type": "beamdump",
+   "x": 125,
+   "y": 150,
+   "rot": 270,
+   "label": "Forward pick-off",
+   "showLabel": true,
+   "params": {
+    "aperture": 22
+   }
+  },
+  {
+   "id": "spectrometer",
+   "type": "spectrometer",
+   "x": 125,
+   "y": 375,
+   "rot": 90,
+   "label": "Light sent back",
+   "showLabel": true,
+   "params": {
+    "aperture": 30,
+    "rangeMode": "manual",
+    "rangeMin": 700,
+    "rangeMax": 900,
+    "intensityScale": "density",
+    "labelPeaks": false
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 330,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "spectrometer",
+    "displayScale": 0.9,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}
