@@ -60,6 +60,18 @@
     "approximations": [],
     "bandMax": 532,
     "bandMin": 532,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Thin convex lens",
+       "elementId": "egrpu7l6",
+       "reason": "it focuses the beam too steeply for the Gaussian-beam formulas, which hold for small angles: half-angle 233 mrad, above 200 mrad",
+       "sourceId": "efpipbp2",
+       "wavelengthNm": 532
+      }
+     ]
+    },
     "centroid": 3,
     "coherentPaths": 0,
     "color": "#65ff00",
@@ -71,6 +83,7 @@
      "slopePerMm": null,
      "waistAheadMm": 0,
      "waistMm": 0.0020804648,
+     "waistModel": "cone",
      "wavelengthNm": 532
     },
     "dark": false,
@@ -184,6 +197,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

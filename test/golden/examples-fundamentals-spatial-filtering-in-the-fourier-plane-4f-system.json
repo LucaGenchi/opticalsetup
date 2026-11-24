@@ -50,6 +50,18 @@
     "approximations": [],
     "bandMax": 633,
     "bandMin": 633,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "meter",
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "laser",
+       "wavelengthNm": 633
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff4200",
@@ -61,6 +73,7 @@
      "slopePerMm": null,
      "waistAheadMm": -3.10319796e-13,
      "waistMm": 0.00636619772,
+     "waistModel": "cone",
      "wavelengthNm": 633
     },
     "dark": false,
@@ -88,6 +101,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

@@ -49,6 +49,18 @@
     "approximations": [],
     "bandMax": 633,
     "bandMin": 633,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Fiber",
+       "elementId": "fiber",
+       "reason": "it starts no Gaussian beam: no single-mode core is set, so its output mode is not known",
+       "sourceId": "laser",
+       "wavelengthNm": 633
+      }
+     ]
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff4200",
@@ -82,6 +94,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

@@ -11,6 +11,7 @@ import { gaussianFocus } from '../sketch/js/sectioning.js';
 import { focusEnvelope, zoomFoci } from '../sketch/js/zoom-focus.js';
 import { zoomSceneSVG } from '../sketch/js/zoom-view.js';
 import { zoomGeometry, zoomNotes } from '../sketch/js/zoom.js';
+import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 
 // A 532 nm beam 3 mm wide, focused by an f = 100 mm lens at x = 200.
 function focusedScene(zoomAt = { x: 200, y: 0 }, zoomParams = {}) {
@@ -25,21 +26,48 @@ function focusedScene(zoomAt = { x: 200, y: 0 }, zoomParams = {}) {
 const view = ({ zoom, elements, traced }) =>
   zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
 
-test('a beam focused in the region gets the Gaussian waist of its cone', () => {
+test('a beam focused in the region gets its propagated waist', () => {
   const scene = focusedScene();
   const foci = zoomFoci(scene.zoom, scene.traced.paths);
   assert.equal(foci.length, 1);
   const [focus] = foci;
-  assert.ok(Math.abs(focus.point.x - 200) < 1e-6 && Math.abs(focus.point.y) < 1e-6, 'at the focal plane');
+  // The laser's beam parameter (step G1): w = 1.5 mm at its output, 48 mm
+  // before the lens. The waist is Self's closed form for an ideal thin lens,
+  // 2.9 µm before the geometric focus (the Gaussian focal shift).
+  const ideal = thinLensFocus(gaussianBeam({ waistUm: 1500, wavelengthNm: 532 }), 48, 100);
+  assert.equal(focus.model, 'propagated');
+  assert.ok(Math.abs(focus.point.x - (100 + ideal.distanceMm)) < 1e-6 && Math.abs(focus.point.y) < 1e-6, `at the waist: ${focus.point.x}`);
+  assert.ok(focus.point.x < 200 && focus.point.x > 199.99);
   assert.ok(Math.abs(focus.axis.x - 1) < 1e-9);
-  // The cone's half-angle is the beam's half-width over f.
-  assert.ok(Math.abs(focus.na - Math.sin(Math.atan(1.5 / 100))) < 1e-6, `NA ${focus.na}`);
-  const ideal = gaussianFocus(532, focus.na);
-  assert.equal(focus.w0Mm, ideal.w0Mm);
-  assert.equal(focus.zRMm, ideal.zRMm);
-  // The textbook λf/(πw) for a 1.5 mm half-width, within the paraxial error.
-  assert.ok(Math.abs(focus.w0Mm - 532e-6 * 100 / (Math.PI * 1.5)) < 1e-4, `w0 ${focus.w0Mm}`);
+  assert.ok(Math.abs(focus.w0Mm * 1000 / ideal.beam.waistUm - 1) < 1e-6, `w0 ${focus.w0Mm}`);
+  assert.ok(Math.abs(focus.zRMm / ideal.beam.rayleighMm - 1) < 1e-5, `zR ${focus.zRMm}`);
+  // The textbook λf/(πw) for a 1.5 mm half-width.
+  assert.ok(Math.abs(focus.w0Mm - 532e-6 * 100 / (Math.PI * 1.5)) < 1e-7, `w0 ${focus.w0Mm}`);
   assert.equal(focus.wl, 532);
+});
+
+test('a bundle with no beam parameter gets the Gaussian waist of its cone, labelled', () => {
+  // An LED carries no beam parameter (step G1).
+  const laser = createElement('ledsource', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 3;
+  const lens = createElement('lens', 100, 0);
+  const zoom = createElement('zoom', 200, 0);
+  Object.assign(zoom.params, { diffraction: true, w: 4, mag: 20, insetX: 0, insetY: -150 });
+  const elements = [laser, lens, zoom];
+  const traced = traceScene(elements, []);
+  const foci = zoomFoci(zoom, traced.paths);
+  assert.ok(foci.length >= 1);
+  for (const focus of foci) {
+    assert.equal(focus.model, 'cone');
+    assert.ok(Math.abs(focus.point.x - 200) < 1e-6, 'at the focal plane');
+    // The cone's half-angle is the beam's half-width over f.
+    assert.ok(Math.abs(focus.na - Math.sin(Math.atan(1.5 / 100))) < 1e-6, `NA ${focus.na}`);
+    const ideal = gaussianFocus(focus.wl, focus.na);
+    assert.equal(focus.w0Mm, ideal.w0Mm);
+    assert.equal(focus.zRMm, ideal.zRMm);
+  }
+  assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }), />cone estimate</);
 });
 
 test('the waist and its note are drawn by default, and each can be turned off', () => {
@@ -122,7 +150,9 @@ test('a micron waist behind a short lens is a smooth curve, not rounded into ste
   const elements = [laser, lens, zoom];
   const traced = traceScene(elements, []);
   const [focus] = zoomFoci(zoom, traced.paths);
-  assert.ok(Math.abs(focus.w0Mm - 1.14e-3) < 1e-5);
+  // The propagated waist (step G1), λf/(πw) = 1.13 µm; the cone estimate
+  // λ/(π sin θ) gave 1.14 µm at this NA of 0.15.
+  assert.ok(Math.abs(focus.w0Mm - thinLensFocus(gaussianBeam({ waistUm: 1500, wavelengthNm: 532 }), 98, 10).beam.waistUm / 1000) < 1e-9);
   const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
   const pts = svg.match(/<polygon points="([^"]+)"[^>]*data-zoom-focus/)[1].split(' ').map(p => p.split(',').map(Number));
   const g = zoomGeometry(zoom.params);
@@ -216,7 +246,8 @@ test('the waist stops at the optic after the focus', () => {
   const elements = [laser, lens, mirror, zoom];
   const traced = traceScene(elements, []);
   const [focus] = zoomFoci(zoom, traced.paths);
-  assert.ok(Math.abs(focus.point.x - 110) < 1e-6);
+  // The propagated waist, a few nanometres before the geometric focus.
+  assert.ok(Math.abs(focus.point.x - 110) < 1e-3);
   assert.ok(Math.abs(focus.from + 10) < 0.05, `the beam starts 10 mm before the focus, at the lens: ${focus.from}`);
   const bench = envelopeOnBench(zoom, zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }));
   // The mirror's face is the line x + y = 112: nothing of the waist lies

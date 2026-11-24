@@ -373,6 +373,9 @@ function normalizeBeam(raw, used) {
       groupIndex: clamp(finite(raw.groupIndex) ? raw.groupIndex : 1.468, 1, 2.2),
       lossDbPerM: clamp(finite(raw.lossDbPerM) ? raw.lossDbPerM : 0.2, 0, 100),
       ...normalizeFiberDispersion(raw),
+      // The core of a single-mode fiber, for the Gaussian beam its output
+      // starts (step G1); kept only when set.
+      ...(finite(raw.singleModeCoreUm) && raw.singleModeCoreUm > 0 ? { singleModeCoreUm: clamp(raw.singleModeCoreUm, 0.5, 100) } : {}),
       // Capillary settings exist only on a capillary: an ordinary fiber does
       // not carry, or save, gas parameters it never uses.
       ...(raw.fiberModel === 'argon' ? normalizeHollowCore(raw) : {}),

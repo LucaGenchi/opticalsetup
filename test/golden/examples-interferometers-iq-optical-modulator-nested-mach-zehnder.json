@@ -65,6 +65,18 @@
     "approximations": [],
     "bandMax": 1550,
     "bandMin": 1550,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "output",
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "laser",
+       "wavelengthNm": 1550
+      }
+     ]
+    },
     "centroid": -5.02456721e-11,
     "coherentPaths": 4,
     "color": "#ff8989",
@@ -182,6 +194,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -230,6 +243,18 @@
     "approximations": [],
     "bandMax": 1550,
     "bandMin": 1550,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "unused",
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "laser",
+       "wavelengthNm": 1550
+      }
+     ]
+    },
     "centroid": -5.00868028e-11,
     "coherentPaths": 4,
     "color": "#ff8989",
@@ -347,6 +372,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

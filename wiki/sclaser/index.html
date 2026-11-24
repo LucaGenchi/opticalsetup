@@ -232,6 +232,21 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
 
+        <h3>Gaussian beam</h3>
+        <p>Drawn with a size, the supercontinuum also starts a Gaussian beam, as the CW Laser
+        does, with the beam quality M² in the collapsed <em>Gaussian beam</em> section. A
+        fibre supercontinuum leaves a single-mode photonic crystal fibre: every colour leaves
+        in the fibre's one transverse mode<sup class="cite">[<a href="#ref-2">2</a>,<a href="#ref-3">3</a>,<a href="#ref-4">4</a>]</sup>, and commercial sources specify M² below 1.1<sup class="cite">[<a href="#ref-5">5</a>]</sup>. The
+        beam is not the same size at every colour, though. The collimator images the fibre's
+        mode, so the collimated beam grows roughly in proportion to the wavelength and spreads
+        at about the same angle at every colour: one commercial source gives about 1, 2 and
+        3&nbsp;mm at 530, 1100 and 2000&nbsp;nm<sup class="cite">[<a href="#ref-5">5</a>]</sup>. The Beam width is therefore the 1/e² diameter
+        at the band's centre, and each part of the band that a filter, a dichroic or a prism
+        separates starts with a waist in proportion to its wavelength: with a
+        400–2000&nbsp;nm band and a 2&nbsp;mm Beam width, the part a 600&nbsp;nm short-pass
+        leaves, centred at 500&nbsp;nm, starts 0.83&nbsp;mm wide. The readouts give the beam
+        at one wavelength, the band's centre or the centre of the part that is there, and say
+        so. The drawn rays keep the Beam width at every colour.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -314,7 +329,13 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         of these sources, is not represented. The endpoint estimate is not a propagated
         complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
         non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
-        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p></div>
+        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>
+        <p>The Gaussian beam's size in proportion to the wavelength idealises a collimated
+        fibre output: a real fibre's mode grows somewhat with wavelength (the commercial
+        figures above grow a little more slowly than the wavelength), a lens collimator adds
+        chromatic focal shifts that a mirror collimator avoids, and M² can rise above 1 at
+        high pump power. A continuum generated in a multimode fibre is not a single-mode
+        beam.</p></div>
       </div>
 
 
@@ -326,7 +347,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
 
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
-        <li id="ref-1"><a href="https://doi.org/10.1103/RevModPhys.78.1135" target="_blank" rel="noopener">J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua</a></li>
+        <li id="ref-1"><a href="https://doi.org/10.1103/RevModPhys.78.1135" target="_blank" rel="noopener">J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua</a></li><li id="ref-2"><a href="https://doi.org/10.1364/OL.22.000961" target="_blank" rel="noopener">T. A. Birks, J. C. Knight and P. St. J. Russell, “Endlessly single-mode photonic crystal fiber,” Optics Letters 22, 961–963 (1997) — a photonic crystal fibre that is single-mode at every wavelength</a></li><li id="ref-3"><a href="https://doi.org/10.1088/0957-0233/18/8/036" target="_blank" rel="noopener">G. J. Esposito, A. Harris, D. Burns and G. McConnell, “Measurement of white-light supercontinuum beam properties from a photonic crystal fibre using a laser scanning confocal microscope,” Measurement Science and Technology 18, 2609–2615 (2007) — M² close to 1 across the visible</a></li><li id="ref-4"><a href="https://doi.org/10.1364/OL.36.002659" target="_blank" rel="noopener">X. Hu et al., “High average power, strictly all-fiber supercontinuum source with good beam quality,” Optics Letters 36, 2659–2661 (2011) — single-mode operation verified across 500–1700 nm</a></li><li id="ref-5"><a href="https://www.tlsbv.nl/wp-content/uploads/2020/06/TLS-superk-extreme-fianium.pdf" target="_blank" rel="noopener">NKT Photonics, SuperK EXTREME/FIANIUM datasheet — M² &lt; 1.1; collimated beam diameter ≈ 1 mm at 530 nm, ≈ 2 mm at 1100 nm, ≈ 3 mm at 2000 nm</a></li>
       </ol>
 
 

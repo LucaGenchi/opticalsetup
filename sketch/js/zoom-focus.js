@@ -16,7 +16,15 @@
 // That is the diffraction limit of the cone, not a wave-optics calculation:
 // aberrations, a medium's index, truncation by an aperture and M² > 1 are
 // not computed, and a broadband beam is taken at its centre wavelength.
+//
+// Where the bundle's central ray carries a propagated beam parameter (step
+// G1), the waist drawn is that beam's instead: its own size, Rayleigh range
+// and position, which differ from the cone's where the beam's Rayleigh range
+// is not long against the focal length, where M² > 1 or in a medium. Each
+// focus says which of the two it shows (`model`: 'propagated' or 'cone').
 
+import { beamFromQ } from './gaussian-beam.js';
+import { beamOnPathSegment } from './raytrace.js';
 import { bundleFocus } from './sectioning.js';
 import { wavelengthToColor } from './util.js';
 import { zoomGeometry } from './zoom.js';
@@ -67,19 +75,28 @@ export function zoomFoci(zoom, paths = []) {
       const w = path.segmentIntensities?.[i] ?? path.intensity;
       if (!(w > 0)) continue;
       const key = bundleKey(path, i);
-      if (!groups.has(key)) groups.set(key, { wl: path.wl, color: path.color || null, rays: [] });
-      groups.get(key).rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len });
+      if (!groups.has(key)) groups.set(key, { wl: path.wl, color: path.color || null, rays: [], beam: null });
+      const group = groups.get(key);
+      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len });
+      group.beam ||= beamOnPathSegment(path, i);
     }
   }
   const foci = [];
   for (const group of groups.values()) {
-    const found = bundleFocus(group.rays, group.wl);
+    // The rays must converge to a focus for one to be drawn at all (a
+    // collimated beam's own waist is not a focus); where the bundle carries a
+    // propagated beam, its waist is drawn in place of the cone's.
+    const cone = bundleFocus(group.rays, group.wl);
+    if (!cone.ok) continue;
+    const found = propagatedFocus(group) || cone;
     if (!found.ok || !inRegion(g, zoom, found.point)) continue;
     const real = group.rays.every(r => {
       const along = (found.point.x - r.p.x) * r.d.x + (found.point.y - r.p.y) * r.d.y;
       return along > ALONG_TOLERANCE && along <= r.len + ALONG_TOLERANCE;
     });
-    if (!real) continue;
+    // Every ray must pass through a cone's focus; a propagated waist was
+    // placed on the beam's own axis (propagatedFocus).
+    if (!real && found.model !== 'propagated') continue;
     // Where the bundle travels: its rays start on the optic before the
     // focus and end on the optic after it. `from` and `to` span all of it
     // along the axis, and `ends` are the two optics' faces, as lines
@@ -92,7 +109,11 @@ export function zoomFoci(zoom, paths = []) {
       const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
       from = Math.min(from, s0); to = Math.max(to, s1);
     }
-    if (![from, to].every(Number.isFinite) || !(from < 0 && to > 0)) continue;
+    // A cone's focus lies between the optics; a propagated waist may lie up
+    // to a Rayleigh range beyond them, and its envelope is drawn on the
+    // stretch the beam travels, cut at the faces as before.
+    if (![from, to].every(Number.isFinite) || !(from < to)) continue;
+    if (found.model !== 'propagated' && !(from < 0 && to > 0)) continue;
     const across = p => (p.x - found.point.x) * -found.axis.y + (p.y - found.point.y) * found.axis.x;
     const outermost = group.rays.reduce((ends, r) => {
       const t = across(r.p);
@@ -108,9 +129,35 @@ export function zoomFoci(zoom, paths = []) {
     foci.push({
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
+      model: found.model || 'cone', estimate: found.estimate || null,
     });
   }
   return foci;
+}
+
+// The waist of a bundle's propagated beam, in bundleFocus's shape, where it
+// lies on the bundle's segment or within a Rayleigh range of either end; null
+// without a beam parameter, and { ok: false } when the beam's waist lies
+// further away (the rays' crossing is then not where the beam is narrowest,
+// and no waist is drawn there).
+function propagatedFocus(group) {
+  const beam = group.beam;
+  if (!beam) return null;
+  const shape = beamFromQ(beam.q, { wavelengthNm: beam.wavelengthNm, m2: beam.m2, index: beam.index });
+  if (!shape) return null;
+  const along = shape.waistAheadMm;
+  const length = Math.max(...group.rays.map(r => r.len));
+  if (!(along > -shape.rayleighMm && along <= length + shape.rayleighMm)) return { ok: false };
+  // An edge that clips the beam before its waist or within the drawn
+  // stretch ends the beam parameter there (as the probe and detectors
+  // read it): the zoom then keeps the cone estimate.
+  if (beam.clipWithin?.(Math.max(along, length))) return null;
+  return {
+    ok: true, model: 'propagated',
+    point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d },
+    w0Mm: shape.waistUm / 1000, zRMm: shape.rayleighMm, na: Math.sin(Math.atan(shape.halfDivergenceMrad / 1000)),
+    estimate: beam.estimate || null,
+  };
 }
 
 // An optic's face as the side of a line the focus is on: the line through

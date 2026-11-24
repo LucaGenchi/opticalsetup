@@ -105,6 +105,18 @@
     "approximations": [],
     "bandMax": 550.531915,
     "bandMin": 499.468085,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "Sample on piezo stage",
+       "elementId": "stage",
+       "reason": "the specimen scatters and absorbs the light, so the Gaussian beam is not followed past it",
+       "sourceId": "excitation",
+       "wavelengthNm": 517.169365
+      }
+     ]
+    },
     "centroid": -1.06022952e-14,
     "coherentPaths": 0,
     "color": "#2bff1a",
@@ -224,6 +236,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

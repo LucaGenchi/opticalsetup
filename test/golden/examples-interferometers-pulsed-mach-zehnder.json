@@ -106,6 +106,18 @@
     "approximations": [],
     "bandMax": 808.031234,
     "bandMin": 791.968766,
+    "beam": {
+     "branches": [],
+     "declined": [
+      {
+       "element": "This detector",
+       "elementId": "etn24g3r",
+       "reason": "branches of one source recombine here: they overlap and add as fields (they interfere), so no single Gaussian beam describes the light",
+       "sourceId": "e9incbv0",
+       "wavelengthNm": 800
+      }
+     ]
+    },
     "centroid": 6.82648382e-14,
     "coherentPaths": 2,
     "color": "#ff3030",
@@ -204,6 +216,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

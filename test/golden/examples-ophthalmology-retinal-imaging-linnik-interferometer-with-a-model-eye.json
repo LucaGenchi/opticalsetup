@@ -55,6 +55,25 @@
     "approximations": [],
     "bandMax": 840,
     "bandMin": 840,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": -3.46260344,
+       "gouyDeg": -1.22879715,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 60.0138013,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 4.45633841,
+       "rayleighMm": 0.0742381501,
+       "sourceId": "eoph0src",
+       "waistAheadMm": 0.00159239681,
+       "waistUm": 4.45531359,
+       "wavelengthNm": 840
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -62,10 +81,11 @@
      "atFocus": true,
      "diverging": false,
      "fullAngleDeg": 6.86726072,
-     "rayleighMm": 0.0745396871,
+     "rayleighMm": 0.0742381501,
      "slopePerMm": null,
-     "waistAheadMm": 0,
-     "waistMm": 0.00446435261,
+     "waistAheadMm": 0.00159239681,
+     "waistMm": 0.00445531359,
+     "waistModel": "propagated",
      "wavelengthNm": 840
     },
     "dark": false,
@@ -93,6 +113,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -141,6 +162,33 @@
     "approximations": [],
     "bandMax": 840,
     "bandMin": 840,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": -100.896861,
+       "gouyDeg": -1.51800345,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 10.0035107,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 26.7380304,
+       "rayleighMm": 2.67192663,
+       "sourceId": "eoph0src",
+       "waistAheadMm": 0.0708070152,
+       "waistUm": 26.7286467,
+       "wavelengthNm": 840
+      }
+     ],
+     "declined": [
+      {
+       "element": "eye (f = 25 mm, 6 mm pupil)",
+       "elementId": "eoph0eye",
+       "reason": "the retina is a diffuse surface, so the Gaussian beam is not followed past it",
+       "sourceId": "eoph0src",
+       "wavelengthNm": 840
+      }
+     ]
+    },
     "centroid": -2.71298769e-15,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -152,6 +200,7 @@
      "slopePerMm": null,
      "waistAheadMm": 0,
      "waistMm": 0.0267393673,
+     "waistModel": "cone",
      "wavelengthNm": 840
     },
     "dark": false,
@@ -266,6 +315,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

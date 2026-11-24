@@ -8,6 +8,7 @@ import { traceAll } from '../sketch/js/raytrace.js';
 import { DETECTOR_TYPES } from '../sketch/js/detector-instruments.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { resolveSourceSpectrum, spectrumStats } from '../sketch/js/spectrum.js';
+import { gaussianBeam, thinLensFocus } from '../calculators/assets/gaussian-beam.js';
 
 function screenFor(sensor, elements, view = 'main') {
   const display = createElement('display', sensor.x + 130, sensor.y + 80);
@@ -357,14 +358,40 @@ test('a wavefront detector on a focus reads the focus plane, not collimated', ()
   const cone = 2 * Math.atan(5 / 100);
   assert.ok(Math.abs(at.divergenceDeg - cone * 180 / Math.PI) < 1e-6, `cone ${at.divergenceDeg}`);
   assert.equal(at.signedDivergenceDeg, 0);
-  // The ideal Gaussian waist of that cone at the laser's 532 nm, and its
-  // Rayleigh range: w0 = lambda / (pi NA), zR = pi w0^2 / lambda.
-  const wlMm = 532e-6, w0 = wlMm / (Math.PI * Math.sin(cone / 2));
+  // The laser has a beam parameter (step G1): w = 5 mm at its output, 48 mm
+  // before the lens. The waist and Rayleigh range are the propagated beam's,
+  // the closed form for an ideal thin lens (Self), not the cone estimate.
+  const focus = thinLensFocus(gaussianBeam({ waistUm: 5000, wavelengthNm: 532 }), 48, 100);
+  assert.equal(at.waistModel, 'propagated');
   assert.ok(Math.abs(at.wavelengthNm - 532) < 1e-9);
+  assert.ok(Math.abs(at.waistMm * 1000 / focus.beam.waistUm - 1) < 1e-6, `waist ${at.waistMm}`);
+  assert.ok(Math.abs(at.rayleighMm / focus.beam.rayleighMm - 1) < 1e-5, `zR ${at.rayleighMm}`);
+  assert.ok(Math.abs(at.waistMm - 0.0033868) < 5e-8 && Math.abs(at.rayleighMm - 0.067736) < 5e-7);
+  // The face sits on the geometric focus, 100 mm after the lens; the waist
+  // lies the Gaussian focal shift before it.
+  assert.ok(Math.abs(at.waistAheadMm - (focus.distanceMm - 100)) < 1e-6, `waist ahead ${at.waistAheadMm}`);
+  assert.ok(at.waistAheadMm < 0 && at.waistAheadMm > -1e-4);
+});
+
+test('a focus with no beam parameter keeps the cone estimate, labelled as such', () => {
+  // An LED has no beam parameter (step G1): the waist is the ideal
+  // Gaussian of the traced cone at the mean wavelength.
+  const laser = createElement('ledsource', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 10;
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = 100;
+  const detector = createElement('wavefrontdetector', 226, 0);
+  detector.params.aperture = 30;
+  const elements = [laser, lens, detector];
+  traceAll(elements);
+  const at = enhancedReading(detector, elements).wavefront;
+  assert.equal(at.state, 'FOCUS PLANE');
+  assert.equal(at.waistModel, 'cone');
+  const cone = 2 * Math.atan(5 / 100), wlMm = at.wavelengthNm * 1e-6, w0 = wlMm / (Math.PI * Math.sin(cone / 2));
   assert.ok(Math.abs(at.waistMm - w0) < 1e-9 * w0, `waist ${at.waistMm}`);
   assert.ok(Math.abs(at.rayleighMm - Math.PI * w0 * w0 / wlMm) < 1e-9, `zR ${at.rayleighMm}`);
-  assert.ok(Math.abs(at.waistMm - 0.00339) < 5e-6 && Math.abs(at.rayleighMm - 0.0679) < 5e-5);
-  assert.equal(at.waistAheadMm, 0);
+  assert.equal(enhancedReading(detector, elements).beam, undefined, 'no propagated beam');
 });
 
 test('within three Rayleigh ranges of the waist a face still reads the focus plane', () => {
@@ -376,7 +403,9 @@ test('within three Rayleigh ranges of the waist a face still reads the focus pla
     assert.ok(Math.abs(offset) < zone);
     const wave = focusScene(offset).reading.wavefront;
     assert.equal(wave.state, 'FOCUS PLANE', `at ${offset} mm`);
-    assert.ok(Math.abs(wave.waistAheadMm + offset) < 1e-9, `waist ${wave.waistAheadMm} at ${offset}`);
+    // The propagated waist lies 24 nm before the geometric focus (the
+    // Gaussian focal shift), on top of the face's offset.
+    assert.ok(Math.abs(wave.waistAheadMm - at.waistAheadMm + offset) < 1e-9, `waist ${wave.waistAheadMm} at ${offset}`);
     assert.ok(Math.abs(wave.divergenceDeg - at.divergenceDeg) < 1e-9);
     assert.equal(wave.waistMm, at.waistMm);
     assert.equal(wave.rayleighMm, at.rayleighMm);
@@ -433,7 +462,9 @@ test('the focus plane screens say where the waist is', () => {
   const scene = ahead.elements.map(element => (element === ahead.detector ? general : element));
   const svg = screenFor(general, scene);
   assert.match(svg, />FOCUS PLANE<\/text>[^]*?>100 µm AHEAD</);
-  assert.match(svg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.9 µm</);
+  // The propagated beam's waist and Rayleigh range (step G1); the cone
+  // estimate gave 3.39 / 67.9 µm.
+  assert.match(svg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.7 µm</);
 });
 
 test('the general detector\'s focus cells stay inside their columns', () => {
@@ -492,7 +523,8 @@ test('the focus plane screens show the waist and Rayleigh range', () => {
   const svg = screenFor(detector, elements);
   assert.match(svg, />FOCUS PLANE</);
   assert.match(svg, /CONE 5\.72°/);
-  assert.match(svg, /w₀ 3\.39 µm · zR 67\.9 µm</);
+  // The propagated beam (step G1); the cone estimate was 3.39 µm / 67.9 µm.
+  assert.match(svg, /w₀ 3\.39 µm · zR 67\.7 µm</);
   assert.match(svg, />WAIST ON THE FACE</);
   assert.doesNotMatch(svg, /COLLIMATED|DIVERGENCE/);
 
@@ -501,7 +533,7 @@ test('the focus plane screens show the waist and Rayleigh range', () => {
   general.params.aperture = 30;
   const scene = elements.map(element => (element === detector ? general : element));
   const generalSvg = screenFor(general, scene);
-  assert.match(generalSvg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.9 µm</);
+  assert.match(generalSvg, />WAIST w₀ \/ zR<\/text>[^]*?>3\.39 \/ 67\.7 µm</);
   assert.match(generalSvg, />FOCUS PLANE<\/text>[^]*?>ON THE FACE</);
   assert.doesNotMatch(generalSvg, /COLLIMATED|POINT/);
 });
@@ -534,10 +566,17 @@ test('a slow cone on its focus is still a focus, not collimated', () => {
   const wave = enhancedReading(detector, elements).wavefront;
   assert.equal(wave.state, 'FOCUS PLANE');
   assert.ok(Math.abs(wave.divergenceDeg - 2 * Math.atan(0.5 / 2000) * 180 / Math.PI) < 1e-9, `cone ${wave.divergenceDeg}`);
-  assert.ok(Math.abs(wave.waistMm - 532e-6 / (Math.PI * Math.sin(Math.atan(0.5 / 2000)))) < 1e-9, `waist ${wave.waistMm}`);
+  // The beam's own Rayleigh range (1.48 m) is not short against f = 2 m, so
+  // the propagated waist (step G1) is neither the cone estimate's 677 µm nor
+  // at the geometric focus: 409 µm, 1.30 m before it (Self's closed form).
+  const focus = thinLensFocus(gaussianBeam({ waistUm: 500, wavelengthNm: 532 }), 48, 2000);
+  assert.equal(wave.waistModel, 'propagated');
+  assert.ok(Math.abs(wave.waistMm * 1000 / focus.beam.waistUm - 1) < 1e-6, `waist ${wave.waistMm}`);
+  assert.ok(Math.abs(wave.waistAheadMm - (focus.distanceMm - 2000)) < 1e-3, `waist ahead ${wave.waistAheadMm}`);
   const svg = screenFor(detector, elements);
   assert.match(svg, />FOCUS PLANE</);
-  assert.match(svg, /w₀ 677 µm · zR 2710 mm</);
+  assert.match(svg, /w₀ 409 µm · zR 986 mm</);
+  assert.match(svg, /WAIST 1300 mm BEHIND</);
 });
 
 test('a lamp focus takes its waist at the spectrum\'s centre, not its brightest line', () => {

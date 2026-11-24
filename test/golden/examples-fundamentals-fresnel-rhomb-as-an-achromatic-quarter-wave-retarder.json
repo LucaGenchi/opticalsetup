@@ -58,6 +58,25 @@
     "approximations": [],
     "bandMax": 450,
     "bandMin": 450,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 12263.7497,
+       "gouyDeg": 8.26843344,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.286478898,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 505.252008,
+       "rayleighMm": 1745.32925,
+       "sourceId": "laserB",
+       "waistAheadMm": -253.634044,
+       "waistUm": 500,
+       "wavelengthNm": 450
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#0046ff",
@@ -91,6 +110,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -139,6 +159,25 @@
     "approximations": [],
     "bandMax": 1064,
     "bandMin": 1064,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 2399.39203,
+       "gouyDeg": 18.9863525,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.677363438,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 528.766988,
+       "rayleighMm": 738.156168,
+       "sourceId": "laserR",
+       "waistAheadMm": -253.970897,
+       "waistUm": 500,
+       "wavelengthNm": 1064
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -172,6 +211,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -220,6 +260,25 @@
     "approximations": [],
     "bandMax": 450,
     "bandMin": 450,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 12263.7499,
+       "gouyDeg": 8.26843327,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 0.286478898,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 505.252008,
+       "rayleighMm": 1745.32925,
+       "sourceId": "laserT",
+       "waistAheadMm": -253.634039,
+       "waistUm": 500,
+       "wavelengthNm": 450
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#0046ff",
@@ -253,6 +312,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",

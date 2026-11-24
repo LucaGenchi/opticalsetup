@@ -12,7 +12,7 @@ import {
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, ISOTROPIC_KINDS, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
-  isVolumeSpecimen, isRotatable,
+  isVolumeSpecimen, isRotatable, estimateText, drawnRaysText, bandCentreText,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace, weakLightShortfallFromLastTrace } from './raytrace.js';
 import { envelopeAutocorrelation } from './pulse-field.js';
@@ -491,6 +491,72 @@ export function fiberMeasurementHTML(beam) {
   }
 }
 
+// The propagated Gaussian beam at a detector (step G1), per source and
+// branch, in the drawing plane; or why a beam parameter does not reach it,
+// naming the element and the reason.
+const beamLength = mm => (!Number.isFinite(mm) ? '∞'
+  : Math.abs(mm) < 0.9995 ? `${Number((mm * 1000).toPrecision(3))} µm`
+    : Math.abs(mm) < 999.5 ? `${Number(mm.toPrecision(3))} mm` : `${Number((mm / 1000).toPrecision(3))} m`);
+// What each detector can tell of a Gaussian beam: the general detector (DET)
+// reads everything; a camera images the beam's size on its face; a
+// wavefront sensor sees its size and the curvature of its wavefront. A
+// photodiode, PMT, power meter, spectrometer, autocorrelator, polarimeter or
+// eye measures none of it, so their cards show none.
+const BEAM_ROWS_BY_KIND = {
+  general: ['radius', 'wavefront', 'waist', 'rayleigh', 'quality', 'gouy'],
+  wavefront: ['radius', 'wavefront'],
+  camera: ['radius'],
+};
+// The beams on a detector, one block each (several blocks are numbered and
+// named by colour, and by source where two sources share one), or why there
+// is none.
+export function beamRowsHTML(beam, nameOf = () => '', kind = 'general') {
+  const rows = BEAM_ROWS_BY_KIND[kind];
+  if (!beam || !rows) return '';
+  const all = [...beam.branches, ...beam.declined];
+  if (!all.length) return '';
+  const several = all.length > 1;
+  const title = (item, i) => {
+    const nm = Number.isFinite(item.wavelengthNm) ? `λ = ${Math.round(item.wavelengthNm)} nm` : '';
+    const shared = all.filter(other => other !== item && Math.round(other.wavelengthNm) === Math.round(item.wavelengthNm) && other.sourceId !== item.sourceId).length;
+    const who = shared && nameOf(item.sourceId) ? nameOf(item.sourceId) : '';
+    const parts = item.spectralParts > 1 ? ` (strongest of ${item.spectralParts} spectral parts)` : '';
+    return `Gaussian beam${several ? ` ${i + 1}` : ''}${[nm, who].filter(Boolean).length ? ` · ${esc([nm, who].filter(Boolean).join(', '))}` : ''}${parts}`;
+  };
+  let h = '';
+  all.forEach((item, i) => {
+    let body;
+    if (beam.branches.includes(item)) {
+      const b = item;
+      const ahead = Math.abs(b.waistAheadMm) < 1e-3 * b.rayleighMm ? 'on this face'
+        : `${beamLength(Math.abs(b.waistAheadMm))} ${b.waistAheadMm > 0 ? 'ahead' : 'behind'}`;
+      const wavefront = !Number.isFinite(b.curvatureMm) ? 'flat (at the waist)'
+        : `${b.curvatureMm < 0 ? 'converging' : 'diverging'}, radius of curvature R = ${beamLength(Math.abs(b.curvatureMm))}`;
+      const m2 = Number(b.m2) || 1;
+      const cells = {
+        radius: `<dt>Beam radius</dt><dd data-beam-radius>w = ${beamLength(b.radiusUm / 1000)} (1/e²)</dd>`,
+        wavefront: `<dt>Wavefront</dt><dd>${wavefront}</dd>`,
+        waist: `<dt>Waist</dt><dd data-beam-waist>w₀ = ${beamLength(b.waistUm / 1000)}, ${ahead}</dd>`,
+        rayleigh: `<dt>Rayleigh range</dt><dd>z<sub>R</sub> = ${beamLength(b.rayleighMm)}${b.index && Math.abs(b.index - 1) > 1e-6 ? ` (in n = ${b.index.toFixed(3)})` : ''}</dd>`,
+        quality: `<dt>Beam quality</dt><dd>M² = ${Number(m2.toPrecision(3))}${m2 === 1 ? ' (ideal)' : ''}</dd>`,
+        gouy: `<dt>Gouy phase</dt><dd>ψ = ${b.gouyDeg.toFixed(1)}° from the waist (assumes a circular beam)</dd>`,
+      };
+      // The notes say how to read the values: an estimate past a lens met
+      // far from its axis, drawn rays that leave out a diffraction that
+      // matters, a supercontinuum read at one wavelength.
+      body = `<dl class="measurement-grid">${rows.map(key => cells[key]).join('')}</dl>`
+        + (b.estimate ? `<div class="beam-block-note" data-beam-estimate>${esc(estimateText(b.estimate))}</div>` : '')
+        + (b.drawnRays ? `<div class="beam-block-note" data-beam-drawn-rays>${esc(drawnRaysText(b.drawnRays))}</div>` : '')
+        + (b.bandCentreNm ? `<div class="beam-block-aside" data-beam-band>${esc(bandCentreText(b.bandCentreNm))}</div>` : '');
+    } else {
+      const text = item.element === 'This detector' ? item.reason : `${item.element}: ${item.reason}`;
+      body = `<div class="beam-block-note" data-beam-declined>None here. ${esc(text.replace(/^./, c => c.toUpperCase()))}</div>`;
+    }
+    h += `<div class="beam-block" data-beam-block><div class="beam-block-head">${title(item, i)}</div>${body}</div>`;
+  });
+  return h;
+}
+
 function measurementHTML(el) {
   const viaDisplay = el.type === 'display';
   const source = viaDisplay ? resolveDisplaySensor(el, state.elements) : el;
@@ -623,6 +689,7 @@ function measurementHTML(el) {
       ${detectorRows}
       ${pulseRows}
     </dl>
+    ${beamRowsHTML(rd.beam, id => { const s = state.elements.find(e => e.id === id); return s ? sensorName(s) : ''; }, readoutKind)}
     ${cameraProfile}
     ${poincare}
     ${pulseTimeline}
@@ -1241,6 +1308,12 @@ export function renderInspector() {
         propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${!argon ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${argon ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
         if (!argon) propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        // A step-index fiber's output starts a Gaussian beam (step G1) only
+        // when its single-mode core is known: with the input NA it gives V,
+        // and the best Gaussian of the LP01 mode at the end face.
+        if (!argon) {
+          propagationFields += numberField('Single-mode core Ø (µm, 0 = not set)', 'data-k="singleModeCoreUm"', b.singleModeCoreUm ?? 0, { min: 0, max: 100, step: 0.1 });
+        }
         const hollowSettings = argon ? normalizeHollowCore(b) : null;
         if (argon) {
           propagationFields += field('Loss model', `<select data-k="lossModel">${CAPILLARY_LOSS_MODELS.map(([v, l]) => `<option value="${v}" ${hollowSettings.lossModel === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`);

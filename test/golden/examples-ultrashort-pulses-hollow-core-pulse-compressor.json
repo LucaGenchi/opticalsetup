@@ -132,6 +132,25 @@
     "approximations": [],
     "bandMax": 806.431558,
     "bandMin": 793.568442,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 473.338251,
+       "gouyDeg": 86.952031,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 3.18309886,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 1504.55105,
+       "rayleighMm": 25.1327412,
+       "sourceId": "hcf-fiber",
+       "waistAheadMm": -472,
+       "waistUm": 80,
+       "wavelengthNm": 800
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -4616,6 +4635,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
@@ -5114,6 +5134,25 @@
     "approximations": [],
     "bandMax": 806.431558,
     "bandMin": 793.568442,
+    "beam": {
+     "branches": [
+      {
+       "curvatureMm": 190.377833,
+       "gouyDeg": 82.3453348,
+       "gouyScope": "circular",
+       "halfDivergenceMrad": 3.18309886,
+       "index": 1,
+       "m2": 1,
+       "radiusUm": 600.591414,
+       "rayleighMm": 25.1327412,
+       "sourceId": "hcf-fiber",
+       "waistAheadMm": -187,
+       "waistUm": 80,
+       "wavelengthNm": 800
+      }
+     ],
+     "declined": []
+    },
     "centroid": null,
     "coherentPaths": 0,
     "color": "#ff3030",
@@ -9598,6 +9637,7 @@
     "scope": {
      "bandMax": "plane",
      "bandMin": "plane",
+     "beam": "plane",
      "centroid": "plane",
      "convergence": "plane",
      "darkOutput": "plane",
