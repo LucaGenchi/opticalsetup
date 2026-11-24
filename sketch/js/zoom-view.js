@@ -47,7 +47,9 @@ function benchStrokes(svg, mag) {
   });
 }
 
-function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
+// To 0.01 of the view's units, or to a drawable's own `precision` (a beam
+// envelope's edges, microns apart at a focus).
+function ptsAttr(pts, digits = 2) { return pts.map(p => `${p.x.toFixed(digits)},${p.y.toFixed(digits)}`).join(' '); }
 
 // Traced rays and beams, mapped point by point into the view. Each shape is
 // only a fill or only a stroke, so fill- and stroke-opacity draw what the
@@ -67,9 +69,9 @@ function drawablesSVG(drawables, region, map, nonScalingStroke) {
     if (!d.pts?.length || !overlaps(pointsBox(d.pts), region)) continue;
     const pts = d.pts.map(map);
     if (d.type === 'poly') {
-      s += `<polygon points="${ptsAttr(pts)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
+      s += `<polygon points="${ptsAttr(pts, d.precision)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
     } else {
-      s += `<polyline points="${ptsAttr(pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+      s += `<polyline points="${ptsAttr(pts, d.precision)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
     }
   }
   return s;

@@ -84,35 +84,53 @@ export function envelopeBand({ start, d, length, shape, faces = [null, null], ra
   if (![w0, zR, ahead, length, start?.x, start?.y, d?.x, d?.y].every(Number.isFinite) || !(w0 > 0) || !(zR > 0)) return null;
   const across = { x: -d.y, y: d.x };
   const radiusAt = s => w0 * Math.sqrt(1 + ((s - ahead) / zR) ** 2);
-  // A face used for a cut: the band runs on past the stretch's end by as
-  // much as the face leans along the beam, and is then cut on it, keeping
-  // the side that holds the middle of the stretch. An edge meets a leaning
-  // face where the beam is already wider (or narrower) than at the central
-  // hit, so the reach is iterated to where the widening edge meets the
-  // face: reach = w(end ± reach)·|cot| (`outward` is +1 past the end, −1
-  // before the start).
+  // A face used for a cut: the band runs on past the stretch's end as far as
+  // the face leans along the beam, and is then cut on it, keeping the side
+  // that holds the middle of the stretch. Each edge meets a leaning face
+  // where the beam is wider (or narrower) than at the central hit, one edge
+  // before the hit and the other after it: each meeting is a root of the
+  // edge's distance to the face along s, bracketed by stepping out from the
+  // hit (doubling) and found by bisection. An edge that never meets the face
+  // (the beam spreads faster than the face leans away) leaves the band cut
+  // square to the beam.
   const middle = { x: start.x + d.x * length / 2, y: start.y + d.y * length / 2 };
-  const cut = (face, s, outward) => {
+  const cut = (face, s0) => {
     if (!face) return null;
     const sine = Math.abs(dot(face.t, across));
     if (!(sine >= GRAZING_SINE)) return null;
     let n = { x: -face.t.y, y: face.t.x };
     if (dot(n, { x: middle.x - face.at.x, y: middle.y - face.at.y }) < 0) n = { x: -n.x, y: -n.y };
-    const lean = Math.abs(dot(face.t, d)) / sine;
-    // It converges while the beam spreads more slowly than the face leans
-    // away; otherwise the edge never meets the face, and the band is cut
-    // square to the beam.
-    let reach = radiusAt(s) * lean, converged = false;
-    for (let k = 0; k < 100 && !converged; k++) {
-      const next = radiusAt(s + outward * reach) * lean;
-      if (!Number.isFinite(next)) return null;
-      converged = Math.abs(next - reach) <= 1e-9 * Math.max(1, next);
-      reach = next;
-    }
-    if (!converged) return null;
-    return { at: face.at, n, reach: reach * 1.05 + 1e-6 };
+    const meets = side => {
+      const f = s => dot(n, { x: start.x + d.x * s + side * across.x * radiusAt(s) - face.at.x, y: start.y + d.y * s + side * across.y * radiusAt(s) - face.at.y });
+      const f0 = f(s0);
+      if (!Number.isFinite(f0)) return null;
+      let best = null;
+      for (const dir of [1, -1]) {
+        let a = s0, fa = f0, step = Math.max(radiusAt(s0), 1e-3);
+        for (let k = 0; k < 60 && step < 1e6; k++, step *= 2) {
+          const b = s0 + dir * step, fb = f(b);
+          if (!Number.isFinite(fb)) break;
+          if ((fa > 0) !== (fb > 0)) {
+            let lo = a, hi = b;
+            for (let j = 0; j < 80 && Math.abs(hi - lo) > 1e-12 * Math.max(1, Math.abs(hi)); j++) {
+              const m = (lo + hi) / 2;
+              if ((f(m) > 0) === (fa > 0)) lo = m; else hi = m;
+            }
+            const root = (lo + hi) / 2;
+            if (best === null || Math.abs(root - s0) < Math.abs(best - s0)) best = root;
+            break;
+          }
+          a = b; fa = fb;
+        }
+      }
+      return best;
+    };
+    const roots = [meets(1), meets(-1)];
+    if (roots.some(r => r === null)) return null;
+    const reach = Math.max(...roots.map(r => Math.abs(r - s0)));
+    return { at: face.at, n, reach: reach * 1.01 + 1e-6 };
   };
-  const startCut = cut(faces[0], 0, -1), endCut = cut(faces[1], length, 1);
+  const startCut = cut(faces[0], 0), endCut = cut(faces[1], length);
   const from = -(startCut?.reach ?? 0), to = length + (endCut?.reach ?? 0);
   const point = { x: start.x + d.x * ahead, y: start.y + d.y * ahead };
   const edges = envelopeEdges({ point, axis: d, w0Mm: w0, zRMm: zR }, from - ahead, to - ahead, 96);

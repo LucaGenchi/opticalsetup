@@ -7325,61 +7325,78 @@ const samePoint = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
 // to hitEdgeIssue, and a pickoff the ray passes by is not in its way.
 //
 // The beam's radius changes along the way (a converging beam is widest where
-// it starts), so the test is the clearance along the whole stretch,
-// distance(s) − CLIP_RADII·w(s), not only at the edge's closest approach:
-// sampled, the deepest sample refined, and the first point where the
-// clearance runs out found by bisection. The issue gives `atMm`, that
-// point's distance from `from`, where the beam stops being Gaussian (the
-// beam envelope ends there); the reason quotes the deepest point, which for
-// a beam of nearly constant size is the closest approach.
-const CLEARANCE_SAMPLES = 64;
-function clearanceViolation(from, d, length, radiusAt, surface) {
-  const point = s => ({ x: from.x + d.x * s, y: from.y + d.y * s });
-  const end = point(length);
-  const gap = segmentGap(from, end, surface.a, surface.b);
-  const widest = Math.max(radiusAt(0), radiusAt(length));
-  if (!(gap.distance < CLIP_RADII * widest)) return null;
-  const clearance = s => distToSegment(point(s), surface.a, surface.b) - CLIP_RADII * radiusAt(s);
-  const at = new Set([gap.along * length]);
-  for (let k = 0; k <= CLEARANCE_SAMPLES; k++) at.add(length * k / CLEARANCE_SAMPLES);
-  const samples = [...at].sort((a, b) => a - b).map(s => ({ s, v: clearance(s) }));
-  if (!samples.every(x => Number.isFinite(x.v))) return null;
-  let deepest = samples.reduce((a, b) => (b.v < a.v ? b : a));
-  // Refine the deepest sample between its neighbours (golden section).
-  const k = samples.indexOf(deepest);
-  let lo = samples[Math.max(0, k - 1)].s, hi = samples[Math.min(samples.length - 1, k + 1)].s;
-  const g = (Math.sqrt(5) - 1) / 2;
-  for (let i = 0; i < 40 && hi - lo > 1e-9 * Math.max(1, length); i++) {
-    const a = hi - g * (hi - lo), b = lo + g * (hi - lo);
-    if (clearance(a) < clearance(b)) hi = b; else lo = a;
+// it starts), so the test is the clearance along the whole stretch, not only
+// at the edge's closest approach. It is solved exactly: along a straight
+// stretch the squared distance to a facet is quadratic on each of at most
+// three pieces (beside the facet, or nearest one of its ends) and the squared
+// beam radius w(s)² is quadratic, so g(s) = dist² − (CLIP_RADII·w)² is a
+// quadratic per piece whose roots give where the clearance runs out. The
+// issue gives `atMm`, the first such point from `from`, where the beam stops
+// being Gaussian (the beam envelope ends there); the reason quotes the
+// deepest point of the violation, which for a beam of nearly constant size
+// is the closest approach.
+function quadraticRoots(a, b, c) {
+  if (Math.abs(a) < 1e-300) return Math.abs(b) < 1e-300 ? [] : [-c / b];
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return [];
+  const r = Math.sqrt(disc), q = -0.5 * (b + (b >= 0 ? r : -r));
+  return [q / a, ...(q !== 0 ? [c / q] : [])];
+}
+function clearanceViolation(from, d, length, shape, surface) {
+  const w0sq = (shape.waistUm / 1000) ** 2, zR = shape.rayleighMm, ahead = shape.waistAheadMm;
+  if (!(w0sq > 0) || !(zR > 0)) return null;
+  const k2 = CLIP_RADII * CLIP_RADII;
+  // (CLIP_RADII·w(s))² = k² w0² (1 + ((s − ahead)/zR)²) = W2 s² + W1 s + W0.
+  const W2 = k2 * w0sq / (zR * zR), W1 = -2 * W2 * ahead, W0 = k2 * w0sq + W2 * ahead * ahead;
+  const A = surface.a, e = sub(surface.b, surface.a), len2 = dot(e, e);
+  if (!(len2 > 0)) return null;
+  const fa = sub(from, A);
+  // Where the foot of the perpendicular lies on the facet: u(s) = u0 + u1·s.
+  const u0 = dot(fa, e) / len2, u1 = dot(d, e) / len2;
+  const pieces = [0, length];
+  for (const u of [0, 1]) if (Math.abs(u1) > 1e-300) { const s = (u - u0) / u1; if (s > 0 && s < length) pieces.push(s); }
+  pieces.sort((x, y) => x - y);
+  // dist²(s) on each piece: to the facet's line, or to its nearer end.
+  const toPoint = P => { const f = sub(from, P); return [1, 2 * dot(d, f), dot(f, f)]; };
+  const c0 = cross(fa, e), c1 = cross(d, e);
+  const toLine = [c1 * c1 / len2, 2 * c0 * c1 / len2, c0 * c0 / len2];
+  const distOf = s => { const u = u0 + u1 * s; return u < 0 ? toPoint(A) : u > 1 ? toPoint(surface.b) : toLine; };
+  const g = (s, D) => (D[0] - W2) * s * s + (D[1] - W1) * s + (D[2] - W0);
+  let first = null, deepest = null;
+  const depth = s => Math.sqrt(Math.max(0, distOf(s)[0] * s * s + distOf(s)[1] * s + distOf(s)[2])) - Math.sqrt(Math.max(0, W2 * s * s + W1 * s + W0));
+  for (let i = 0; i < pieces.length - 1; i++) {
+    const lo = pieces[i], hi = pieces[i + 1];
+    if (!(hi > lo)) continue;
+    const D = distOf((lo + hi) / 2);
+    const a = D[0] - W2, b = D[1] - W1;
+    const roots = quadraticRoots(a, b, D[2] - W0).filter(r => r > lo && r < hi).sort((x, y) => x - y);
+    const marks = [lo, ...roots, hi];
+    for (let j = 0; j < marks.length - 1; j++) {
+      const m = (marks[j] + marks[j + 1]) / 2;
+      if (!(g(m, D) < 0)) continue;
+      if (first === null) first = marks[j];
+      // The deepest point of this violating interval: its ends and g's vertex.
+      const candidates = [marks[j], marks[j + 1], m];
+      if (Math.abs(a) > 1e-300) { const v = -b / (2 * a); if (v > marks[j] && v < marks[j + 1]) candidates.push(v); }
+      for (const s of candidates) { const v = depth(s); if (!deepest || v < deepest.v) deepest = { s, v }; }
+    }
   }
-  const refined = { s: (lo + hi) / 2, v: clearance((lo + hi) / 2) };
-  if (refined.v < deepest.v) deepest = refined;
-  if (!(deepest.v < 0)) return null;
-  // The first point where the clearance runs out: before the first
-  // violating sample (or the refined deepest point), after the last clear one.
-  const firstBad = samples.find(x => x.v < 0 && x.s <= deepest.s) || deepest;
-  const lastClear = [...samples].reverse().find(x => x.s < firstBad.s && x.v >= 0);
-  let a = lastClear ? lastClear.s : 0, b = firstBad.s;
-  if (!lastClear) b = a = 0;
-  for (let i = 0; i < 50 && b - a > 1e-9 * Math.max(1, length); i++) {
-    const m = (a + b) / 2;
-    if (clearance(m) < 0) b = m; else a = m;
-  }
-  const deepestPoint = point(deepest.s);
-  return { atMm: b, distance: distToSegment(deepestPoint, surface.a, surface.b), need: CLIP_RADII * radiusAt(deepest.s) };
+  if (first === null) return null;
+  const at = { x: from.x + d.x * deepest.s, y: from.y + d.y * deepest.s };
+  return { atMm: first, distance: distToSegment(at, surface.a, surface.b), need: Math.sqrt(Math.max(0, W2 * deepest.s ** 2 + W1 * deepest.s + W0)) };
 }
 function beamClipIssue(from, to, q, index, seed, surfaces, exclude) {
   const length = Math.hypot(to.x - from.x, to.y - from.y);
   if (!(length > 0)) return null;
   const d = { x: (to.x - from.x) / length, y: (to.y - from.y) / length };
-  const radiusAt = s => beamRadiusMm(propagateQ(q, s), seed, index);
+  const shape = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index });
+  if (!shape) return null;
   let found = null;
   for (const surface of surfaces) {
     if (!surface.a || !surface.b || surface.data?.pickoff) continue;
     const owner = surfaceOwnerId(surface);
     if (owner && exclude.has(owner)) continue;
-    const v = clearanceViolation(from, d, length, radiusAt, surface);
+    const v = clearanceViolation(from, d, length, shape, surface);
     if (v && (!found || v.atMm < found.v.atMm)) found = { v, surface };
   }
   if (!found) return null;
@@ -7918,8 +7935,43 @@ function surfaceTangentAt(surface, p) {
 // the same interactions before the segment and the same one ending it, so
 // a sampling ray that misses what stops the central ray keeps its fill.
 // Branches of one source at one wavelength that travel together and overlap
-// recombine, as the readouts say; no band is drawn on them.
+// recombine, as the readouts say: a band stops where that overlap begins.
 const RECOMBINE_RAD = 0.1;
+// Where along stretch `p` it first overlaps stretch `q` by the readouts'
+// rule (beamAtPoint): across the beam, closer than CLIP_RADII (w_p + w_q),
+// with the local radii, over the part of `p` that `q` runs beside; or null.
+// On either side of the point where their axes cross, the lateral distance
+// is linear in s and the radii convex, so h(s) = CLIP_RADII (w_p + w_q) −
+// distance is convex there: it turns positive at most once, found by
+// bisection between a point where it is not and one where it is.
+function firstOverlap(p, q) {
+  const sq0 = dot(sub(p.a, q.a), q.d), sq1 = dot(p.d, q.d);
+  const l0 = cross(sub(p.a, q.a), q.d), l1 = cross(p.d, q.d);
+  let lo = 0, hi = p.length;
+  if (Math.abs(sq1) > 1e-12) {
+    const x = -sq0 / sq1, y = (q.length - sq0) / sq1;
+    lo = Math.max(lo, Math.min(x, y));
+    hi = Math.min(hi, Math.max(x, y));
+  } else if (sq0 < 0 || sq0 > q.length) return null;
+  if (!(hi > lo)) return null;
+  const h = s => CLIP_RADII * (p.w(s) + q.w(sq0 + sq1 * s)) - Math.abs(l0 + l1 * s);
+  const cuts = [lo, hi];
+  if (Math.abs(l1) > 1e-12) {
+    const crossing = -l0 / l1;
+    if (crossing > lo && crossing < hi) cuts.splice(1, 0, crossing);
+  }
+  for (let i = 0; i < cuts.length - 1; i++) {
+    let a = cuts[i], b = cuts[i + 1];
+    if (h(a) > 0) return a;
+    if (!(h(b) > 0)) continue;
+    for (let k = 0; k < 60 && b - a > 1e-9 * Math.max(1, p.length); k++) {
+      const m = (a + b) / 2;
+      if (h(m) > 0) b = m; else a = m;
+    }
+    return b;
+  }
+  return null;
+}
 function clipsAtVertex(track, vertex) {
   const issue = track.declines?.find(d => d.from === vertex)?.issue || (track.issueVertex === vertex ? track.issue : null);
   return Boolean(issue?.clip);
@@ -7936,7 +7988,10 @@ function drawBeamEnvelopes(tracks, elements, drawables) {
     const color = rayColor(path, origin.params.autoColor === false && origin.params.color ? origin.params.color : null);
     const pts = path.pts || [];
     for (let i = 0; i < pts.length - 1; i++) {
-      if (!(path.segmentPowers?.[i] > LIT_W)) continue;
+      // A dark segment draws nothing, but it is kept to tell whether a lit
+      // one recombines with it: coherent grouping can give one path of an
+      // interferometer's output all the power and its partner none.
+      const lit = path.segmentPowers?.[i] > LIT_W;
       const segment = beamOnPathSegment(path, i);
       if (!segment) continue;
       const a = pts[i], b = pts[i + 1];
@@ -7953,29 +8008,33 @@ function drawBeamEnvelopes(tracks, elements, drawables) {
       const endsHere = i + 1 === pts.length - 1 && endSurface;
       const rimClips = endsHere && Boolean(hitEdgeIssue({ surface: endSurface, hit: { p: b }, din: segment.d }, w(length), lastBeamSurfaces));
       stretches.push({
-        track, path, i, a, b, d: segment.d, length, shape, display, origin, color,
-        clipAt: segment.clipAt(length), clippedAtEnd: clipsAtVertex(track, i + 1) || rimClips,
-        sourceId: track.seed.sourceId, wavelengthNm: segment.wavelengthNm, widest: Math.max(w(0), w(length)),
+        track, path, i, a, b, d: segment.d, length, shape, display, origin, color, lit, w,
+        clipAt: lit ? segment.clipAt(length) : null, clippedAtEnd: clipsAtVertex(track, i + 1) || rimClips,
+        sourceId: track.seed.sourceId, wavelengthNm: segment.wavelengthNm, overlapAt: null,
       });
     }
   }
-  // Recombination, by the readouts' rule (beamAtPoint): the same light
-  // travelling together, within 0.1 rad, overlapping across the beam
-  // (closer than 1.5 (w₁ + w₂)) and along it.
+  // Recombination, by the readouts' rule: the same light (one source, one
+  // wavelength) travelling together, within 0.1 rad, and overlapping.
   for (let m = 0; m < stretches.length; m++) {
     for (let n = m + 1; n < stretches.length; n++) {
       const p = stretches[m], q = stretches[n];
       if (p.path === q.path || p.sourceId !== q.sourceId || !(Math.abs(p.wavelengthNm - q.wavelengthNm) < 1e-3)) continue;
       if (!(dot(p.d, q.d) > Math.cos(RECOMBINE_RAD))) continue;
-      const u0 = dot(sub(q.a, p.a), p.d), u1 = dot(sub(q.b, p.a), p.d);
-      const overlap = Math.min(p.length, Math.max(u0, u1)) - Math.max(0, Math.min(u0, u1));
-      if (!(overlap > 0.01)) continue;
-      if (Math.abs(cross(sub(q.a, p.a), p.d)) < CLIP_RADII * (p.widest + q.widest)) p.recombined = q.recombined = true;
+      for (const [x, y] of [[p, q], [q, p]]) {
+        const at = firstOverlap(x, y);
+        if (at !== null && (x.overlapAt === null || at < x.overlapAt)) x.overlapAt = at;
+      }
     }
   }
   const covered = new Set();
   for (const s of stretches) {
-    if (s.recombined) continue;
+    if (!s.lit) continue;
+    // Where an edge clips the beam or the arms begin to overlap, the band
+    // ends; from the start of the stretch, nothing is drawn but the rays.
+    const ends = [s.clipAt, s.overlapAt].filter(v => v !== null);
+    const end = ends.length ? Math.min(...ends) : null;
+    if (end !== null && !(end > 1e-6)) continue;
     const { path, i, a, b, display, color } = s;
     const surfacesAt = beamVertexSurfacesOf.get(path) || [];
     const face = (vertex, p) => {
@@ -7983,15 +8042,15 @@ function drawBeamEnvelopes(tracks, elements, drawables) {
       return t ? { at: p, t } : null;
     };
     const band = envelopeBand({
-      start: a, d: s.d, length: s.clipAt ?? s.length, shape: s.shape,
-      faces: [face(i, a), s.clipAt === null ? face(i + 1, b) : null],
+      start: a, d: s.d, length: end ?? s.length, shape: s.shape,
+      faces: [face(i, a), end === null ? face(i + 1, b) : null],
       rayleigh: s.origin.params.beamRayleighTicks === true,
     });
     if (!band) continue;
     // A stretch an edge clips, part-way or with the rim of the element that
     // ends it, keeps its rays (the beam is not Gaussian past the edge, and
     // light may go round it), so the band is drawn there as over rays.
-    const filled = display === 'envelope' && s.clipAt === null && !s.clippedAtEnd;
+    const filled = display === 'envelope' && end === null && !s.clippedAtEnd;
     if (filled) {
       drawables.push({ type: 'poly', pts: band.outline, color, opacity: beamFillOpacity(path, path.segmentIntensities?.[i] ?? path.intensity), precision: ENVELOPE_PRECISION });
     }

@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
-import { traceScene, beamAtPoint } from '../sketch/js/raytrace.js';
+import { traceScene, beamAtPoint, detectorReading } from '../sketch/js/raytrace.js';
 import { envelopeEdges, envelopeBand, WAIST_MARK_MIN_MM, RAYLEIGH_MARK_MIN_MM } from '../sketch/js/beam-envelope.js';
 import { beamDisplayOf } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist } from '../sketch/js/gaussian-beam.js';
@@ -309,9 +309,15 @@ test('G2 (review): light that goes round what stops the central ray stays drawn'
 test('G2 (review): arms that recombine get no band, as the readouts say', () => {
   const mz = display => [laser({ beamDisplay: display }), make('bs', 200, 0), make('bs', 300, 0), make('bs', 200, -100), make('bs', 300, -100), make('detector', 420, -100)];
   const drawn = traceScene(mz('envelope'), []).drawables;
-  const onOutput = ds => ds.filter(d => d.type === 'poly' && d.pts.every(p => p.x > 305 && Math.abs(p.y + 100) < 5));
-  assert.equal(bands(onOutput(drawn)).length, 0, 'no band on the lit output');
-  assert.equal(onOutput(drawn).length, onOutput(traceScene(mz('rays'), []).drawables).length, 'its rays are drawn');
+  // Polygons crossing the lit output at x = 360 (Andrea's count: 24 ray
+  // strips there in Rays mode). Coherent grouping gives that output's power
+  // to one arm's path and none to the other's: the dark partner still counts.
+  const crossing360 = ds => ds.filter(d => d.type === 'poly' && Math.min(...d.pts.map(p => p.x)) < 360 && Math.max(...d.pts.map(p => p.x)) > 360
+    && d.pts.every(p => Math.abs(p.y + 100) < 5));
+  const rays = crossing360(traceScene(mz('rays'), []).drawables);
+  assert.equal(rays.length, 24);
+  assert.equal(bands(crossing360(drawn)).length, 0, 'no band on the lit output');
+  assert.equal(crossing360(drawn).length, 24, 'its rays are drawn');
   const [read] = beamAtPoint(360, -100, 5);
   assert.match(read.issue.reason, /recombine/);
   // Before they meet, each arm has its band.
@@ -352,8 +358,11 @@ test('G2 (review): a widening band reaches a leaning mirror along both edges', (
 test('G2 (review): an edge past the waist leaves the zoom its propagated waist', () => {
   const zoom = make('zoom', 311, 0, { w: 10, h: 10, diffraction: true });
   const scene = [laser({ beamWidth: 0.4, wavelength: 633, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100 }),
-    make('blocker', 600, 31.2, { w: 16, h: 60 }), zoom];
+    make('blocker', 600, 30.5, { w: 16, h: 60 }), zoom];
   const traced = traceScene(scene, []);
+  // The blocker really clips the beam, past the waist (Andrea measured the
+  // first violation at x = 591.28).
+  assert.match(beamAtPoint(596, 0, 1)[0]?.issue?.reason || '', /clips the beam/);
   const [focus] = zoomFoci(zoom, traced.paths);
   assert.equal(focus.model, 'propagated');
   close(focus.point.x, 311.51, 0.05, 'the propagated waist');
@@ -371,4 +380,57 @@ test('G2 (review): an exported micron waist keeps its two edges apart', () => {
   const nearWaist = band.filter(([x]) => Math.abs(x - 300) < 0.05);
   assert.ok(nearWaist.length >= 2);
   assert.ok(nearWaist.every(([, y]) => Math.abs(y) > 1e-3), JSON.stringify(nearWaist));
+});
+
+// Andrea's review, round 2.
+test('G2 (review 2): where a clip is found does not depend on how long the stretch is', () => {
+  const at = detectorX => {
+    const det = make('detector', detectorX, 0, { aperture: 200 });
+    const { drawables } = traceScene([laser({ beamWidth: 10, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100 }),
+      make('mirror', 293.5, 6, { length: 157 }, 89.9), det], []);
+    const end = Math.max(...drawables.filter(d => d.dash === '5 3').flatMap(d => d.pts.map(p => p.x)));
+    return { end, declined: detectorReading(det.id)?.beam?.declined?.length > 0 };
+  };
+  const near = at(400), far = at(2000);
+  close(near.end, 212.72, 0.01, 'band end with the detector at 400 mm');
+  close(far.end, near.end, 1e-9, 'and at 2000 mm');
+  assert.ok(near.declined && far.declined, 'both detectors decline the clipped beam');
+});
+
+test('G2 (review 2): arms that cross downstream stop their bands where they begin to overlap', () => {
+  const arms = display => [laser({ beamDisplay: display }), make('bs', 200, 0), make('bs', 200, -30, { ratio: 0 }, 2), make('detector', 900, 0, { aperture: 60 })];
+  const { drawables } = traceScene(arms('envelope'), []);
+  const [read] = beamAtPoint(629, 0, 2);
+  assert.match(read?.issue?.reason || '', /recombine/, JSON.stringify(read));
+  // No filled band reaches the crossing; the bands' edges stop short of it.
+  assert.ok(!bands(drawables).some(b => b.pts.some(p => p.x > 560)), 'no band through the crossing');
+  const edgeEnds = drawables.filter(d => d.dash === '5 3').map(d => Math.max(...d.pts.map(p => p.x)));
+  assert.ok(edgeEnds.length >= 2 && edgeEnds.every(x => x < 629), JSON.stringify(edgeEnds));
+});
+
+test('G2 (review 2): a fast-spreading band reaches a steep mirror along both edges', () => {
+  // 0.1 mm at 633 nm with M² = 45, a 150 mm mirror at x = 62 rotated −78°:
+  // the edges meet it at x = 57.39 and 120.10 mm.
+  const { drawables } = traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633, beamM2: 45, beamDisplay: 'envelope' }),
+    make('mirror', 62, 0, { length: 150 }, -78)], []);
+  const edges = drawables.filter(d => d.type === 'path' && d.pts.length > 8 && d.pts[0].x < 53);
+  const ends = edges.map(d => d.pts.at(-1).x).sort((a, b) => a - b);
+  close(ends[0], 57.39, 0.01, 'near edge');
+  close(ends[1], 120.10, 0.01, 'far edge');
+});
+
+test('G2 (review 2): a zoom keeps a micron waist two edges wide', () => {
+  const zoom = make('zoom', 300, 0, { w: 4, h: 4, mag: 2, diffraction: true });
+  const scene = [laser({ beamWidth: 10, wavelength: 405, beamDisplay: 'envelope' }), make('lens', 250, 0, { f: 50 }), zoom];
+  const traced = traceScene(scene, []);
+  const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: scene });
+  const band = [...svg.matchAll(/<polygon points="([^"]+)"/g)].map(m => m[1].split(' ').map(pair => pair.split(',').map(Number)))
+    .find(pts => pts.length > 50);
+  assert.ok(band, 'the band is in the view');
+  const ys = band.map(([, y]) => y);
+  const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
+  // The narrowest pair of opposite points stays apart.
+  const half = band.length / 2;
+  const widths = band.slice(0, half).map(([x, y], i) => Math.abs(y - band[band.length - 1 - i][1]));
+  assert.ok(Math.min(...widths) > 1e-3, `narrowest ${Math.min(...widths)} around ${mid}`);
 });
