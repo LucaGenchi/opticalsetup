@@ -113,6 +113,8 @@ export function zoomFoci(zoom, paths = []) {
     // A cone's focus lies between the optics; a propagated waist may lie up
     // to a Rayleigh range beyond them, and its envelope is drawn on the
     // stretch the beam travels, cut at the faces as before.
+    // A propagated waist's envelope stops where an edge clips the beam.
+    if (found.model === 'propagated' && found.reachMm !== null) to = Math.min(to, found.reachMm - found.waistFromStartMm);
     if (![from, to].every(Number.isFinite) || !(from < to)) continue;
     if (found.model !== 'propagated' && !(from < 0 && to > 0)) continue;
     const across = p => (p.x - found.point.x) * -found.axis.y + (p.y - found.point.y) * found.axis.x;
@@ -152,13 +154,15 @@ function propagatedFocus(group) {
   const along = shape.waistAheadMm;
   const length = Math.max(...group.rays.map(r => r.len));
   if (!(along > -shape.rayleighMm && along <= length + shape.rayleighMm)) return { ok: false };
-  // An edge that clips the beam before its waist or within the drawn
-  // stretch ends the beam parameter there (as the probe and detectors
-  // read it): the zoom then keeps the cone estimate.
-  if (beam.clipWithin?.(Math.max(along, length))) return null;
+  // An edge that clips the beam before its waist ends the beam parameter
+  // there (as the probe and detectors read it): the zoom then keeps the cone
+  // estimate. One that clips it past the waist leaves the waist, and the
+  // envelope is drawn up to the edge (`reachMm`), as the bench's band is.
+  const clipAt = beam.clipAt?.(Math.max(along, length)) ?? null;
+  if (clipAt !== null && clipAt <= Math.max(0, along)) return null;
   return {
-    ok: true, model: 'propagated',
-    point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d },
+    ok: true, model: 'propagated', reachMm: clipAt,
+    point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d }, waistFromStartMm: along,
     w0Mm: shape.waistUm / 1000, zRMm: shape.rayleighMm, na: Math.sin(Math.atan(shape.halfDivergenceMrad / 1000)),
     estimate: beam.estimate || null,
   };

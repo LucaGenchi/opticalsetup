@@ -253,7 +253,8 @@ test('G2: the export draws the same band as the canvas', () => {
   const { drawables } = traceScene(state.elements, []);
   const svg = buildSVG({ bounds: { x: -10, y: -20, w: 500, h: 40 } });
   const band = bands(drawables)[0];
-  const first = `${band.pts[0].x.toFixed(2)},${band.pts[0].y.toFixed(2)}`;
+  // Written to 10 nm, so a micron waist's edges stay apart.
+  const first = `${band.pts[0].x.toFixed(5)},${band.pts[0].y.toFixed(5)}`;
   assert.ok(svg.includes(first), 'the band polygon is in the export');
   assert.equal([...svg.matchAll(/<polygon /g)].length >= bands(drawables).length, true);
 });
@@ -287,4 +288,87 @@ test('G2: light a fiber relaunches is drawn as its source was set to draw it', (
   };
   assert.ok(noMode('rays') > 0);
   assert.equal(noMode('envelope'), noMode('rays'));
+});
+
+// Andrea's review of the first version (PR #334, round 1).
+test('G2 (review): light that goes round what stops the central ray stays drawn', () => {
+  // A 10 mm beam and a centred blocker 4 mm across: 16 of 25 rays pass it.
+  const scene = display => [laser({ beamWidth: 10, beamDisplay: display }), make('blocker', 200, 0, { w: 16, h: 4 }), make('detector', 400, 0, { aperture: 30 })];
+  traceScene(scene('rays'), []);
+  const plain = traceScene(scene('rays'), []).drawables;
+  const enveloped = traceScene(scene('envelope'), []).drawables;
+  const past = ds => ds.filter(d => d.type === 'poly' && d.pts.some(p => p.x > 210));
+  assert.ok(past(plain).length > 0);
+  assert.equal(past(enveloped).length, past(plain).length, 'every strip that reaches past the blocker is kept');
+  // The blocker's rim clips the beam where it ends: the band is drawn as
+  // edges over the rays, not filled.
+  assert.equal(bands(enveloped).length, 0);
+  assert.ok(enveloped.some(d => d.dash === '5 3'));
+});
+
+test('G2 (review): arms that recombine get no band, as the readouts say', () => {
+  const mz = display => [laser({ beamDisplay: display }), make('bs', 200, 0), make('bs', 300, 0), make('bs', 200, -100), make('bs', 300, -100), make('detector', 420, -100)];
+  const drawn = traceScene(mz('envelope'), []).drawables;
+  const onOutput = ds => ds.filter(d => d.type === 'poly' && d.pts.every(p => p.x > 305 && Math.abs(p.y + 100) < 5));
+  assert.equal(bands(onOutput(drawn)).length, 0, 'no band on the lit output');
+  assert.equal(onOutput(drawn).length, onOutput(traceScene(mz('rays'), []).drawables).length, 'its rays are drawn');
+  const [read] = beamAtPoint(360, -100, 5);
+  assert.match(read.issue.reason, /recombine/);
+  // Before they meet, each arm has its band.
+  assert.ok(bands(drawn).length >= 3);
+});
+
+test('G2 (review): an edge that clips a converging beam part-way is found where the beam is wide', () => {
+  // A 10 mm beam into an f = 100 mm lens at x = 200; a blocker's corner sits
+  // 4 mm from the axis at x = 215, where the beam is still 3.5 mm in radius,
+  // but 1.5 mm from its waist region it would clear.
+  const scene = [laser({ beamWidth: 10, wavelength: 633, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100, dia: 25.4 }),
+    make('blocker', 220, 34, { w: 10, h: 60 }), make('detector', 400, 0, { aperture: 40 })];
+  const { drawables } = traceScene(scene, []);
+  const [at] = beamAtPoint(230, 0, 1);
+  assert.match(at.issue?.reason || '', /clips the beam/, JSON.stringify(at));
+  const edges = drawables.filter(d => d.dash === '5 3' && d.pts.every(p => p.x >= 199));
+  assert.equal(edges.length, 2);
+  const end = Math.max(...edges.flatMap(d => d.pts.map(p => p.x)));
+  assert.ok(end < 216, `the band stops where the clearance runs out: ${end}`);
+  assert.equal(bands(drawables).filter(b => b.pts.some(p => p.x > 201)).length, 0, 'no fill on the clipped stretch');
+});
+
+test('G2 (review): a widening band reaches a leaning mirror along both edges', () => {
+  // 0.1 mm at 633 nm with M² = 25 spreads fast; a mirror at −60° 100 mm on.
+  const { drawables } = traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633, beamM2: 25, beamDisplay: 'envelope' }),
+    make('mirror', 152, 0, { length: 100 }, -60)], []);
+  const [incoming] = bands(drawables);
+  // The mirror's line through (152, 0) at −60° to the vertical.
+  const t = { x: Math.cos((-60 + 90) * Math.PI / 180), y: Math.sin((-60 + 90) * Math.PI / 180) };
+  const offLine = p => Math.abs((p.x - 152) * t.y - p.y * t.x);
+  // One edge meets the mirror before the central hit, the other 21 mm
+  // beyond it, where the beam is a third wider than at the hit.
+  const onMirror = incoming.pts.filter(p => offLine(p) < 1e-6);
+  assert.equal(onMirror.length, 2, 'both edges end on the mirror');
+  assert.ok(onMirror.some(p => p.x > 170) && onMirror.some(p => p.x < 140), JSON.stringify(onMirror));
+});
+
+test('G2 (review): an edge past the waist leaves the zoom its propagated waist', () => {
+  const zoom = make('zoom', 311, 0, { w: 10, h: 10, diffraction: true });
+  const scene = [laser({ beamWidth: 0.4, wavelength: 633, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100 }),
+    make('blocker', 600, 31.2, { w: 16, h: 60 }), zoom];
+  const traced = traceScene(scene, []);
+  const [focus] = zoomFoci(zoom, traced.paths);
+  assert.equal(focus.model, 'propagated');
+  close(focus.point.x, 311.51, 0.05, 'the propagated waist');
+  assert.equal(focus.drawnAsEnvelope, true);
+  assert.ok(!/data-zoom-focus="true"/.test(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: scene })));
+});
+
+test('G2 (review): an exported micron waist keeps its two edges apart', () => {
+  state.elements = [laser({ beamWidth: 10, wavelength: 532, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100 })];
+  state.beams = [];
+  const svg = buildSVG({ bounds: { x: 290, y: -5, w: 20, h: 10 } });
+  const polygons = [...svg.matchAll(/<polygon points="([^"]+)"/g)].map(m => m[1].split(' ').map(pair => pair.split(',').map(Number)));
+  const band = polygons.find(pts => pts.length > 50 && pts.some(([x]) => Math.abs(x - 300) < 0.05));
+  assert.ok(band, 'the band is exported');
+  const nearWaist = band.filter(([x]) => Math.abs(x - 300) < 0.05);
+  assert.ok(nearWaist.length >= 2);
+  assert.ok(nearWaist.every(([, y]) => Math.abs(y) > 1e-3), JSON.stringify(nearWaist));
 });
