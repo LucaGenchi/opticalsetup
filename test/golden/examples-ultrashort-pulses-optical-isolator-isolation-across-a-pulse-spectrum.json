@@ -32,7 +32,7 @@
   "mirror:reflector": "5b1838e9",
   "beamdump:dump": "8eaab845",
   "spectrometer:spectrometer": "bba6bdb6",
-  "display:screen": "adb5ae9e"
+  "display:screen": "a6c414e0"
  },
  "pulseTracks": [
   {
@@ -108,7 +108,7 @@
    "digest": "cd05ae72"
   },
   {
-   "intensity": 0.00351675712,
+   "intensity": 0.00351675779,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
@@ -123,10 +123,10 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "f84a7957"
+   "digest": "5fc0b35e"
   },
   {
-   "intensity": 0.000351675712,
+   "intensity": 0.000351675779,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
@@ -141,10 +141,10 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "bb905eb1"
+   "digest": "be423420"
   },
   {
-   "intensity": 0.00316508141,
+   "intensity": 0.00316508201,
    "color": "#8b1a1a",
    "points": 2,
    "opl": [
@@ -159,7 +159,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "4cc1e55d"
+   "digest": "da3c9cc0"
   }
  ],
  "writeHits": {
@@ -173,24 +173,26 @@
  "readouts": {
   "spectrometer:spectrometer": {
    "detector": {
-    "approximations": [],
-    "bandMax": 850.331541,
-    "bandMin": 733.883538,
+    "approximations": [
+     "The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum's average, which gives the power a polarizer passes but not the spectrum it leaves"
+    ],
+    "bandMax": 850.331094,
+    "bandMin": 733.883439,
     "beam": {
      "branches": [
       {
-       "curvatureMm": 94975.5808,
-       "gouyDeg": 5.41562646,
+       "curvatureMm": 94975.6457,
+       "gouyDeg": 5.4156246,
        "gouyScope": "circular",
-       "halfDivergenceMrad": 0.16809044,
+       "halfDivergenceMrad": 0.168090383,
        "index": 1,
        "m2": 1,
        "radiusUm": 1506.72563,
-       "rayleighMm": 8923.76744,
+       "rayleighMm": 8923.77052,
        "sourceId": "laser",
        "waistAheadMm": -846,
        "waistUm": 1500,
-       "wavelengthNm": 792.107539
+       "wavelengthNm": 792.107266
       }
      ],
      "declined": []
@@ -206,17 +208,17 @@
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
-    "depositedSignal": 0.000351675712,
+    "depositedSignal": 0.000351675779,
     "detectorType": "Spectrometer",
     "gain": null,
     "interference": null,
     "normalizedStokes": {
-     "s1": -0.999887014,
-     "s2": 0.0150319544,
+     "s1": 0.949394865,
+     "s2": -0.0166985688,
      "s3": 0
     },
-    "outputSignal": 0.000351675712,
-    "polarization": "Linear 90°",
+    "outputSignal": 0.000351675779,
+    "polarization": "Partly linear 179°",
     "profile": null,
     "profileColors": null,
     "profileMode": null,
@@ -226,7 +228,7 @@
      "branches": [
       {
        "gates": [],
-       "weight": 0.000351675712
+       "weight": 0.000351675779
       }
      ],
      "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
@@ -246,11 +248,11 @@
      "pulseWidthFs": 15,
      "repRateMHz": 80,
      "sources": 1,
-     "stretchedPulseWidthFs": 11.9374499,
+     "stretchedPulseWidthFs": 11.9374564,
      "totalGddFs2": 0,
      "trains": [
       {
-       "centerWavelengthNm": 792.107539,
+       "centerWavelengthNm": 792.107266,
        "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
        "envelope": null,
        "fieldIssue": null,
@@ -263,12 +265,12 @@
        "pulseShape": "gauss",
        "pulseWidthFs": 15,
        "repRateMHz": 80,
-       "stretchedPulseWidthFs": 11.9374499,
+       "stretchedPulseWidthFs": 11.9374564,
        "totalGddFs2": 0,
-       "transformLimitFs": 11.9374499
+       "transformLimitFs": 11.9374564
       }
      ],
-     "transformLimitFs": 11.9374499,
+     "transformLimitFs": 11.9374564,
      "transformLimited": true
     },
     "readoutKind": "spectrometer",
@@ -298,11 +300,11 @@
      "spotSpan": "plane",
      "wavelength": "plane"
     },
-    "signal": 0.000351675712,
+    "signal": 0.000351675779,
     "snr": null,
     "sourceFractions": [
      {
-      "fraction": 0.000351675712,
+      "fraction": 0.000351675779,
       "sourceId": "laser"
      }
     ],
@@ -311,7 +313,7 @@
       "bandId": "laser#0",
       "color": "#db0000",
       "continuum": true,
-      "power": 0.00000120239952,
+      "power": 0.00000120240262,
       "sourceId": "laser",
       "wavelength": 720,
       "widthNm": 3.4025324
@@ -320,7 +322,7 @@
       "bandId": "laser#0",
       "color": "#d40000",
       "continuum": true,
-      "power": 0.00000318580384,
+      "power": 0.00000318581262,
       "sourceId": "laser",
       "wavelength": 723.4,
       "widthNm": 3.4025324
@@ -329,7 +331,7 @@
       "bandId": "laser#0",
       "color": "#ce0000",
       "continuum": true,
-      "power": 0.0000041171955,
+      "power": 0.00000411720756,
       "sourceId": "laser",
       "wavelength": 726.8,
       "widthNm": 3.4025324
@@ -338,7 +340,7 @@
       "bandId": "laser#0",
       "color": "#c70000",
       "continuum": true,
-      "power": 0.00000520798847,
+      "power": 0.00000520800473,
       "sourceId": "laser",
       "wavelength": 730.2,
       "widthNm": 3.4025324
@@ -347,7 +349,7 @@
       "bandId": "laser#0",
       "color": "#c10000",
       "continuum": true,
-      "power": 0.00000646348354,
+      "power": 0.00000646350513,
       "sourceId": "laser",
       "wavelength": 733.7,
       "widthNm": 3.4025324
@@ -356,7 +358,7 @@
       "bandId": "laser#0",
       "color": "#ba0000",
       "continuum": true,
-      "power": 0.00000783665835,
+      "power": 0.00000783668636,
       "sourceId": "laser",
       "wavelength": 737.1,
       "widthNm": 3.4025324
@@ -365,7 +367,7 @@
       "bandId": "laser#0",
       "color": "#b40000",
       "continuum": true,
-      "power": 0.00000929508765,
+      "power": 0.00000929512331,
       "sourceId": "laser",
       "wavelength": 740.5,
       "widthNm": 3.4025324
@@ -374,7 +376,7 @@
       "bandId": "laser#0",
       "color": "#ad0000",
       "continuum": true,
-      "power": 0.0000107749047,
+      "power": 0.0000107749492,
       "sourceId": "laser",
       "wavelength": 743.9,
       "widthNm": 3.4025324
@@ -383,7 +385,7 @@
       "bandId": "laser#0",
       "color": "#a60000",
       "continuum": true,
-      "power": 0.0000122023387,
+      "power": 0.0000122023931,
       "sourceId": "laser",
       "wavelength": 747.3,
       "widthNm": 3.4025324
@@ -392,7 +394,7 @@
       "bandId": "laser#0",
       "color": "#a00000",
       "continuum": true,
-      "power": 0.0000134710526,
+      "power": 0.0000134711178,
       "sourceId": "laser",
       "wavelength": 750.7,
       "widthNm": 3.4025324
@@ -401,7 +403,7 @@
       "bandId": "laser#0",
       "color": "#990000",
       "continuum": true,
-      "power": 0.0000144952987,
+      "power": 0.0000144953751,
       "sourceId": "laser",
       "wavelength": 754.1,
       "widthNm": 3.4025324
@@ -410,7 +412,7 @@
       "bandId": "laser#0",
       "color": "#920000",
       "continuum": true,
-      "power": 0.0000152060641,
+      "power": 0.0000152061517,
       "sourceId": "laser",
       "wavelength": 757.5,
       "widthNm": 3.4025324
@@ -419,7 +421,7 @@
       "bandId": "laser#0",
       "color": "#8b0000",
       "continuum": true,
-      "power": 0.0000154487277,
+      "power": 0.0000154488258,
       "sourceId": "laser",
       "wavelength": 760.9,
       "widthNm": 3.4025324
@@ -428,7 +430,7 @@
       "bandId": "laser#0",
       "color": "#840000",
       "continuum": true,
-      "power": 0.0000152410805,
+      "power": 0.0000152411877,
       "sourceId": "laser",
       "wavelength": 764.3,
       "widthNm": 3.4025324
@@ -437,7 +439,7 @@
       "bandId": "laser#0",
       "color": "#7c0000",
       "continuum": true,
-      "power": 0.0000145531769,
+      "power": 0.0000145532911,
       "sourceId": "laser",
       "wavelength": 767.7,
       "widthNm": 3.4025324
@@ -446,7 +448,7 @@
       "bandId": "laser#0",
       "color": "#750000",
       "continuum": true,
-      "power": 0.0000133448514,
+      "power": 0.0000133449697,
       "sourceId": "laser",
       "wavelength": 771.1,
       "widthNm": 3.4025324
@@ -455,7 +457,7 @@
       "bandId": "laser#0",
       "color": "#6e0000",
       "continuum": true,
-      "power": 0.0000117537638,
+      "power": 0.0000117538827,
       "sourceId": "laser",
       "wavelength": 774.5,
       "widthNm": 3.4025324
@@ -464,7 +466,7 @@
       "bandId": "laser#0",
       "color": "#660000",
       "continuum": true,
-      "power": 0.00000985270596,
+      "power": 0.00000985282141,
       "sourceId": "laser",
       "wavelength": 777.9,
       "widthNm": 3.4025324
@@ -473,7 +475,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000778143052,
+      "power": 0.00000778153798,
       "sourceId": "laser",
       "wavelength": 781.3,
       "widthNm": 3.4025324
@@ -482,7 +484,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000570984909,
+      "power": 0.0000057099445,
       "sourceId": "laser",
       "wavelength": 784.7,
       "widthNm": 3.4025324
@@ -491,7 +493,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000381746923,
+      "power": 0.00000381754824,
       "sourceId": "laser",
       "wavelength": 788.1,
       "widthNm": 3.4025324
@@ -500,7 +502,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000225432873,
+      "power": 0.00000225438784,
       "sourceId": "laser",
       "wavelength": 791.5,
       "widthNm": 3.4025324
@@ -509,7 +511,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000111274294,
+      "power": 0.00000111277959,
       "sourceId": "laser",
       "wavelength": 794.9,
       "widthNm": 3.4025324
@@ -518,7 +520,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 5.65650473e-7,
+      "power": 5.65662845e-7,
       "sourceId": "laser",
       "wavelength": 798.3,
       "widthNm": 3.4025324
@@ -527,7 +529,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 5.63400255e-7,
+      "power": 5.63387931e-7,
       "sourceId": "laser",
       "wavelength": 801.7,
       "widthNm": 3.4025324
@@ -536,7 +538,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000108409794,
+      "power": 0.00000108406158,
       "sourceId": "laser",
       "wavelength": 805.1,
       "widthNm": 3.4025324
@@ -545,7 +547,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000212301939,
+      "power": 0.00000212296108,
       "sourceId": "laser",
       "wavelength": 808.5,
       "widthNm": 3.4025324
@@ -554,7 +556,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000348668339,
+      "power": 0.00000348660583,
       "sourceId": "laser",
       "wavelength": 811.9,
       "widthNm": 3.4025324
@@ -563,7 +565,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000505973381,
+      "power": 0.00000505964064,
       "sourceId": "laser",
       "wavelength": 815.3,
       "widthNm": 3.4025324
@@ -572,7 +574,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000668750828,
+      "power": 0.00000668740387,
       "sourceId": "laser",
       "wavelength": 818.7,
       "widthNm": 3.4025324
@@ -581,7 +583,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000822444083,
+      "power": 0.00000822432921,
       "sourceId": "laser",
       "wavelength": 822.1,
       "widthNm": 3.4025324
@@ -590,7 +592,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000952757739,
+      "power": 0.00000952746299,
       "sourceId": "laser",
       "wavelength": 825.5,
       "widthNm": 3.4025324
@@ -599,7 +601,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0000105067684,
+      "power": 0.0000105066551,
       "sourceId": "laser",
       "wavelength": 828.9,
       "widthNm": 3.4025324
@@ -608,7 +610,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0000111351496,
+      "power": 0.0000111350406,
       "sourceId": "laser",
       "wavelength": 832.3,
       "widthNm": 3.4025324
@@ -617,7 +619,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0000113324136,
+      "power": 0.0000113323118,
       "sourceId": "laser",
       "wavelength": 835.7,
       "widthNm": 3.4025324
@@ -626,7 +628,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.000011165565,
+      "power": 0.0000111654722,
       "sourceId": "laser",
       "wavelength": 839.1,
       "widthNm": 3.4025324
@@ -635,7 +637,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.0000106837936,
+      "power": 0.000010683711,
       "sourceId": "laser",
       "wavelength": 842.5,
       "widthNm": 3.4025324
@@ -644,7 +646,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000990559827,
+      "power": 0.00000990552648,
       "sourceId": "laser",
       "wavelength": 845.9,
       "widthNm": 3.4025324
@@ -653,7 +655,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000895326394,
+      "power": 0.00000895320287,
       "sourceId": "laser",
       "wavelength": 849.3,
       "widthNm": 3.4025324
@@ -662,7 +664,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000788861553,
+      "power": 0.00000788856468,
       "sourceId": "laser",
       "wavelength": 852.7,
       "widthNm": 3.4025324
@@ -671,7 +673,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000678050596,
+      "power": 0.00000678046443,
       "sourceId": "laser",
       "wavelength": 856.1,
       "widthNm": 3.4025324
@@ -680,7 +682,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000569184643,
+      "power": 0.00000569181325,
       "sourceId": "laser",
       "wavelength": 859.5,
       "widthNm": 3.4025324
@@ -689,7 +691,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000467209347,
+      "power": 0.00000467206744,
       "sourceId": "laser",
       "wavelength": 862.9,
       "widthNm": 3.4025324
@@ -698,7 +700,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000375381201,
+      "power": 0.00000375379196,
       "sourceId": "laser",
       "wavelength": 866.3,
       "widthNm": 3.4025324
@@ -707,7 +709,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000294481817,
+      "power": 0.00000294480308,
       "sourceId": "laser",
       "wavelength": 869.8,
       "widthNm": 3.4025324
@@ -716,7 +718,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000226944086,
+      "power": 0.00000226942966,
       "sourceId": "laser",
       "wavelength": 873.2,
       "widthNm": 3.4025324
@@ -725,7 +727,7 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 0.00000171203675,
+      "power": 0.0000017120286,
       "sourceId": "laser",
       "wavelength": 876.6,
       "widthNm": 3.4025324
@@ -734,14 +736,14 @@
       "bandId": "laser#0",
       "color": "#8b1a1a",
       "continuum": true,
-      "power": 6.29476616e-7,
+      "power": 6.29473724e-7,
       "sourceId": "laser",
       "wavelength": 880,
       "widthNm": 3.4025324
      }
     ],
     "spotSpan": 3,
-    "wavelength": 792.107539
+    "wavelength": 792.107266
    }
   }
  },

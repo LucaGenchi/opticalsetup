@@ -2613,11 +2613,15 @@ export const wikiEntries = [
         polarizer also passes a fraction 1/ER of the light polarized across it, set by its
         <em>extinction ratio</em> in dB, which limits the isolation where δ is small: at the
         design wavelength the isolation equals the extinction ratio. The output is polarized
-        along the output polarizer whatever arrives, and unpolarized light keeps half going
-        forward.</p>
+        along the output polarizer, to the polarizers' extinction (light arriving exactly
+        across the input polarizer leaves weak and across the output one), and unpolarized
+        light keeps half going forward.</p>
         <p>The physical model weighs each wavelength of a broadband beam on its own, so a
         short pulse leaks back mostly at the wings of its spectrum, where δ is largest,
-        and the returning spectrum has a hole at the design wavelength. The inspector gives
+        and the returning spectrum has a hole at the design wavelength; the light at the
+        centre and at the wings also leaves in different states, and the beam carries their
+        average, partly polarized, which gives the power a polarizer passes after it but not
+        the spectrum it leaves (the readings say so). The inspector gives
         the field-length product the design needs and, for each wavelength present, the
         rotation, the forward transmission and the isolation, also at the edges of a
         broadband beam's band.</p>
@@ -2635,8 +2639,8 @@ export const wikiEntries = [
         gate and the readings past it carry a caveat. A custom Verdet constant is the same at
         every wavelength. Absorption, Fresnel losses, the polarizers' own wavelength
         dependence, thermal effects at high power, the field's non-uniformity along the rod
-        and the path delay of the rod are not modelled. Light from a switching modulator is
-        weighed at its centre wavelength.</p>`,
+        and the path delay of the rod are not modelled. Light from a switching modulator keeps
+        its two states, each weighed at its centre wavelength.</p>`,
     },
     related: ['faraday', 'polarizer', 'qwp', 'pbs', 'cwlaser'],
     resources: [
@@ -2700,10 +2704,11 @@ export const wikiEntries = [
         1100&nbsp;nm; other samples read up to about 19&nbsp;% higher${cite(2)}. Outside that
         range the element computes no rotation: the light keeps the polarization it arrived
         with, and the readings past it say so. A custom Verdet constant is the same at every
-        wavelength. A broadband beam carries one polarization state, so it is turned by the
-        rotation at its centre wavelength; where the rotation varies by more than 1° across
-        its band, the readings past the rotator say so. The optical isolator's physical
-        model weighs each wavelength separately.</p>`,
+        wavelength. Each wavelength of a broadband beam turns by its own amount, and the beam
+        carries on as their average, partly polarized where they differ: that gives the power
+        a polarizer passes after it but not the spectrum it leaves, and the readings past it
+        say so. Part of a band outside the material's data keeps its state, and the readings
+        name that part.</p>`,
     },
     related: ['isolator', 'hwp', 'qwp', 'pbs', 'polarizer'],
     citations: [

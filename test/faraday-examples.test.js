@@ -12,6 +12,7 @@ import { parseSketch } from '../sketch/js/state.js';
 import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { rotationForCrossingDeg } from '../sketch/js/faraday.js';
+import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 
 const close = (actual, expected, tolerance, what = '') =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${what} ${actual} != ${expected} ± ${tolerance}`);
@@ -57,6 +58,10 @@ test('optical isolator example: each change in its table', async () => {
   close(hole.wavelength, 780, 4, 'the hole moves to 780 nm');
   close((await run(ISOLATOR, get => { get('isolator').params.extinctionDb = 30; })).watts('spectrometer'), 0.432 * mW, 0.0005 * mW, '30 dB');
   close((await run(ISOLATOR, get => { get('laser').params.pulseWidthFs = 100; })).watts('spectrometer'), 16.6 * uW, 0.05 * uW, '100 fs');
+  // About 9 nm wide at 100 fs, under 1 nm at 1000 fs (transform-limited
+  // Gaussians at 800 nm).
+  close(transformLimitedBandwidthNm(100, 800, 'gauss'), 9.4, 0.05, '100 fs bandwidth');
+  assert.ok(transformLimitedBandwidthNm(1000, 800, 'gauss') < 1);
   const narrow = await run(ISOLATOR, get => { get('laser').params.pulseWidthFs = 1000; });
   close(narrow.watts('spectrometer'), 9.08 * uW, 0.005 * uW, '1000 fs');
   // 1 W × 0.9 × 0.1 × 1e-4 is the 40 dB floor, and the 15 fs pulse returns 39

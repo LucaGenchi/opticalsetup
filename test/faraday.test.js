@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import { traceScene, detectorReading, probeAt, faradayReading } from '../sketch/js/raytrace.js';
+import { enhancedReading } from '../sketch/js/detector-measurements.js';
+import { readFile } from 'node:fs/promises';
 import {
   FARADAY_MATERIAL_OPTIONS, verdetAt, faradayRotationDeg, rotationForCrossingDeg, rotateStokes,
   isolatorRotationDeg, isolatorFieldLength, isolatorFigures, isolatorCrossing, leakOfExtinction,
@@ -189,10 +191,11 @@ test('P2: where the material has no data the light is not changed silently: it c
   traceScene([make('cwlaser', 0, 0, { wavelength: 1550, pol: 0 }), iso]);
   assert.match(probeAt(250, 0).approximation, /Isolation not computed at an optical isolator/);
   assert.match(readout(iso, 'isolation'), /1550 nm: not computed/);
-  // A pulse whose band turns over more than a degree says the state is the
-  // centre's.
+  // A pulse whose band turns by different amounts leaves partly polarized
+  // (the spectrum's average), and says so.
   traceScene([make('pulsedlaser', 0, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('faraday', 150, 0)]);
-  assert.match(probeAt(250, 0).approximation, /taken at the band's centre/);
+  assert.match(probeAt(250, 0).approximation, /varies across its spectrum/);
+  assert.ok(Math.hypot(probeAt(250, 0).stokes.s1, probeAt(250, 0).stokes.s2) < 0.99);
   // A narrow line does not.
   traceScene([make('cwlaser', 0, 0, { wavelength: 800, pol: 0 }), make('faraday', 150, 0)]);
   assert.equal(probeAt(250, 0).approximation, null);
@@ -234,4 +237,75 @@ test('P2: saved setups open unchanged; new settings normalise', () => {
   // The rotator is offered in the Polarization library with search terms.
   assert.equal(registry.faraday.category, 'Polarization');
   assert.ok(registry.faraday.aliases.includes('Verdet constant'));
+});
+
+// Andrea's review of the first version (PR #335, round 1).
+test('P2 (review): a 40 dB leak is kept and read, down to 80 dB', () => {
+  // 1 W at the design wavelength sent back along the output polarizer.
+  for (const er of [30, 40, 50, 60, 80]) {
+    const meter = make('powermeter', -100, 0, {}, 180);
+    const scene = [make('cwlaser', 300, 0, { wavelength: 800, pol: 135, beamMode: 'line', avgPowerW: 1 }, 180),
+      make('isolator', 100, 0, { isolatorModel: 'physical', designWl: 800, extinctionDb: er }), meter];
+    traceScene(scene);
+    close(enhancedReading(meter, scene).detectedPowerW, 10 ** (-er / 10), 10 ** (-er / 10) * 1e-6, `${er} dB`);
+  }
+});
+
+test('P2 (review): a broadband leak carries its state as the spectrum\'s average, so a polarizer reads the right power', async () => {
+  // The example with a polarizer at 0° before the spectrometer: the leak at
+  // the wings passes, the leak at the centre (across the input polarizer)
+  // does not. A Jones double pass integrated over the source's spectrum
+  // gives 343 µW (Andrea); the state of the centre alone gave 20 nW.
+  const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+  scene.elements.push(make('polarizer', 125, 320, { pangle: 0 }, 90));
+  traceScene(scene.elements, scene.beams);
+  const spectrometer = scene.elements.find(e => e.id === 'spectrometer');
+  close(enhancedReading(spectrometer, scene.elements).detectedPowerW, 343e-6, 2e-6);
+  assert.ok(detectorReading('spectrometer').approximations.some(a => /varies across its spectrum/.test(a)));
+});
+
+test('P2 (review): a switching modulator keeps its two states through the isolator', () => {
+  // Pulses at 80 MHz, the modulator switching in step with them: every
+  // pulse meets the same state, and half a period later the other one.
+  const read = phase => {
+    const meter = make('powermeter', 500, 0);
+    const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80, pulseWidthFs: 1000 }),
+      make('eom', 50, 0, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 80, switchDuty: 0.5, switchPhaseNs: phase }),
+      make('isolator', 200, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, extinctionDb: 10 }),
+      make('polarizer', 320, 0, { pangle: 135 }), meter];
+    traceScene(scene);
+    return enhancedReading(meter, scene)?.detectedPowerW ?? 0;
+  };
+  // Horizontal light passes and leaves at 45°, which the analyzer at 135°
+  // stops; vertical light leaks 1/10 through the input polarizer and 1/10
+  // through the output one, across it, at 135°: 10 mW.
+  close(read(0), 0.01, 1e-9);
+  close(read(6.25), 0, 1e-9);
+});
+
+test('P2 (review): a leak that reshapes a pulse\'s spectrum gives the duration of what survives', async () => {
+  const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+  scene.elements.find(e => e.id === 'laser').params.pulseWidthFs = 100;
+  traceScene(scene.elements, scene.beams);
+  const pulse = detectorReading('spectrometer').pulse;
+  assert.match(pulse.dispersionModel, /Filtered spectrum/);
+  assert.ok(Math.abs(pulse.stretchedPulseWidthFs - 100) > 5, String(pulse.stretchedPulseWidthFs));
+});
+
+test('P2 (review): a band partly outside the material\'s data names the part that is not computed', () => {
+  // 15 fs at 1090 nm reaches past TGG's 1100 nm.
+  traceScene([make('pulsedlaser', 0, 0, { wavelength: 1090, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('faraday', 150, 0)]);
+  assert.match(probeAt(250, 0).approximation, /Polarization not computed past a Faraday rotator for 1101–\d+ nm of this light's spectrum/);
+  traceScene([make('pulsedlaser', 0, 0, { wavelength: 1090, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })]);
+  assert.match(probeAt(250, 0).approximation, /Isolation not computed at an optical isolator for 1101–\d+ nm of this light's spectrum/);
+});
+
+test('P2 (review): a lamp\'s lines are read one by one', () => {
+  const F = make('faraday', 150, 0, { aperture: 40 });
+  traceScene([make('pointsource', 0, 0, { sourceKind: 'lamp', lampType: 'hg', spread: 10, nrays: 12 }), make('lens', 120, 0, { f: 100, dia: 50 }), F]);
+  const text = readout(F, 'rotation');
+  for (const line of ['546.1 nm, travelling along the field', '577 nm, travelling along the field', '579.1 nm, travelling along the field', '1014 nm, travelling along the field']) {
+    assert.ok(text.includes(line), `${line}\n${text}`);
+  }
+  assert.match(text, /435\.8 nm: not computed/);
 });

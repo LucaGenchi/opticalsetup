@@ -252,11 +252,15 @@
         polarizer also passes a fraction 1/ER of the light polarized across it, set by its
         <em>extinction ratio</em> in dB, which limits the isolation where δ is small: at the
         design wavelength the isolation equals the extinction ratio. The output is polarized
-        along the output polarizer whatever arrives, and unpolarized light keeps half going
-        forward.</p>
+        along the output polarizer, to the polarizers' extinction (light arriving exactly
+        across the input polarizer leaves weak and across the output one), and unpolarized
+        light keeps half going forward.</p>
         <p>The physical model weighs each wavelength of a broadband beam on its own, so a
         short pulse leaks back mostly at the wings of its spectrum, where δ is largest,
-        and the returning spectrum has a hole at the design wavelength. The inspector gives
+        and the returning spectrum has a hole at the design wavelength; the light at the
+        centre and at the wings also leaves in different states, and the beam carries their
+        average, partly polarized, which gives the power a polarizer passes after it but not
+        the spectrum it leaves (the readings say so). The inspector gives
         the field-length product the design needs and, for each wavelength present, the
         rotation, the forward transmission and the isolation, also at the edges of a
         broadband beam's band.</p>
@@ -274,8 +278,8 @@
         gate and the readings past it carry a caveat. A custom Verdet constant is the same at
         every wavelength. Absorption, Fresnel losses, the polarizers' own wavelength
         dependence, thermal effects at high power, the field's non-uniformity along the rod
-        and the path delay of the rod are not modelled. Light from a switching modulator is
-        weighed at its centre wavelength.</p></div>
+        and the path delay of the rod are not modelled. Light from a switching modulator keeps
+        its two states, each weighed at its centre wavelength.</p></div>
       </div>
 
 

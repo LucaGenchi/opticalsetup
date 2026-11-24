@@ -47,10 +47,17 @@ Slezák et al.'s sample NG6, 500–1100 nm, 295 K) and a custom constant,
 signed, the same at every wavelength. Outside a record's range the element
 computes no rotation (below).
 
-**Broadband light.** A ray carries one polarization state, so a broadband
-ray is turned by the rotation at its centre wavelength. Where the rotation
-varies by more than 1° across the ray's bandwidth (between centre ± half the
-bandwidth), the light carries a caveat saying so, which detectors show.
+**Broadband light.** A ray carries one polarization state for its whole
+spectrum. Each wavelength turns by its own amount, so the state carried on is
+the power-weighted average of the turned states (the Stokes vectors of the
+spectrum's samples, added): light whose wavelengths now point different ways
+is, to an instrument that does not resolve the spectrum, partly polarized.
+That gives the power a polarizer passes after it exactly; the spectrum the
+polarizer leaves is not, and where the degree of polarization falls by more
+than 0.01 the light carries a caveat saying so. Part of a band outside the
+material's data keeps the state it arrived with, and the caveat names that
+part. A switching modulator's two states are turned by the rotation at the
+centre wavelength.
 
 ## Physical isolator
 
@@ -72,10 +79,17 @@ the Mueller product per wavelength for the arriving state (`isolatorCrossing`)
 and applies it across the light's spectrum with the tracer's spectral
 transmission (`applyTransmission`; a lamp's lines one by one), so a short pulse
 leaks back at the wings of its spectrum and its returning spectrum has a hole
-at λ_d. The light leaves in the state the product gives at its centre
-wavelength: along the output polarizer going forward, to the polarizers'
-extinction. Light from a switching modulator is weighed at its centre
-wavelength, state by state.
+at λ_d. The transmission is weighed scaled to its largest value over the band,
+so a leak of 10⁻⁴ or less is not lost below the spectral integration's floor,
+and a pulse whose spectrum it reshapes takes the duration of what survives.
+The light leaves in the spectrum's average state, as above: going forward,
+along the output polarizer to the polarizers' extinction; coming back, the
+leak at the design wavelength (across the input polarizer) and at the wings
+(along it) average to a partly polarized state, which gives the power a
+polarizer after it passes. Light from a switching modulator keeps its two
+states, each crossing with its own transmission at the centre wavelength: a
+pulse train carries the difference as a gate, continuous light as each state's
+weight (as at a Fresnel face).
 
 The inspector's isolation is −10·log10 of what returns through the isolator
 of light polarized along the output polarizer, which is the state of a
@@ -93,6 +107,9 @@ along the input polarizer.
   would (forward through, backward blocked), with the caveat "Isolation not
   computed at an optical isolator". A design wavelength without a Verdet
   constant leaves no design, and the inspector says why.
+- Where only part of a band lies outside the data, that part keeps its state
+  (rotator) or passes as through the ideal gate (isolator), and the caveat
+  names the part, in nm.
 
 ## Not modelled
 
@@ -106,8 +123,8 @@ along the input polarizer.
 - The polarizers' wavelength dependence and their own losses; the isolator's
   internal reflections and a beam displacer design (polarization-independent
   isolators).
-- The polarization of a broadband ray beyond its centre wavelength (the
-  isolator weighs every wavelength in power).
+- The spectrum that a polarizer leaves of light whose polarization varies
+  across its spectrum: the state is carried as the spectrum's average.
 
 ## Validation
 
