@@ -473,3 +473,20 @@ test('G2 (review 3): an arm counts for recombination only as far as it carries a
   assert.ok(reads.some(r => !r.issue && Math.abs(r.radiusUm / 1000 - 1.007) < 0.002), JSON.stringify(reads));
   assert.ok(bands(drawables).some(b => Math.min(...b.pts.map(p => p.x)) < 629 && Math.max(...b.pts.map(p => p.x)) > 629), 'the straight arm\'s band crosses x = 629');
 });
+
+// Andrea's review, round 4.
+test('G2 (review 4): an edge after the arms recombine does not bring back a waist in the zoom', () => {
+  // The focused Mach–Zehnder above, with a 4 mm block at (320, −97.8): the
+  // arms overlap from x = 300 mm, the block clips the output near 317.9 mm,
+  // and the waist would be near 368.6 mm.
+  for (const display of ['rays', 'envelope']) {
+    const zoom = make('zoom', 370, -100, { w: 20, h: 20, diffraction: true });
+    const scene = [make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 633, beamDisplay: display }), make('lens', 120, 0, { f: 350 }),
+      make('bs', 200, 0), make('bs', 300, 0), make('bs', 200, -100), make('bs', 300, -100), make('blocker', 320, -97.8, { w: 4, h: 4 }), zoom];
+    const traced = traceScene(scene, []);
+    assert.ok(beamAtPoint(312, -100, 3)[0]?.issue, 'the probe declines');
+    const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: scene });
+    assert.equal((svg.match(/data-zoom-focus="true"/g) || []).length, 0, display);
+    assert.ok(!/w₀/.test(svg), display);
+  }
+});

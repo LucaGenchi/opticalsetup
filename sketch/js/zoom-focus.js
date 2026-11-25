@@ -159,12 +159,13 @@ function propagatedFocus(group) {
   // estimate. One that clips it past the waist leaves the waist, and the
   // envelope is drawn up to the edge (`reachMm`), as the bench's band is.
   const clipAt = beam.clipAt?.(Math.max(along, length)) ?? null;
-  if (clipAt !== null && clipAt <= Math.max(0, along)) return null;
   // Arms of the same light that overlap before the waist recombine there:
   // the readouts give no beam, and the zoom draws no waist, neither the
-  // beam's nor a cone's. One that begins past the waist ends its envelope.
+  // beam's nor a cone's, even where an edge clips the light afterwards. One
+  // that begins past the waist ends its envelope.
   const overlapAt = beam.overlapAt ?? null;
-  if (overlapAt !== null && overlapAt <= Math.max(0, along)) return { ok: false };
+  if (overlapAt !== null && overlapAt <= Math.max(0, along) && (clipAt === null || overlapAt <= clipAt)) return { ok: false };
+  if (clipAt !== null && clipAt <= Math.max(0, along)) return null;
   const reach = [clipAt, overlapAt].filter(v => v !== null);
   return {
     ok: true, model: 'propagated', reachMm: reach.length ? Math.min(...reach) : null,
