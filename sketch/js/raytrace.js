@@ -7978,8 +7978,7 @@ function surfaceTangentAt(surface, p) {
 // The beam envelope of every source set to draw it (step G2), added to the
 // drawables: on each segment of a traced path that carries light and a beam
 // parameter, the band ±w(z) about the central ray (beamOnPathSegment, the
-// beam the probe and the zoom read), its edges, a mark at each waist and, on
-// request, at a Rayleigh range either side. "Envelope" fills the band in
+// beam the probe and the zoom read) and its edges. "Envelope" fills the band in
 // place of the rays' fill wherever the beam is defined; where it is not
 // (past a diffuser, a clipping edge or a recombination, on a stretch whose
 // light the readouts decline), the rays stay drawn, so no light disappears
@@ -8118,7 +8117,6 @@ function drawBeamEnvelopes(stretchList, elements, drawables) {
     const band = envelopeBand({
       start: a, d: s.d, length: end ?? s.length, shape: s.shape,
       faces: [face(i, a), end === null ? face(i + 1, b) : null],
-      rayleigh: s.origin.params.beamRayleighTicks === true,
     });
     if (!band) continue;
     // A stretch an edge clips, part-way or with the rim of the element that
@@ -8130,8 +8128,6 @@ function drawBeamEnvelopes(stretchList, elements, drawables) {
     }
     const edge = filled ? { w: 1.2, opacity: 0.75 } : { w: 1.2, opacity: 0.85, dash: '5 3' };
     for (const side of [band.left, band.right]) drawables.push({ type: 'path', pts: side, color, ...edge, precision: ENVELOPE_PRECISION });
-    if (band.waist) drawables.push({ type: 'path', pts: band.waist.pts, color, w: 1.6, opacity: 0.95 });
-    for (const tick of band.rayleigh) drawables.push({ type: 'path', pts: tick.pts, color, w: 1, opacity: 0.85 });
     if (!envelopeSegmentsOf.has(path)) envelopeSegmentsOf.set(path, new Set());
     envelopeSegmentsOf.get(path).add(i);
     // The rays' fill on this route is left out only where the band covers

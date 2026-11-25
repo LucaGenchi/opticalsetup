@@ -282,11 +282,10 @@ The zoom's focus is drawn by the same function (`envelopeEdges`).
   plate at 56° (Andrea's case). A face met within about 6° of grazing, a face
   the beam spreads too fast to meet, an asphere's profile and a path's free
   ends are cut square to the beam.
-- **Marks.** A bar across the band marks each waist that lies on a segment,
-  reaching 1.6 w₀ either side of the axis and at least 1.2 mm, so that a
-  micron-sized waist can be found on the bench. With *Mark a Rayleigh range
-  either side of each waist*, two thinner bars stand one Rayleigh range from
-  it, where the beam is √2 w₀.
+- **No marks.** Nothing is drawn across the band: the waist is where it is
+  narrowest, and the probe reads its place, its size and the Rayleigh range
+  (Luca: bars across the band at the waist and a Rayleigh range from it
+  confused more than they showed).
 - **Clipping by a surface met.** The footprint that must fit on a surface
   (CLIP_RADII radii either side, for the readouts too) runs from where one
   edge of the arriving beam meets the surface's line to where the other

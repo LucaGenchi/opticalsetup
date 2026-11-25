@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import { traceScene, beamAtPoint, detectorReading, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
-import { envelopeEdges, envelopeBand, WAIST_MARK_MIN_MM, RAYLEIGH_MARK_MIN_MM } from '../sketch/js/beam-envelope.js';
+import { envelopeEdges, envelopeBand } from '../sketch/js/beam-envelope.js';
 import { beamDisplayOf } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist } from '../sketch/js/gaussian-beam.js';
 import { zoomFoci } from '../sketch/js/zoom-focus.js';
@@ -33,8 +33,24 @@ const ys = pts => pts.map(p => p.y);
 // The band's fill: the polygons the envelope adds are the only ones with
 // many points (the rays' fill is made of quadrilaterals).
 const bands = drawables => drawables.filter(d => d.type === 'poly' && d.pts.length > 8);
-// Two-point strokes across the beam: the waist and Rayleigh-range marks.
+// Two-point strokes across the beam, as waist or Rayleigh-range marks would be.
 const marks = drawables => drawables.filter(d => d.type === 'path' && d.pts.length === 2 && Math.abs(d.pts[0].x - d.pts[1].x) < 1e-9);
+// Where a band along x is narrowest, and its half-width there: w² is a
+// quadratic in z, so the parabola through the narrowest sample and its two
+// neighbours has its vertex at the waist.
+function bandWaist(band) {
+  const n = band.pts.length / 2;
+  const at = i => ({ x: (band.pts[i].x + band.pts[band.pts.length - 1 - i].x) / 2, w2: ((band.pts[i].y - band.pts[band.pts.length - 1 - i].y) / 2) ** 2 });
+  let k = 1;
+  for (let i = 1; i < n - 1; i++) if (at(i).w2 < at(k).w2) k = i;
+  const [a, b, c] = [at(k - 1), at(k), at(k + 1)];
+  const denom = (a.x - b.x) * (a.x - c.x) * (b.x - c.x);
+  const A = (c.x * (b.w2 - a.w2) + b.x * (a.w2 - c.w2) + a.x * (c.w2 - b.w2)) / denom;
+  const B = (c.x ** 2 * (a.w2 - b.w2) + b.x ** 2 * (c.w2 - a.w2) + a.x ** 2 * (b.w2 - c.w2)) / denom;
+  const C = (b.x * c.x * (b.x - c.x) * a.w2 + c.x * a.x * (c.x - a.x) * b.w2 + a.x * b.x * (a.x - b.x) * c.w2) / denom;
+  const x = -B / (2 * A);
+  return { x, w: Math.sqrt(A * x * x + B * x + C) };
+}
 
 test('G2: the envelope curve is w0·√(1 + (z/zR)²), with exact ends', () => {
   const edges = envelopeEdges({ point: { x: 10, y: 5 }, axis: { x: 1, y: 0 }, w0Mm: 0.02, zRMm: 2 }, -6, 4, 40);
@@ -80,26 +96,20 @@ test('G2: a band ends on a tilted face along it, and square to the beam where th
   assert.equal(envelopeBand({ start: { x: 0, y: 0 }, d: { x: 1, y: 0 }, length: 10, shape: null }), null);
 });
 
-test('G2: the waist mark sits on the waist, the Rayleigh marks one Rayleigh range either side', () => {
-  // A 20 µm waist 50 mm along a 100 mm stretch; z_R = π w0² / λ.
+test('G2: nothing is drawn across the band, at the waist or a Rayleigh range from it', () => {
+  // A 20 µm waist 50 mm along a 100 mm stretch: the band returns its two
+  // edges and its outline, and no mark.
   const q = qFromWaist({ waistUm: 20, wavelengthNm: 633, zMm: -50 });
   const shape = beamFromQ(q, { wavelengthNm: 633 });
   close(shape.waistAheadMm, 50, 1e-9);
-  const band = envelopeBand({ start: { x: 0, y: 0 }, d: { x: 1, y: 0 }, length: 100, shape, rayleigh: true });
-  close(band.waist.at, 50, 1e-9, 'waist');
-  // A 20 µm waist is far below what the bench shows: the mark keeps its
-  // minimum reach either side of the axis.
-  close(band.waist.pts[0].y, WAIST_MARK_MIN_MM, 1e-12);
-  assert.deepEqual(band.rayleigh.map(m => Number(m.at.toFixed(6))), [Number((50 - shape.rayleighMm).toFixed(6)), Number((50 + shape.rayleighMm).toFixed(6))]);
-  close(band.rayleigh[0].pts[0].y, RAYLEIGH_MARK_MIN_MM, 1e-12);
-  // A waist beyond the stretch is not marked; without the option no
-  // Rayleigh marks are drawn.
+  const band = envelopeBand({ start: { x: 0, y: 0 }, d: { x: 1, y: 0 }, length: 100, shape });
+  assert.deepEqual(Object.keys(band).sort(), ['left', 'outline', 'right']);
+  // Traced through a focus, the drawing holds the band and its edges only.
+  const { drawables } = traceScene([laser({ beamWidth: 3, wavelength: 532, beamDisplay: 'envelope' }), make('lens', 252, 0, { f: 100 }), make('detector', 552, 0)], []);
+  assert.equal(marks(drawables).length, 0);
+  // A waist beyond the stretch: still only the band.
   const before = envelopeBand({ start: { x: 0, y: 0 }, d: { x: 1, y: 0 }, length: 40, shape });
-  assert.equal(before.waist, null);
-  assert.deepEqual(before.rayleigh, []);
-  // A wide waist is marked a little beyond the band.
-  const wide = envelopeBand({ start: { x: 0, y: 0 }, d: { x: 1, y: 0 }, length: 10, shape: beamFromQ(qFromWaist({ waistUm: 2000, wavelengthNm: 633 }), { wavelengthNm: 633 }) });
-  close(wide.waist.pts[0].y, 3.2, 1e-9);
+  assert.deepEqual(Object.keys(before).sort(), ['left', 'outline', 'right']);
 });
 
 test('G2: rays stay the default, and an unset or unknown choice draws exactly what was drawn before', () => {
@@ -111,28 +121,27 @@ test('G2: rays stay the default, and an unset or unknown choice draws exactly wh
   assert.ok(before.every(d => !('beamRoute' in d)), 'no bookkeeping leaks into the drawables');
   // A saved setup opens unchanged: without the setting, or with a value it
   // does not know, a source is drawn as rays.
-  const opened = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [{ id: 'a', type: 'cwlaser', x: 0, y: 0, rot: 0, params: { beamMode: 'beam', beamDisplay: 'halo', beamRayleighTicks: 'yes' } }], beams: [] }), registry);
+  // A setup saved while the band could carry Rayleigh-range marks opens
+  // without them: the setting is gone.
+  const opened = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [{ id: 'a', type: 'cwlaser', x: 0, y: 0, rot: 0, params: { beamMode: 'beam', beamDisplay: 'halo', beamRayleighTicks: true } }], beams: [] }), registry);
   assert.equal(opened.elements[0].params.beamDisplay, 'rays');
-  assert.equal(opened.elements[0].params.beamRayleighTicks, false);
+  assert.equal('beamRayleighTicks' in opened.elements[0].params, false);
   assert.equal(beamDisplayOf(opened.elements[0]), 'rays');
   // A laser drawn as a simple line has no beam to draw, whatever is set.
   assert.equal(beamDisplayOf({ type: 'cwlaser', params: { beamMode: 'line', beamDisplay: 'envelope' } }), 'rays');
   assert.equal(beamDisplayOf({ type: 'ledsource', params: { beamMode: 'beam', beamDisplay: 'envelope' } }), 'rays');
 });
 
-test('G2: the choice is offered only for a source drawn with a size, the Rayleigh marks only with the band', () => {
+test('G2: the choice is offered only for a source drawn with a size, and no marks are offered', () => {
   for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
     const params = registry[type].params;
     const display = params.find(p => p.key === 'beamDisplay');
-    const ticks = params.find(p => p.key === 'beamRayleighTicks');
     assert.deepEqual(display.options.map(([value]) => value), ['rays', 'envelope', 'both'], type);
     // In the collapsed Gaussian beam section.
     assert.ok(params.indexOf(display) > params.findIndex(p => p.key === 'beamHeading'), type);
     assert.equal(display.show({ beamMode: 'line' }), false);
     assert.equal(display.show({ beamMode: 'beam' }), true);
-    assert.equal(ticks.show({ beamMode: 'beam', beamDisplay: 'rays' }), false);
-    assert.equal(ticks.show({ beamMode: 'beam', beamDisplay: 'envelope' }), true);
-    assert.equal(ticks.show({ beamMode: 'beam', beamDisplay: 'both' }), true);
+    assert.equal(params.some(p => /rayleigh/i.test(p.key) || /Rayleigh/.test(p.label || '')), false, type);
   }
 });
 
@@ -149,13 +158,13 @@ test('G2: in collimated space the band lies on the outermost rays', () => {
   close(Math.min(...edges.flatMap(d => ys(d.pts))), -2, 0.001, 'band edge');
   // The envelope alone replaces the rays' fill with one band.
   const envelope = traceScene(scene('envelope'), []).drawables;
-  assert.deepEqual(types(envelope), { poly: 1, path: 3 }, 'band, two edges and the waist mark at the output');
+  assert.deepEqual(types(envelope), { poly: 1, path: 2 }, 'the band and its two edges');
   close(Math.max(...ys(bands(envelope)[0].pts)), 2, 0.001);
 });
 
 test('G2: near a focus the band narrows to the waist the probe reads, where the probe puts it', () => {
   // 3 mm at 532 nm into f = 100 mm: w0 ≈ λf/(πw) = 11.3 µm.
-  const elements = [laser({ beamWidth: 3, wavelength: 532, beamDisplay: 'envelope', beamRayleighTicks: true }), make('lens', 252, 0, { f: 100 }), make('detector', 552, 0)];
+  const elements = [laser({ beamWidth: 3, wavelength: 532, beamDisplay: 'envelope' }), make('lens', 252, 0, { f: 100 }), make('detector', 552, 0)];
   const { drawables } = traceScene(elements, []);
   const [reading] = beamAtPoint(300, 0, 1);
   const waistX = 300 + reading.waistAheadMm;
@@ -166,14 +175,10 @@ test('G2: near a focus the band narrows to the waist the probe reads, where the 
   const narrowest = widths.reduce((a, b) => (b.w < a.w ? b : a));
   close(narrowest.w / 2 * 1000, reading.waistUm, reading.waistUm * 0.02, 'waist width');
   close(narrowest.x, waistX, reading.rayleighMm * 0.3, 'waist position');
-  // The waist mark is exactly there, and the Rayleigh marks one Rayleigh
-  // range either side.
-  const xs = marks(drawables).map(m => m.pts[0].x).sort((a, b) => a - b);
-  const inside = xs.filter(x => x > 260);
-  assert.equal(inside.length, 3, JSON.stringify(xs));
-  close(inside[1], waistX, 1e-6, 'waist mark');
-  close(inside[0], waistX - reading.rayleighMm, 1e-6, 'Rayleigh mark');
-  close(inside[2], waistX + reading.rayleighMm, 1e-6, 'Rayleigh mark');
+  // Between the samples, the band's shape puts the waist exactly there.
+  const waist = bandWaist(after);
+  close(waist.x, waistX, reading.rayleighMm * 1e-3, 'waist from the band');
+  close(waist.w * 1000, reading.waistUm, reading.waistUm * 1e-3, 'waist size from the band');
   close(reading.waistUm, 532e-6 * 100 / (Math.PI * 1.5) * 1000, 0.05, 'q law');
 });
 
@@ -182,9 +187,9 @@ test('G2: a narrow beam\'s band is narrowest where the beam focuses, not where i
   // cross at the focal point, the beam's waist is 295 mm past the lens.
   const elements = [make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633, beamDisplay: 'envelope' }), make('lens', 200, 0, { f: 100 }), make('detector', 800, 0, { aperture: 30 })];
   const { drawables } = traceScene(elements, []);
-  const waists = marks(drawables).map(m => m.pts[0].x).filter(x => x > 200);
-  assert.equal(waists.length, 1);
-  close(waists[0] - 200, 295, 2, 'waist past the lens');
+  const past = bands(drawables).filter(b => Math.min(...b.pts.map(p => p.x)) > 199);
+  assert.equal(past.length, 1);
+  close(bandWaist(past[0]).x - 200, 295, 2, 'waist past the lens');
 });
 
 test('G2: bands meet along a tilted mirror and follow each branch of a splitter', () => {

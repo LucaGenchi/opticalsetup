@@ -3,8 +3,7 @@
 //
 // The beam envelope (step G2 of the Physics in 2D track,
 // docs/physics/beam-propagation.md): the 1/e² radius w(z) of a propagated
-// Gaussian beam drawn around its central ray as a band, with a mark at each
-// waist and, on request, at a Rayleigh range either side of it. DOM-free:
+// Gaussian beam drawn around its central ray as a band. DOM-free:
 // sketch/js/raytrace.js gives each stretch of a traced path its beam (the
 // one the probe and the detectors read) and turns the bands returned here
 // into drawables, so the canvas and every export draw the same geometry.
@@ -61,12 +60,6 @@ function clipPolyline(points, { at, n }) {
 // would stretch the cut far along the beam.
 const GRAZING_SINE = 0.1;
 
-// Waist and Rayleigh-range marks reach at least this far either side of the
-// axis (mm), so they can be seen on the bench where a waist is microns wide;
-// otherwise a little beyond the band.
-export const WAIST_MARK_MIN_MM = 1.2;
-export const RAYLEIGH_MARK_MIN_MM = 0.7;
-
 // The band of one straight stretch of a beam: it starts at `start` and runs
 // `length` along the unit `d`; `shape` is the beam at `start` (beamFromQ:
 // waistAheadMm, waistUm, rayleighMm). `faces` holds, for the start and the
@@ -74,11 +67,11 @@ export const RAYLEIGH_MARK_MIN_MM = 0.7;
 // beam leaves or meets there, as a line through `at` along the unit `t`: the
 // band then ends on that surface, as the drawn rays do, rather than square
 // to the beam, so the bands of two stretches meet along a tilted mirror
-// without a gap or an overlap. Returns both edges, the outline to fill, the
-// waist mark where the waist lies on the stretch and, with `rayleigh`, the
-// marks a Rayleigh range either side of it; null when there is nothing to
-// draw.
-export function envelopeBand({ start, d, length, shape, faces = [null, null], rayleigh = false }) {
+// without a gap or an overlap. Returns both edges and the outline to fill;
+// null when there is nothing to draw. Nothing marks the waist: the band is
+// narrowest there, and the probe reads its place and size (Luca: marks
+// across the band confuse more than they show).
+export function envelopeBand({ start, d, length, shape, faces = [null, null] }) {
   if (!shape || !(length > 0)) return null;
   const w0 = shape.waistUm / 1000, zR = shape.rayleighMm, ahead = shape.waistAheadMm;
   if (![w0, zR, ahead, length, start?.x, start?.y, d?.x, d?.y].every(Number.isFinite) || !(w0 > 0) || !(zR > 0)) return null;
@@ -142,14 +135,5 @@ export function envelopeBand({ start, d, length, shape, faces = [null, null], ra
     right = clipPolyline(right, c);
   }
   if (left.length < 2 || right.length < 2) return null;
-  const mark = (s, half) => {
-    const c = { x: start.x + d.x * s, y: start.y + d.y * s };
-    return [{ x: c.x + across.x * half, y: c.y + across.y * half }, { x: c.x - across.x * half, y: c.y - across.y * half }];
-  };
-  const onStretch = s => s >= 0 && s <= length;
-  const waist = onStretch(ahead) ? { at: ahead, pts: mark(ahead, Math.max(1.6 * w0, WAIST_MARK_MIN_MM)) } : null;
-  const ticks = rayleigh
-    ? [ahead - zR, ahead + zR].filter(onStretch).map(s => ({ at: s, pts: mark(s, Math.max(1.6 * Math.SQRT2 * w0, RAYLEIGH_MARK_MIN_MM)) }))
-    : [];
-  return { left, right, outline: [...left, ...[...right].reverse()], waist, rayleigh: ticks };
+  return { left, right, outline: [...left, ...[...right].reverse()] };
 }

@@ -2,18 +2,18 @@
  "elements": 9,
  "beams": 1,
  "drawables": {
-  "count": 23,
+  "count": 22,
   "byType": {
    "poly": 12,
-   "path": 11
+   "path": 10
   },
   "colors": {
-   "#ff4200": 23
+   "#ff4200": 22
   },
-  "points": 1582,
+  "points": 1580,
   "sum": [
-   322112.253,
-   406143.087
+   322008.253,
+   405483.087
   ],
   "bbox": [
    52,
@@ -21,7 +21,7 @@
    636,
    332.8889
   ],
-  "digest": "4dc41f00"
+  "digest": "f2a90a61"
  },
  "drawnElements": {
   "textlabel:title": "253fcf76",

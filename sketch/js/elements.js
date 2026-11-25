@@ -2599,7 +2599,6 @@ const gaussianBeamParams = type => [
     options: [['rays', 'Rays'], ['envelope', 'Gaussian beam (1/e² radius)'], ['both', 'Rays and Gaussian beam']],
     show: p => p.beamMode === 'beam',
   },
-  { key: 'beamRayleighTicks', label: 'Mark a Rayleigh range either side of each waist', type: 'checkbox', def: false, show: p => p.beamMode === 'beam' && (p.beamDisplay === 'envelope' || p.beamDisplay === 'both') },
   { key: 'beamM2', label: 'Beam quality M² (1 = ideal)', type: 'number', min: 1, max: 100, step: 0.1, def: 1, show: p => p.beamMode === 'beam' },
   {
     key: 'beamParameter', label: 'Beam', type: 'readout', wide: true,
