@@ -728,3 +728,16 @@ test('P2 (review 13): a dichroic, two notches and glass at 60 dB read the same b
   // integral 81.24 nW).
   close(await same(x => [make('filter', x, 250, { ftype: 'bandpass', center: 800, band: 2, trans: 1 }, 180)], 'glass at 60 dB', true), 81.24e-9, 0.02e-9);
 });
+
+// Andrea's review, round 15: dragging an element past an isolator.
+test('P2 (review 15): a fine profile is integrated on its own samples, exactly', async () => {
+  const { applyTransmission: through } = await import('../sketch/js/spectrum.js');
+  // A 257-point profile rising linearly from 0 at 700 nm to 1 at 900 nm;
+  // a box filter from 750.3 to 820.7 nm (edges between samples) passes
+  // ∫x dx over the box / ∫x dx over the profile.
+  const spec = { kind: 'sampled', lo: 700, hi: 900, w: Array.from({ length: 257 }, (_, i) => i / 256) };
+  const ramp = wl => (wl - 700) / 200;
+  const exact = (ramp(820.7) ** 2 - ramp(750.3) ** 2) / (ramp(900) ** 2 - ramp(700) ** 2);
+  const result = through(spec, 800, wl => (wl >= 750.3 && wl <= 820.7 ? 1 : 0), [750.3, 820.7]);
+  close(result.fraction, exact, 1e-12, 'box over a fine ramp');
+});

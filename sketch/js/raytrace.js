@@ -361,6 +361,26 @@ let specimenFocusReadings = new Map();
 // per distinct light, for the readouts that give the rotation and the
 // isolation at each wavelength present.
 let faradayCrossings = new Map();
+// Step P2: an isolator's transmission at each wavelength, kept for one trace
+// and shared by the rays that cross the same isolator the same way in the
+// same state (a sized beam's parallel rays): keyed by the element, the
+// direction, the polarizers' axes in the light's basis and the arriving
+// state, then by wavelength. The spectrum each ray carries is weighed by it
+// afterwards, ray by ray.
+let isolatorCurves = new Map();
+// And the spectrum each arriving spectrum leaves with, for the same rays,
+// keyed by the crossing and the arriving profile's content (spectrumKey), so
+// a profile changed in place is not taken for the one it was.
+let isolatorSpectra = new Map();
+// A profile's content as a key: its numbers, and for a sampled one a hash of
+// every sample (two running sums in different orders).
+function spectrumKey(spec) {
+  if (!spec) return 'none';
+  if (!Array.isArray(spec.w)) return `${spec.kind}|${spec.center}|${spec.fwhm}|${spec.lo}|${spec.hi}|${spec.lines ? JSON.stringify(spec.lines) : ''}`;
+  let a = 0, b = 0;
+  for (let i = 0; i < spec.w.length; i++) { a += spec.w[i] * (i + 1); b = b * 0.999 + spec.w[i]; }
+  return `${spec.kind}|${spec.lo}|${spec.hi}|${spec.w.length}|${a}|${b}`;
+}
 
 export function specimenFocusReading(elementId) {
   return specimenFocusReadings.get(elementId) || null;
@@ -6219,11 +6239,24 @@ function interact(ray, hit) {
       // through the ideal gate, and says so.
       noteFaradayCrossing(s, ray, forward);
       const axisFor = a => crossingAxisDeg(s, d, a);
-      // One set-up per arriving state, reused at every wavelength.
+      // One set-up per arriving state, reused at every wavelength, and its
+      // results kept for the trace (isolatorCurves).
       const crossers = new Map();
+      const axes = `${axisFor(Number(data.inputAxis) || 0)}|${axisFor((Number(data.inputAxis) || 0) + 45)}`;
+      const curveKey = stokes => `${s.el?.id ?? ''}|${forward}|${axes}|${stokes ? `${stokes.s1},${stokes.s2},${stokes.s3}` : 'unpolarized'}`;
       const through = (stokes, nm) => {
         let at = crossers.get(stokes);
-        if (!at) crossers.set(stokes, at = isolatorCrosser(data, stokes, forward, axisFor));
+        if (!at) {
+          const key = curveKey(stokes);
+          let curve = isolatorCurves.get(key);
+          if (!curve) isolatorCurves.set(key, curve = { at: isolatorCrosser(data, stokes, forward, axisFor), byNm: new Map() });
+          at = nm2 => {
+            let c = curve.byNm.get(nm2);
+            if (!c) curve.byNm.set(nm2, c = curve.at(nm2));
+            return c;
+          };
+          crossers.set(stokes, at);
+        }
         return at(nm);
       };
       const samples = faradaySamples(ray);
@@ -6266,7 +6299,8 @@ function interact(ray, hit) {
       // largest value), or whose state arrives or leaves varying across the
       // band, is not computed as one scalar pulse: the field that passes
       // can change sign or polarization from one wavelength to another.
-      const bandNm = crossings.filter(x => x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => x.nm);
+      const strongest = Math.max(...crossings.map(y => y.w));
+      const bandNm = crossings.filter(x => x.w > 1e-3 * strongest).map(x => x.nm);
       const varies = st => {
         const v = bandNm.map(nm => share(st, nm));
         return v.length > 1 && Math.max(...v) - Math.min(...v) > 0.01 * Math.max(...v);
@@ -6324,24 +6358,39 @@ function interact(ray, hit) {
       // after it cuts the light that actually passed.
       const cell = !ray.spec ? sampleCell(ray) : null;
       if (cell) {
-        const n = gridFor(cell[1] - cell[0], profileStep(ray.sliceSpec), isolatorGrid(cell[1] - cell[0]));
-        const at = i => cell[0] + (cell[1] - cell[0]) * i / (n - 1);
-        const incoming = Array.from({ length: n }, (_, i) => (ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, at(i))) : 1));
-        const kept = incoming.map((w, i) => w * T(at(i)));
-        const integral = values => values.reduce((sum, v, i) => sum + v * (i === 0 || i === n - 1 ? 0.5 : 1), 0);
-        const before = integral(incoming), peak = Math.max(...kept);
-        fraction = before > 0 ? integral(kept) / before : 0;
-        if (peak > 0) spectral = { sliceSpec: { kind: 'sampled', lo: cell[0], hi: cell[1], w: kept.map(v => v / peak) } };
+        // Kept by the slice's profile (shared by a beam's rays, or none for a
+        // flat slice), its bounds and the crossing's key.
+        const key = `${curveKey(input)}|${cell[0]}|${cell[1]}|${spectrumKey(ray.sliceSpec)}`;
+        const byKey = isolatorSpectra;
+        if (!byKey.has(key)) {
+          const n = gridFor(cell[1] - cell[0], profileStep(ray.sliceSpec), isolatorGrid(cell[1] - cell[0]));
+          const at = i => cell[0] + (cell[1] - cell[0]) * i / (n - 1);
+          const incoming = Array.from({ length: n }, (_, i) => (ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, at(i))) : 1));
+          const kept = incoming.map((w, i) => w * T(at(i)));
+          const integral = values => values.reduce((sum, v, i) => sum + v * (i === 0 || i === n - 1 ? 0.5 : 1), 0);
+          const before = integral(incoming), peak = Math.max(...kept);
+          byKey.set(key, {
+            fraction: before > 0 ? integral(kept) / before : 0,
+            spectral: peak > 0 ? { sliceSpec: { kind: 'sampled', lo: cell[0], hi: cell[1], w: kept.map(v => v / peak) } } : {},
+          });
+        }
+        ({ fraction, spectral } = byKey.get(key));
       } else if (!ray.spec) fraction = T(ray.wl);
       else {
-        const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
-        if (!(peak > MIN_RETAINED_POWER_INT)) return [];
-        const scaled = nm => T(nm) / peak;
-        const support = spectrumSupport(ray.spec);
-        const kept = ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, { minGrid: isolatorGrid(support[1] - support[0]) });
-        if (!kept) return [];
-        fraction = kept.fraction * peak;
-        spectral = { wl: kept.wl, bw: kept.bw, spec: kept.spec };
+        const byKey = isolatorSpectra;
+        const key = `${curveKey(input)}|${ray.wl}|${spectrumKey(ray.spec)}`;
+        if (!byKey.has(key)) {
+          const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
+          const scaled = nm => T(nm) / peak;
+          const support = spectrumSupport(ray.spec);
+          const kept = !(peak > MIN_RETAINED_POWER_INT) ? null
+            : ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, { minGrid: isolatorGrid(support[1] - support[0]) });
+          byKey.set(key, kept && { fraction: kept.fraction * peak, spectral: { wl: kept.wl, bw: kept.bw, spec: kept.spec } });
+        }
+        const known = byKey.get(key);
+        if (!known) return [];
+        fraction = known.fraction;
+        spectral = known.spectral;
       }
       if (!(fraction > MIN_RETAINED_POWER_INT)) return [];
       const out = stokes || input;
@@ -9536,6 +9585,8 @@ export function traceScene(elements, beams = [], options = {}) {
   specimenSrsNotes = new Map();
   specimenFocusReadings = new Map();
   faradayCrossings = new Map();
+  isolatorCurves = new Map();
+  isolatorSpectra = new Map();
   lastBeamTracks = [];
   beamReadings = new Map();
   companionStep = options.companionStep || COMPANION_STEP;

@@ -89,8 +89,14 @@ it read 4.8 % off the same filter before it on the coarser grid (0.8 % at
 60 dB on 1025 points; slices on 257 points each were 0.97 % apart). The
 isolator's polarizers and the state past the first are set up once per
 arriving state (`isolatorCrosser`), so each wavelength costs only a rotation
-and one matrix: the example with N-BK7 and a band-pass re-traces in about
-40 ms in Node, where 4097 points per slice took 400 ms.
+and one matrix; within one trace its transmission at each wavelength, and
+the spectrum an arriving spectrum leaves with, are kept and shared by the rays
+that cross it the same way in the same state (a sized beam's 25 parallel
+rays), keyed by the arriving spectrum's content. A profile finer than the
+tracer's 65-point grid is integrated exactly on its own samples. The example
+at 60 dB with a band-pass after the isolator re-traces in about 4 ms per move
+in Node (about 12 ms with N-BK7 before it), where it took 57 ms (44 ms)
+before these and 400 ms with 4097 points per slice.
 A filter after it keeps those points (a sampled profile is re-sampled on its
 own points, up to 4097, rather than on 65), and light the tracer keeps however
 weak (the isolator's output among it) is not dropped below the spectral

@@ -202,9 +202,36 @@ function integrate(values, step) {
 // filter that passes it, or part of it, does not step over its features.
 const profileGrid = spec => (spec?.kind === 'sampled' ? Math.max(GRID, Math.min(4097, spec.w?.length || GRID)) : GRID);
 
+// Points across [a, b] of a profile: the grid, or for a profile finer than
+// it as many as its own samples give that stretch (so a narrow piece of an
+// isolator's 4001-point spectrum is not integrated on 4001 points).
+function gridAcross(spec, a, b) {
+  const n = profileGrid(spec);
+  if (n <= GRID) return GRID;
+  const [lo, hi] = spectrumSupport(spec);
+  return hi > lo ? Math.max(GRID, Math.min(n, Math.ceil((n - 1) * (b - a) / (hi - lo)) + 1)) : n;
+}
+
+// The exact integral over [a, b] of a sampled profile's linear interpolation
+// (spectrumWeight), summed over its own samples.
+function sampledIntegral(spec, a, b) {
+  const { lo, hi, w } = spec, n = w.length;
+  const from = Math.max(a, lo), to = Math.min(b, hi);
+  if (!(to > from) || n < 2) return 0;
+  const h = (hi - lo) / (n - 1);
+  const ia = Math.ceil((from - lo) / h - 1e-12), ib = Math.floor((to - lo) / h + 1e-12);
+  const wa = spectrumWeight(spec, from), wb = spectrumWeight(spec, to);
+  if (ia > ib) return (to - from) * (wa + wb) / 2;
+  let sum = (lo + ia * h - from) * (wa + Math.max(0, w[ia])) / 2 + (to - (lo + ib * h)) * (Math.max(0, w[ib]) + wb) / 2;
+  for (let i = ia; i < ib; i++) sum += h * (Math.max(0, w[i]) + Math.max(0, w[i + 1])) / 2;
+  return sum;
+}
+
 function incidentOver(spec, a, b) {
   if (!(b > a)) return 0;
-  const count = profileGrid(spec);
+  // A profile finer than the grid is integrated on its own samples, exactly.
+  if (spec?.kind === 'sampled' && profileGrid(spec) > GRID) return sampledIntegral(spec, a, b);
+  const count = gridAcross(spec, a, b);
   const step = (b - a) / (count - 1);
   return integrate(Array.from({ length: count }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
 }
@@ -336,7 +363,7 @@ function stepTransmission(spec, pieces, block = BLOCK) {
   // takes its own piece's transmission, and a sample on an edge the side
   // that passes more, so the profile's edges sit on the filter's.
   const from = kept[0].a, to = kept[kept.length - 1].b;
-  const grid = profileGrid(spec);
+  const grid = gridAcross(spec, from, to);
   const step = (to - from) / (grid - 1);
   const shaped = Array.from({ length: grid }, (_, i) => {
     const wl = i === grid - 1 ? to : from + step * i;
@@ -365,8 +392,8 @@ export function spectrumSlice(spec, lo, hi, { block = BLOCK } = {}) {
     const step = (b - a) / (n - 1);
     return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
   };
-  const part = sample(from, to, profileGrid(spec));
-  const kept = integrate(part.w, part.step);
+  const part = sample(from, to, gridAcross(spec, from, to));
+  const kept = profileGrid(spec) > GRID ? incidentOver(spec, from, to) : integrate(part.w, part.step);
   const total = incidentOver(spec, supportLo, from) + kept + incidentOver(spec, to, supportHi);
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
