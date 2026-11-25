@@ -117,7 +117,8 @@ test('P2: the physical isolator: cos²δ forward and sin²δ back with ideal pol
   // At the design wavelength the polarizers set the isolation.
   const real = { ...ideal, extinctionDb: 40 };
   close(isolatorFigures(real, 800).isolationDb, 40, 1e-9);
-  assert.equal(leakOfExtinction(40), 1e-4);
+  // (To 1e-18: 10 ** −4 differs in its last bit between platforms.)
+  close(leakOfExtinction(40), 1e-4, 1e-18);
   close(isolatorFieldLength(real), (Math.PI / 4) / Math.abs(verdetConstant(tgg, 800)), 1e-15);
   // The input polarizer's angle does not change the figures.
   close(isolatorFigures({ ...real, inputAxis: 30 }, 780).isolationDb, isolatorFigures(real, 780).isolationDb, 1e-9);
@@ -283,13 +284,54 @@ test('P2 (review): a switching modulator keeps its two states through the isolat
   close(read(6.25), 0, 1e-9);
 });
 
-test('P2 (review): a leak that reshapes a pulse\'s spectrum gives the duration of what survives', async () => {
+test('P2 (review): a leak whose field changes sign across its band has no duration', async () => {
+  // Going back, the leak's amplitude follows sin δ, which changes sign at the
+  // design wavelength inside the band: not one scalar pulse (Andrea's vector
+  // transform gives 195 fs, the scalar one 91.7 fs). The duration is
+  // declined, not invented.
   const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
   scene.elements.find(e => e.id === 'laser').params.pulseWidthFs = 100;
   traceScene(scene.elements, scene.beams);
   const pulse = detectorReading('spectrometer').pulse;
-  assert.match(pulse.dispersionModel, /Filtered spectrum/);
-  assert.ok(Math.abs(pulse.stretchedPulseWidthFs - 100) > 5, String(pulse.stretchedPulseWidthFs));
+  assert.equal(pulse.stretchedPulseWidthFs, null);
+  assert.match(pulse.fieldIssue, /not one scalar pulse; duration unavailable/);
+  // Going forward the same pulse keeps a duration: no sign change there.
+  const meter = make('powermeter', 400, 0);
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 100, pol: 0, beamMode: 'line' }), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800 }), meter]);
+  assert.ok(Number.isFinite(detectorReading(meter.id).pulse.stretchedPulseWidthFs));
+});
+
+test('P2 (review 2): a second Faraday element does not pretend to know the states a first one averaged', () => {
+  // Two identical TGG rotators with opposite fields and a crossed analyzer:
+  // every wavelength turns by θ(λ) and back, so nothing should pass; from the
+  // first rotator's average state the second cannot recover that. The power
+  // after the analyzer is said not to be computed.
+  const meter = make('powermeter', 400, 0);
+  const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 }),
+    make('faraday', 100, 0), make('faraday', 200, 0, { fieldDir: 'against' }), make('polarizer', 300, 0, { pangle: 90 }), meter];
+  traceScene(scene);
+  assert.ok(detectorReading(meter.id).approximations.some(a => /Polarization not computed past a second Faraday element/.test(a)));
+  // A polarizer between them makes the state one again, and the second
+  // rotator acts on it normally.
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('faraday', 100, 0), make('polarizer', 150, 0, { pangle: 0 }), make('faraday', 200, 0)]);
+  assert.ok(!/second Faraday element/.test(probeAt(300, 0).approximation || ''));
+});
+
+test('P2 (review 2): a polarimeter after the isolator reads the state of the pulses that arrive', () => {
+  const read = phase => {
+    const pm = make('polarimeter', 400, 0);
+    traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80, pulseWidthFs: 1000 }),
+      make('eom', 50, 0, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 80, switchDuty: 0.5, switchPhaseNs: phase }),
+      make('isolator', 200, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, extinctionDb: 10 }), pm]);
+    return detectorReading(pm.id).normalizedStokes;
+  };
+  close(read(0).s2, -1, 1e-6, 'linear 135°');
+  close(read(6.25).s2, 1, 1e-6, 'linear 45°');
+});
+
+test('P2 (review 2): parts missing data at both ends of a band are named apart', () => {
+  traceScene([make('sclaser', 0, 0, { scMin: 450, scMax: 1200, beamMode: 'line', pol: 0 }), make('faraday', 150, 0)]);
+  assert.match(probeAt(250, 0).approximation, /for 450–\d+ nm and 11\d\d–1200 nm of this light's spectrum/);
 });
 
 test('P2 (review): a band partly outside the material\'s data names the part that is not computed', () => {

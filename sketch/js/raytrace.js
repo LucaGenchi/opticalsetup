@@ -4595,16 +4595,29 @@ const dop = stokes => (stokes ? Math.hypot(stokes.s1, stokes.s2, stokes.s3) : 0)
 // A state's degree of polarization may fall by this much across a band
 // before the readings past it say the state varies with wavelength.
 const FARADAY_DOP_DROP = 0.01;
-const nmRange = samples => {
-  const nms = samples.map(s => s.nm);
-  const [lo, hi] = [Math.min(...nms), Math.max(...nms)];
-  return hi - lo > 0.5 ? `${Math.round(lo)}–${Math.round(hi)} nm` : `${Math.round(lo)} nm`;
+// The parts of a spectrum a test leaves out, as ranges in nm: runs of
+// consecutive samples, so a band missing data at both ends names both parts.
+const nmRanges = (samples, missing) => {
+  const runs = [];
+  let run = null;
+  for (const s of samples) {
+    if (missing(s)) { if (run) run.push(s.nm); else runs.push(run = [s.nm]); } else run = null;
+  }
+  const label = r => { const lo = Math.min(...r), hi = Math.max(...r); return hi - lo > 0.5 ? `${Math.round(lo)}–${Math.round(hi)} nm` : `${Math.round(lo)} nm`; };
+  return runs.map(label).join(' and ');
 };
 const faradayUnknownNote = issue => `Polarization not computed past a Faraday rotator: ${issue}; the state shown is the one that arrived`;
 const faradayPartNote = (part, issue) => `Polarization not computed past a Faraday rotator for ${part} of this light's spectrum (${issue}); that part keeps the state it arrived with`;
 const faradayIsolatorNote = issue => `Isolation not computed at an optical isolator: ${issue}; this light passed as through an ideal one-way gate`;
 const faradayIsolatorPartNote = (part, issue) => `Isolation not computed at an optical isolator for ${part} of this light's spectrum (${issue}); that part passed as through an ideal one-way gate`;
-const faradaySpreadNote = 'The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum\'s average, which gives the power a polarizer passes but not the spectrum it leaves';
+const faradaySpreadNote = 'The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum\'s average, which gives the power a polarizer passes but not the spectrum it leaves, as long as no other element that acts differently at each wavelength (a Faraday rotator or isolator) follows';
+// Light whose state is already a spectrum's average meets an element that
+// turns each wavelength differently: the wavelengths' own states, which it
+// needs, are no longer known.
+const faradayChainNote = 'Polarization not computed past a second Faraday element: the light\'s polarization already varied across its spectrum, and this element acts differently at each wavelength, so the state and the power a polarizer passes after it are not computed';
+// A leak whose field changes sign across the band, or whose state varies
+// across it, is not one scalar pulse: its duration is not computed.
+const FARADAY_PULSE_UNAVAILABLE = 'Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable';
 
 function crossingAxisDeg(surface, d, axisDeg) {
   const forward = rotPt(1, 0, surface.el?.rot || 0);
@@ -5782,7 +5795,8 @@ function interact(ray, hit) {
       const f = analyzerTransmission(ray.stokes, a);
       if (f <= MIN_RETAINED_POWER_INT) return [];
       const stokes = linearStokes(a);
-      return [{ d, intensity: ray.intensity * f, pol: legacyAxis(a), stokes, retainWeak: true, tag: 'pol' }];
+      // One state at every wavelength again (step P2's spread is gone).
+      return [{ d, intensity: ray.intensity * f, pol: legacyAxis(a), stokes, retainWeak: true, tag: 'pol', polarizationSpread: false }];
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
@@ -5861,8 +5875,8 @@ function interact(ray, hit) {
       }
       const ft = analyzerTransmission(ray.stokes, 0);
       const out = [];
-      if (ft > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), retainWeak: true, tag: 'T' });
-      if (1 - ft > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), retainWeak: true, tag: 'R' });
+      if (ft > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), retainWeak: true, tag: 'T', polarizationSpread: false });
+      if (1 - ft > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), retainWeak: true, tag: 'R', polarizationSpread: false });
       return out;
     }
     case 'specimen': {
@@ -6107,9 +6121,23 @@ function interact(ray, hit) {
       const share = (stokes, nm) => { const c = through(stokes, nm); return c.issue ? (forward ? 1 : 0) : c.transmission; };
       const stokes = averagedStokes(crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? ray.stokes : x.c.stokes })));
       const notes = [];
-      if (missing.length) notes.push(faradayIsolatorPartNote(nmRange(missing), missing[0].c.issue));
-      if (crossings.length > 1 && stokes && dop(stokes) < Math.min(...crossings.filter(x => !x.c.issue && x.c.stokes).map(x => dop(x.c.stokes))) - FARADAY_DOP_DROP) notes.push(faradaySpreadNote);
-      const caveat = notes.length ? { approximation: notes.join('. ') } : {};
+      if (missing.length) notes.push(faradayIsolatorPartNote(nmRanges(crossings, x => x.c.issue), missing[0].c.issue));
+      const spread = crossings.length > 1 && stokes && dop(stokes) < Math.min(...crossings.filter(x => !x.c.issue && x.c.stokes).map(x => dop(x.c.stokes))) - FARADAY_DOP_DROP;
+      if (ray.polarizationSpread) notes.push(faradayChainNote);
+      else if (spread) notes.push(faradaySpreadNote);
+      const caveat = {
+        ...(notes.length ? { approximation: notes.join('. ') } : {}), polarizationSpread: Boolean(ray.polarizationSpread || spread),
+        ...(ray.polarizationSpread && ray.approximation === faradaySpreadNote ? { replacesApproximation: true } : {}),
+      };
+      // A pulse whose leak changes sign across its band (the rotation error
+      // passes through zero going back, or through 90° going forward), or
+      // whose state varies across it, is not one scalar pulse.
+      const errors = crossings.filter(x => !x.c.issue && x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => x.c.rotationDeg - 45);
+      const flips = errors.length > 1 && (forward
+        ? errors.some(e => Math.abs(e) > 90) && errors.some(e => Math.abs(e) < 90)
+        : errors.some(e => e > 0) && errors.some(e => e < 0));
+      const pulseFields = ray.pulse && (flips || spread || ray.polarizationSpread)
+        ? { pulse: { ...ray.pulse, field: null, fieldIssue: FARADAY_PULSE_UNAVAILABLE, spectrumReshaped: true } } : {};
       const centre = through(ray.stokes, ray.wl);
       // Light an EOM switches between two states: each state crosses with
       // its own transmission and leaves in its own state, at the centre
@@ -6118,14 +6146,22 @@ function interact(ray, hit) {
       if (ray.polMod) {
         const m = ray.polMod, hi = through(m.stokesHigh, ray.wl), lo = through(m.stokesLow, ray.wl);
         const tHi = hi.issue ? (forward ? 1 : 0) : hi.transmission, tLo = lo.issue ? (forward ? 1 : 0) : lo.transmission;
-        const states = { ...m, stokesHigh: hi.issue ? m.stokesHigh : hi.stokes, stokesLow: lo.issue ? m.stokesLow : lo.stokes };
-        const out = centre.issue ? (stokes || ray.stokes) : (stokes || centre.stokes);
+        const sHi = hi.issue ? m.stokesHigh : hi.stokes, sLo = lo.issue ? m.stokesLow : lo.stokes;
+        const states = { ...m, stokesHigh: sHi, stokesLow: sLo };
+        const wHi = m.weightHigh ?? 1, wLo = m.weightLow ?? 1;
+        // The state the light leaves in is the two states' average weighted
+        // by the light that actually arrives in each: for a pulse train, the
+        // share of its pulses that meet the high state (sampled pulse by
+        // pulse, as a gate is), not the modulator's duty.
+        const gateOf = (high, low) => ({ opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high, low });
+        const before = ray.pulse ? pulseGateTransmission(ray.pulse) : 1;
+        const shareHi = ray.pulse ? (before > 0 ? pulseGateTransmission(withGate(ray.pulse, gateOf(1, 0))) / before : m.duty) : m.duty;
+        const out = averagedStokes([{ w: shareHi * wHi * tHi, stokes: sHi }, { w: (1 - shareHi) * wLo * tLo, stokes: sLo }]) || stokes || ray.stokes;
         if (ray.pulse) {
           if (Math.max(tHi, tLo) <= MIN_RETAINED_POWER_INT) return [];
           return [{ d, stokes: out, pol: legacyPolarization(out), polMod: states, retainWeak: true, tag: 'iso', ...caveat,
-            pulse: withGate(ray.pulse, { opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high: tHi, low: tLo }) }];
+            pulse: withGate(ray.pulse, gateOf(tHi, tLo)) }];
         }
-        const wHi = m.weightHigh ?? 1, wLo = m.weightLow ?? 1;
         const mean = m.duty * wHi * tHi + (1 - m.duty) * wLo * tLo;
         if (!(mean > MIN_RETAINED_POWER_INT)) return [];
         return [{ d, intensity: ray.intensity * mean, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat,
@@ -6150,7 +6186,7 @@ function interact(ray, hit) {
       }
       if (!(fraction > MIN_RETAINED_POWER_INT)) return [];
       const out = stokes || ray.stokes;
-      return [{ d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral }];
+      return [{ d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral, ...pulseFields }];
     }
     case 'faraday': {
       // Step P2: the polarization turns by V·B·L about the field, which
@@ -6168,11 +6204,14 @@ function interact(ray, hit) {
       if (missing.length === samples.length) return [{ d, tag: 'far', approximation: faradayUnknownNote(missing[0].turn.issue) }];
       const stokes = ray.stokes ? averagedStokes(samples.map(x => ({ w: x.w, stokes: x.turn.issue ? ray.stokes : rotateStokes(ray.stokes, x.turn.deg) }))) : null;
       const notes = [];
-      if (missing.length) notes.push(faradayPartNote(nmRange(missing), missing[0].turn.issue));
-      if (stokes && dop(stokes) < dop(ray.stokes) - FARADAY_DOP_DROP) notes.push(faradaySpreadNote);
+      if (missing.length) notes.push(faradayPartNote(nmRanges(samples, x => x.turn.issue), missing[0].turn.issue));
+      const spread = stokes && dop(stokes) < dop(ray.stokes) - FARADAY_DOP_DROP;
+      if (ray.polarizationSpread) notes.push(faradayChainNote);
+      else if (spread) notes.push(faradaySpreadNote);
       return [{
-        d, stokes, pol: legacyPolarization(stokes), tag: 'far',
+        d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || spread),
         ...(notes.length ? { approximation: notes.join('. ') } : {}),
+        ...(ray.polarizationSpread && ray.approximation === faradaySpreadNote ? { replacesApproximation: true } : {}),
         // An EOM's two states turn by the rotation at the centre wavelength.
         ...(ray.polMod && !centre.issue ? { polMod: { ...ray.polMod, stokesHigh: rotateStokes(ray.polMod.stokesHigh, centre.deg), stokesLow: rotateStokes(ray.polMod.stokesLow, centre.deg) } } : {}),
       }];
@@ -8787,7 +8826,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (r.trainPieces || null),
           // A caveat is never cleared downstream: no later element computes
           // what the linear-only continuation left out.
-          approximation: r.approximation || c.approximation || null,
+          // (A caveat that says more about the same light replaces the one it
+          // supersedes: a second Faraday element finding its state unknown.)
+          approximation: c.replacesApproximation ? c.approximation : (r.approximation || c.approximation || null),
+          // Step P2: whether the state is a spectrum's average (a Faraday
+          // element turned its wavelengths differently), until a polarizer
+          // makes it one state again.
+          polarizationSpread: 'polarizationSpread' in c ? c.polarizationSpread : (r.polarizationSpread || false),
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           pickoffPasses: 'pickoffPasses' in c ? c.pickoffPasses : (r.pickoffPasses || null),
           intensity: childIntensity,

@@ -32,7 +32,7 @@
   "mirror:reflector": "5b1838e9",
   "beamdump:dump": "8eaab845",
   "spectrometer:spectrometer": "bba6bdb6",
-  "display:screen": "a6c414e0"
+  "display:screen": "5abb50a9"
  },
  "pulseTracks": [
   {
@@ -123,7 +123,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "5fc0b35e"
+   "digest": "3df0a5f2"
   },
   {
    "intensity": 0.000351675779,
@@ -141,7 +141,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "be423420"
+   "digest": "9009c66c"
   },
   {
    "intensity": 0.00316508201,
@@ -159,7 +159,7 @@
     "spectrumReshaped": true,
     "gates": 0
    },
-   "digest": "da3c9cc0"
+   "digest": "e065b54c"
   }
  ],
  "writeHits": {
@@ -174,7 +174,7 @@
   "spectrometer:spectrometer": {
    "detector": {
     "approximations": [
-     "The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum's average, which gives the power a polarizer passes but not the spectrum it leaves"
+     "The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum's average, which gives the power a polarizer passes but not the spectrum it leaves, as long as no other element that acts differently at each wavelength (a Faraday rotator or isolator) follows"
     ],
     "bandMax": 850.331094,
     "bandMin": 733.883439,
@@ -231,46 +231,46 @@
        "weight": 0.000351675779
       }
      ],
-     "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
+     "dispersionModel": "Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable",
      "earliestPathDelayNs": 2.82195225,
      "envelope": null,
-     "fieldIssue": null,
+     "fieldIssue": "Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable",
      "gddFs2": 0,
      "gddRangeFs2": [
       0,
       0
      ],
      "groupDelayDifferenceFs": 0,
-     "inputGddFs2": 0,
+     "inputGddFs2": null,
      "mixed": false,
      "phaseNs": 0,
      "pulseShape": "gauss",
      "pulseWidthFs": 15,
      "repRateMHz": 80,
      "sources": 1,
-     "stretchedPulseWidthFs": 11.9374564,
+     "stretchedPulseWidthFs": null,
      "totalGddFs2": 0,
      "trains": [
       {
        "centerWavelengthNm": 792.107266,
-       "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
+       "dispersionModel": "Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable",
        "envelope": null,
-       "fieldIssue": null,
+       "fieldIssue": "Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable",
        "gates": [],
        "gddFs2": 0,
        "groupDelayDifferenceFs": 0,
-       "inputGddFs2": 0,
+       "inputGddFs2": null,
        "pathDelayNs": 2.82195225,
        "phaseNs": 0,
        "pulseShape": "gauss",
        "pulseWidthFs": 15,
        "repRateMHz": 80,
-       "stretchedPulseWidthFs": 11.9374564,
+       "stretchedPulseWidthFs": null,
        "totalGddFs2": 0,
-       "transformLimitFs": 11.9374564
+       "transformLimitFs": null
       }
      ],
-     "transformLimitFs": 11.9374564,
+     "transformLimitFs": null,
      "transformLimited": true
     },
     "readoutKind": "spectrometer",

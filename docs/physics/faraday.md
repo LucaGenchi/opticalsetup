@@ -52,9 +52,16 @@ spectrum. Each wavelength turns by its own amount, so the state carried on is
 the power-weighted average of the turned states (the Stokes vectors of the
 spectrum's samples, added): light whose wavelengths now point different ways
 is, to an instrument that does not resolve the spectrum, partly polarized.
-That gives the power a polarizer passes after it exactly; the spectrum the
+That gives the power a polarizer passes after it exactly, as long as no other
+element that acts differently at each wavelength follows; the spectrum the
 polarizer leaves is not, and where the degree of polarization falls by more
-than 0.01 the light carries a caveat saying so. Part of a band outside the
+than 0.01 the light carries a caveat saying so. Such light is marked: a second
+Faraday rotator or physical isolator met before a polarizer restores one state
+would need each wavelength's own state, which the average has lost (two
+rotators with opposite fields undo each other wavelength by wavelength, which
+the average cannot show), so its result is declared not computed, with that
+caveat replacing the first. A polarizer or a polarizing beamsplitter makes the
+state one again and clears the mark. Part of a band outside the
 material's data keeps the state it arrived with, and the caveat names that
 part. A switching modulator's two states are turned by the rotation at the
 centre wavelength.
@@ -82,6 +89,11 @@ leaks back at the wings of its spectrum and its returning spectrum has a hole
 at λ_d. The transmission is weighed scaled to its largest value over the band,
 so a leak of 10⁻⁴ or less is not lost below the spectral integration's floor,
 and a pulse whose spectrum it reshapes takes the duration of what survives.
+That duration is a scalar transform of the surviving power spectrum; where the
+leak's field changes sign across the band (going back, its amplitude follows
+sin δ, which changes sign at λ_d inside the band; going forward, cos δ where
+|δ| passes 90°) or its state varies across the band, the light is not one
+scalar pulse, and the duration is declined ("not one scalar pulse").
 The light leaves in the spectrum's average state, as above: going forward,
 along the output polarizer to the polarizers' extinction; coming back, the
 leak at the design wavelength (across the input polarizer) and at the wings
@@ -89,7 +101,10 @@ leak at the design wavelength (across the input polarizer) and at the wings
 polarizer after it passes. Light from a switching modulator keeps its two
 states, each crossing with its own transmission at the centre wavelength: a
 pulse train carries the difference as a gate, continuous light as each state's
-weight (as at a Fresnel face).
+weight (as at a Fresnel face). The state it leaves in is the two states'
+average weighted by the light that arrives in each: for a pulse train, the
+share of its pulses that meet each state, sampled pulse by pulse as a gate is,
+so pulses synchronized with the modulator read the state of their phase.
 
 The inspector's isolation is −10·log10 of what returns through the isolator
 of light polarized along the output polarizer, which is the state of a
@@ -109,7 +124,8 @@ along the input polarizer.
   constant leaves no design, and the inspector says why.
 - Where only part of a band lies outside the data, that part keeps its state
   (rotator) or passes as through the ideal gate (isolator), and the caveat
-  names the part, in nm.
+  names the part, in nm (each part separately where data are missing at both
+  ends of the band).
 
 ## Not modelled
 
