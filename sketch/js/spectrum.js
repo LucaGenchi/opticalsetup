@@ -356,7 +356,7 @@ function stepTransmission(spec, pieces, block = BLOCK) {
 // past either edge. Returns the share of incident power it holds and the
 // slice's own profile, as applyTransmission does, or null when nothing
 // measurable is left. Used for the two sides a notch filter keeps.
-export function spectrumSlice(spec, lo, hi) {
+export function spectrumSlice(spec, lo, hi, { block = BLOCK } = {}) {
   if (!spec || spec.kind === 'lines') return null;
   const [supportLo, supportHi] = spectrumSupport(spec);
   const from = Math.max(lo, supportLo), to = Math.min(hi, supportHi);
@@ -371,7 +371,7 @@ export function spectrumSlice(spec, lo, hi) {
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
   const fraction = Math.min(1, kept / total);
-  if (!(fraction > BLOCK)) return null;
+  if (!(fraction > block)) return null;
   const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;

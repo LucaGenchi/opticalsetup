@@ -63,7 +63,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm, spectrumSlice, spectrumPower,
+  transformLimitedBandwidthNm, spectrumSlice as spectralSlice, spectrumPower,
 } from './spectrum.js';
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -6315,7 +6315,7 @@ function interact(ray, hit) {
       // after it cuts the light that actually passed.
       const cell = !ray.spec ? sampleCell(ray) : null;
       if (cell) {
-        const n = gridFor(cell[1] - cell[0], profileStep(ray.sliceSpec), 257);
+        const n = gridFor(cell[1] - cell[0], profileStep(ray.sliceSpec), ISOLATOR_GRID);
         const at = i => cell[0] + (cell[1] - cell[0]) * i / (n - 1);
         const incoming = Array.from({ length: n }, (_, i) => (ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, at(i))) : 1));
         const kept = incoming.map((w, i) => w * T(at(i)));
@@ -7225,6 +7225,8 @@ function notePulseSelection(transmissionFn, edges = []) {
   }
   return uniform;
 }
+// A dichroic's or notch's piece of a profile, under the same floor.
+const spectrumSlice = (spec, lo, hi) => spectralSlice(spec, lo, hi, interactionRay?.retainWeak ? { block: MIN_RETAINED_POWER_INT } : {});
 function applyTransmission(spec, centerWl, transmissionFn, edges = null, options = {}) {
   const uniform = notePulseSelection(transmissionFn);
   // Light the tracer keeps however weak (an isolator's leak, a polarizer's

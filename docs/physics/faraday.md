@@ -84,12 +84,16 @@ passed. The spectrum the isolator reshapes is kept on 4097 points across the
 band rather than the tracer's usual 65: its leak dips by the polarizers'
 extinction within a few nm of the design wavelength, and a 2 nm band-pass after
 it read 4.8 % off the same filter before it on the coarser grid (0.8 % at
-60 dB on 1025 points; the two positions now agree to 0.05 %, glass or not).
+60 dB on 1025 points). A slice of a band that glass cut is reshaped on as many
+points across the slice (on 257 the two positions were 0.97 % apart at 60 dB).
 A filter after it keeps those points (a sampled profile is re-sampled on its
 own points, up to 4097, rather than on 65), and light the tracer keeps however
 weak (the isolator's output among it) is not dropped below the spectral
-integration's floor of 10⁻⁴ of what reaches the filter: at 60 dB the 2 nm band
-holds 2.2×10⁻⁵ of it, 84.59 nW. An analyzer crossed
+integration's floor of 10⁻⁴ of what reaches a filter, a dichroic or a notch:
+at 60 dB the 2 nm band holds 2.2×10⁻⁵ of it, 84.59 nW. Measured in the isolator
+example with a 2 nm band-pass, a dichroic band or two notches, at 40 and
+60 dB, with and without N-BK7 before the isolator, the two positions agree
+within 0.1 %; this is what the tests check, not a bound for other scenes. An analyzer crossed
 with a forward isolator's output passes only the part of the field that goes as
 sin(θ(λ) − 45°), nought at the design wavelength, so declares; one along that
 output keeps the spectrum and the duration. A polarizer leaves every

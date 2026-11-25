@@ -701,3 +701,30 @@ test('P2 (review 12): a filter after the isolator keeps a weak in-band part and 
   const before = await read([[330, 800, 2]]);
   close(await read([[170, 800, 200], [130, 800, 2]]), before, 0.001 * before, 'through a wide band-pass first');
 });
+
+// Andrea's review, round 13.
+test('P2 (review 13): a dichroic, two notches and glass at 60 dB read the same before or after the isolator', async () => {
+  const read = async (parts, glass = false) => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.find(e => e.id === 'isolator').params.extinctionDb = 60;
+    if (glass) scene.elements.push(make('freeglass', 400, 250, { vertices: [{ x: -10, y: -30 }, { x: 10, y: -30 }, { x: 10, y: 30 }, { x: -10, y: 30 }], material: 'nbk7' }));
+    scene.elements.push(...parts);
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  const same = async (build, what, glass) => {
+    const after = await read(build(150), glass), before = await read(build(330), glass);
+    assert.ok(before > 0, `${what}: light before`);
+    close(after, before, 0.001 * before, what);
+    return before;
+  };
+  // A dichroic's 799–801 nm band, read at its transmitted port (Andrea:
+  // 84.59 nW before, 0 after).
+  close(await same(x => [make('dichroic', x, 250, { dtype: 'bandpass', center: 800, band: 2 }, 180)], 'dichroic'), 84.59e-9, 0.02e-9);
+  // Two notches that leave the same band.
+  await same(x => [make('filter', x + 20, 250, { ftype: 'notch', center: 749.5, band: 99, trans: 1 }, 180), make('filter', x, 250, { ftype: 'notch', center: 850.5, band: 99, trans: 1 }, 180)], 'two notches');
+  // N-BK7 before the isolator and a band-pass: the slices' profiles on the
+  // isolator's fine grid (they were 0.97 % apart on 257 points; Andrea's
+  // integral 81.24 nW).
+  close(await same(x => [make('filter', x, 250, { ftype: 'bandpass', center: 800, band: 2, trans: 1 }, 180)], 'glass at 60 dB', true), 81.24e-9, 0.02e-9);
+});
