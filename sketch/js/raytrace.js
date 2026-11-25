@@ -4647,6 +4647,7 @@ const faradayChainNote = 'Polarization and power not computed past a second Fara
 const FARADAY_PULSE_UNAVAILABLE = 'Spectrum reshaped by an optical isolator, whose field can change sign or polarization across it — not one scalar pulse; duration unavailable';
 const FARADAY_ROTATOR_PULSE_UNAVAILABLE = 'Polarization turned differently across the spectrum by a Faraday rotator — not one scalar pulse; duration unavailable';
 const FARADAY_MODULATOR_NOTE = 'Power and spectrum past an optical isolator not computed for a modulator\'s two states: they cross it differently at each wavelength, and are weighed at the centre one';
+const FARADAY_MODULATOR_ROTATOR_NOTE = 'Polarization and power past a Faraday rotator not computed for a modulator\'s two states: each turns differently at each wavelength, and they are turned at the centre one';
 const sameStokes = (a, b) => (!a && !b) || (a && b && Math.hypot(a.s1 - b.s1, a.s2 - b.s2, a.s3 - b.s3) < 1e-9);
 
 function crossingAxisDeg(surface, d, axisDeg) {
@@ -6163,8 +6164,15 @@ function interact(ray, hit) {
       // largest value), or whose state arrives or leaves varying across the
       // band, is not computed as one scalar pulse: the field that passes
       // can change sign or polarization from one wavelength to another.
-      const weighed = crossings.filter(x => x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => share(ray.stokes, x.nm));
-      const reshapes = weighed.length > 1 && Math.max(...weighed) - Math.min(...weighed) > 0.01 * Math.max(...weighed);
+      // Each state that carries light is checked on its own: a switching
+      // modulator's two states can average to no polarization at all.
+      const neutral = ray.polMod && sameStokes(ray.polMod.stokesHigh, ray.polMod.stokesLow) && (ray.polMod.weightHigh ?? 1) === (ray.polMod.weightLow ?? 1);
+      const bandNm = crossings.filter(x => x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => x.nm);
+      const varies = st => {
+        const v = bandNm.map(nm => share(st, nm));
+        return v.length > 1 && Math.max(...v) - Math.min(...v) > 0.01 * Math.max(...v);
+      };
+      const reshapes = varies(ray.stokes) || Boolean(ray.polMod && !neutral && (varies(ray.polMod.stokesHigh) || varies(ray.polMod.stokesLow)));
       const pulseFields = ray.pulse && (reshapes || spread || ray.polarizationSpread)
         ? { pulse: { ...ray.pulse, field: null, fieldIssue: FARADAY_PULSE_UNAVAILABLE, spectrumReshaped: true } } : {};
       // Light an EOM switches between two states: each state crosses with
@@ -6174,7 +6182,6 @@ function interact(ray, hit) {
       // A modulator whose two states are the same (and equally weighted) is
       // no modulation here: the light takes the ordinary path below, and
       // both states leave in the state it leaves in.
-      const neutral = ray.polMod && sameStokes(ray.polMod.stokesHigh, ray.polMod.stokesLow) && (ray.polMod.weightHigh ?? 1) === (ray.polMod.weightLow ?? 1);
       if (ray.polMod && !neutral) {
         const m = ray.polMod, hi = through(m.stokesHigh, ray.wl), lo = through(m.stokesLow, ray.wl);
         // Across a band the two states cross differently at each wavelength,
@@ -6245,8 +6252,13 @@ function interact(ray, hit) {
       if (missing.length) notes.push(faradayPartNote(nmRanges(samples, x => x.turn.issue), missing[0].turn.issue));
       const drop = stokes ? dop(ray.stokes) - dop(stokes) : 0;
       if (drop > FARADAY_DOP_DROP && !ray.polarizationSpread) notes.push(faradaySpreadNote);
-      const turned = ray.stokes ? samples.map(x => ({ w: x.w, stokes: x.turn.issue ? ray.stokes : rotateStokes(ray.stokes, x.turn.deg) })) : [];
-      const differ = statesSpread(turned) > STATES_DIFFER;
+      const turnEach = st => (st ? samples.map(x => ({ w: x.w, stokes: x.turn.issue ? st : rotateStokes(st, x.turn.deg) })) : []);
+      // Each state that carries light is checked on its own: a switching
+      // modulator's two states can average to no polarization at all.
+      const modStates = ray.polMod ? [ray.polMod.stokesHigh, ray.polMod.stokesLow] : [];
+      const modDiffer = modStates.some(st => statesSpread(turnEach(st)) > STATES_DIFFER);
+      const differ = statesSpread(turnEach(ray.stokes)) > STATES_DIFFER || modDiffer;
+      if (modDiffer && !ray.polarizationSpread) notes.push(FARADAY_MODULATOR_ROTATOR_NOTE);
       return [{
         d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || differ),
         // Its wavelengths now point different ways: the field is not one

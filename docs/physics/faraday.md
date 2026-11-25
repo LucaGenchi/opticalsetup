@@ -76,7 +76,11 @@ part. A switching modulator's two states are turned by the rotation at the
 centre wavelength. A pulse whose wavelengths the rotator turns differently
 gets no duration: its field now points different ways at different
 wavelengths and is not one scalar pulse (20 mm of TGG at 10 T splits a 15 fs
-pulse into two lobes 30 fs apart).
+pulse into two lobes 30 fs apart). A switching modulator's two states are each checked on
+their own (two orthogonal states average to no polarization at all): where
+either turns differently across the band, the light carries a caveat that its
+polarization and power past the rotator are not computed for the two states,
+and the pulse gets no duration.
 
 ## Physical isolator
 
@@ -123,9 +127,10 @@ average weighted by the light that arrives in each: for a pulse train, the
 share of its pulses that meet each state, sampled pulse by pulse as a gate is,
 so pulses synchronized with the modulator read the state of their phase. A
 modulator whose two states are the same takes the ordinary path, wavelength
-by wavelength. Where two different states meet a band the isolator reshapes,
-the figures are at the centre wavelength and the light says its power and
-spectrum are not computed.
+by wavelength. Where two different states meet a band the isolator reshapes (each
+state that carries light is checked on its own), the figures are at the centre
+wavelength and the light says its power and spectrum are not computed, and
+the pulse gets no duration.
 
 The inspector's isolation is −10·log10 of what returns through the isolator
 of light polarized along the output polarizer, which is the state of a

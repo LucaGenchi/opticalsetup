@@ -452,3 +452,28 @@ test('P2 (review 5): identical partly polarized states are not taken for a sprea
     make('faraday', 200, 0, { fieldT: 0 }), make('polarizer', 300, 0, { pangle: 45 }), meter]);
   assert.ok(!(detectorReading(meter.id).approximations || []).some(a => /second Faraday element/.test(a)));
 });
+
+// Andrea's review, round 6: a flip modulator synchronized with the laser
+// (80 MHz, duty 0.5, phase 0) sends every pulse at 90°, though its two
+// states average to no polarization.
+const syncedFlip = () => [make('pulsedlaser', -50, 0, { wavelength: 800, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80 }),
+  make('eom', 30, 0, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 80, switchDuty: 0.5, switchPhaseNs: 0 })];
+test('P2 (review 6): a rotator checks each of a modulator\'s states for its spread', () => {
+  const [laser, eom] = syncedFlip();
+  laser.params.pulseWidthFs = 15;
+  const meter = make('powermeter', 400, 0);
+  traceScene([laser, eom, make('faraday', 150, 0, { fieldT: 10 }), make('polarizer', 300, 0, { pangle: 47 }), meter]);
+  const reading = detectorReading(meter.id);
+  assert.match(reading.pulse.fieldIssue || '', /not one scalar pulse/);
+  assert.ok(reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
+});
+
+test('P2 (review 6): an isolator checks each of a modulator\'s states for reshaping', () => {
+  const [laser, eom] = syncedFlip();
+  laser.params.pulseWidthFs = 50;
+  const meter = make('powermeter', 400, 0);
+  traceScene([laser, eom, make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), meter]);
+  const reading = detectorReading(meter.id);
+  assert.match(reading.pulse.fieldIssue || '', /not one scalar pulse/);
+  assert.ok(reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
+});
