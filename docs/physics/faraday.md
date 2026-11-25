@@ -121,10 +121,12 @@ spectrum. Where a share is a plain number (a neutral density, a partial
 mirror, a partly reflecting dichroic band met by light of one wavelength; a
 polarizer down to 10⁻¹²) the share is passed however faint, as #193 decided
 for weak beams, so that an OD 6 beam is still drawn: a neutral density of
-5×10⁻⁷ after the isolator passes 0.5 µW of 1 W. A spectrum crossing a partly
-reflecting dichroic band is weighed across it, so its share meets the floor
-(10⁻⁴, or 10⁻⁶ for light kept on purpose), as on `main`: a 100 fs pulse
-there transmits nothing at 99.99995 % where a line transmits 0.5 µW. Whether
+5×10⁻⁷ after the isolator passes 0.5 µW of 1 W. A flat band (a
+supercontinuum) crossing a partly reflecting dichroic band also gets the
+plain share; a sampled or Gaussian spectrum is weighed across it, so its share
+meets the floor (10⁻⁴, or 10⁻⁶ for light kept on purpose), as on `main`: at
+99.99995 % a line and a flat 790–810 nm band transmit 0.5 µW, a 100 fs pulse
+nothing. Whether
 the plain-number shares should stop below 10⁻⁶ too is Luca's decision, not
 made here. Luca allowed 10⁻⁵ or 10⁻⁶ for such light, not lower,
 so the bench does not fill with light no one would see. At 60 dB (set

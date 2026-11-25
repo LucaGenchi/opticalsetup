@@ -4594,7 +4594,9 @@ function noteFaradayCrossing(surface, ray, forward) {
     : [{ wl: ray.wl, bw: Number(ray.bw) || 0, ...span, power }];
   for (const e of entries) {
     const same = list.find(c => c.forward === forward && Math.abs(c.wl - e.wl) < 1e-6 && Math.abs(c.bw - e.bw) < 1e-6);
-    if (same) same.power += e.power;
+    // Two lights of one centre and width (a flat band and a pulse) are one
+    // entry for the readout, spanning both.
+    if (same) Object.assign(same, { power: same.power + e.power, lo: Math.min(same.lo, e.lo), hi: Math.max(same.hi, e.hi) });
     else list.push({ ...e, forward });
   }
   faradayCrossings.set(id, list);

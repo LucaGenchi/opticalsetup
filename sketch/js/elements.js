@@ -2700,9 +2700,11 @@ function isolatorReadoutText(p, el) {
 // What to say once, as a pop-up, when a rotator's or a physical isolator's
 // material has no Verdet data for light that crosses it (Luca: TGG put in
 // light at 1550 nm should say so at once, not only in the readouts). Returns
-// { key, message }: `key` names the situation (material and which case), so
-// the canvas says it again only when that changes, not at every wavelength
-// step of a drag; null when there is nothing to say.
+// { key, message }: `key` names the situation (material, and whether the
+// light or the isolator's design is outside the data), so the canvas says it
+// again only when that changes, not at every wavelength step of a drag; null
+// when there is nothing to say. One message per element, whatever lights
+// cross it: the readouts name the wavelengths.
 export function faradayDataNotice(el) {
   const p = el?.params;
   const physical = el?.type === 'isolator' && p?.isolatorModel === 'physical';
@@ -2716,23 +2718,18 @@ export function faradayDataNotice(el) {
     const range = rangeAt(Number(p.designWl));
     if (range) return { key: `${p.material}|design`, message: say(range, `the optical isolator cannot be designed at ${nmLabel(Number(p.designWl))}`, `Choose a design wavelength in that range, or “Custom Verdet constant” as the material.`) };
   }
-  // Every lit crossing, not the readout's one per wavelength: a line and a
-  // pulse at the same centre are two lights, and only the pulse may reach
-  // past the data.
-  let range = null, whole = [], part = false;
+  // Every lit crossing, over the whole span of wavelengths the tracer
+  // weighed for it (a pulse's tails reach past its half-maximum width): the
+  // data cover one range, so its two ends decide.
+  let range = null;
   for (const c of faradayReading(el.id).filter(x => x.power > LIT_POWER_W)) {
-    const centre = rangeAt(c.wl);
-    // The ends of what the tracer weighed, not the half-maximum width: a
-    // pulse's tail past 1100 nm is light TGG cannot turn.
-    const edge = c.lo > 0 && c.hi > 0 ? rangeAt(c.lo) || rangeAt(c.hi) : c.bw > 0 ? rangeAt(c.wl - c.bw / 2) || rangeAt(c.wl + c.bw / 2) : null;
-    if (centre && !whole.includes(nmLabel(c.wl))) whole.push(nmLabel(c.wl));
-    else if (edge) part = true;
-    range = range || centre || edge;
+    range = range || rangeAt(c.lo > 0 ? c.lo : c.wl) || rangeAt(c.hi > 0 ? c.hi : c.wl);
   }
   if (!range) return null;
-  const what = whole.length ? `light at ${whole.join(', ')}` : 'the part of its light outside that range';
-  const does = el.type === 'faraday' ? `the Faraday rotator does not turn ${what}` : `the optical isolator passes ${what} as an ideal one-way gate`;
-  return { key: `${p.material}|${el.type}|${whole.length ? 'light' : 'part'}${whole.length && part ? '+part' : ''}`, message: say(range, does, custom) };
+  const does = el.type === 'faraday'
+    ? 'the Faraday rotator does not turn the light that crosses it outside that range'
+    : 'the optical isolator passes the light that crosses it outside that range as an ideal one-way gate';
+  return { key: `${p.material}|${el.type}|light`, message: say(range, does, custom) };
 }
 
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };

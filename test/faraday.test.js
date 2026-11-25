@@ -846,7 +846,7 @@ test('P2 (Luca): TGG in light it has no Verdet data for gives one pop-up message
   const cw = wavelength => make('cwlaser', 0, 0, { wavelength, pol: 0, avgPowerW: 0.01 });
   const at1550 = notice(cw(1550), make('faraday', 150, 0));
   assert.equal(at1550.key, 'tgg|faraday|light');
-  assert.equal(at1550.message, 'Terbium gallium garnet (TGG) has Verdet data only for 500–1100 nm, so the Faraday rotator does not turn light at 1550 nm. For other wavelengths, choose “Custom Verdet constant” as the material.');
+  assert.equal(at1550.message, 'Terbium gallium garnet (TGG) has Verdet data only for 500–1100 nm, so the Faraday rotator does not turn the light that crosses it outside that range. For other wavelengths, choose “Custom Verdet constant” as the material.');
   // Another wavelength outside the data is the same situation: a drag of the
   // laser's wavelength does not repeat it.
   assert.equal(notice(cw(1600), make('faraday', 150, 0)).key, at1550.key);
@@ -854,9 +854,9 @@ test('P2 (Luca): TGG in light it has no Verdet data for gives one pop-up message
   assert.equal(notice(cw(1064), make('faraday', 150, 0)), null);
   assert.equal(notice(cw(1550), make('faraday', 150, 0, { material: 'custom' })), null);
   assert.equal(faradayDataNotice(make('faraday', 150, 400)), null);
-  // A band that runs past 1100 nm: only part of it.
+  // A band that runs past 1100 nm, part of it inside: the same message.
   const pulse = make('pulsedlaser', 0, 0, { wavelength: 1080, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 });
-  assert.equal(notice(pulse, make('faraday', 150, 0)).key, 'tgg|faraday|part');
+  assert.equal(notice(pulse, make('faraday', 150, 0)).key, 'tgg|faraday|light');
   // A physical isolator: designed outside the data, or crossed by light
   // outside it; the ideal one has no material.
   assert.equal(notice(cw(800), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1550 })).key, 'tgg|design');
@@ -874,7 +874,7 @@ test('P2 (review 21): the pop-up sees the tail of a pulse past the data, not onl
     traceScene([pulse(), el, make('detector', 300, 0)]);
     const [crossing] = faradayReading(el.id);
     assert.ok(crossing.hi > 1100 && crossing.wl + crossing.bw / 2 < 1100, JSON.stringify(crossing));
-    assert.match(faradayDataNotice(el)?.key || '', /\|part$/, el.type);
+    assert.equal(faradayDataNotice(el)?.key, `tgg|${el.type}|light`, el.type);
   }
 });
 
@@ -887,7 +887,25 @@ test('P2 (review 22): the pop-up weighs every light that crosses, whatever order
     for (const sources of [[line(), pulse()], [pulse(), line()]]) {
       const el = element();
       traceScene([...sources, el, make('detector', 300, 0)]);
-      assert.equal(faradayDataNotice(el)?.key, `tgg|${el.type}|part`, `${el.type}, ${sources[0].type} first`);
+      assert.equal(faradayDataNotice(el)?.key, `tgg|${el.type}|light`, `${el.type}, ${sources[0].type} first`);
+    }
+  }
+});
+
+test('P2 (review 23): two lights of one centre and width keep both spans, in either order', () => {
+  // A flat band 1044–1084 nm and a Gaussian pulse at 1064 nm, 40 nm wide:
+  // the readout merges them into one entry, which spans the pulse's tail to
+  // 1115 nm whichever source comes first.
+  const flat = () => make('sclaser', 0, 0, { scMin: 1044, scMax: 1084, pol: 0, beamMode: 'line' });
+  const pulse = () => make('pulsedlaser', 0, 0, { wavelength: 1064, transformLimited: false, bandwidth: 40, pol: 0, beamMode: 'line', avgPowerW: 1 });
+  for (const element of [() => make('faraday', 150, 0), () => make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })]) {
+    for (const sources of [[flat(), pulse()], [pulse(), flat()]]) {
+      const el = element();
+      traceScene([...sources, el, make('detector', 300, 0)]);
+      const crossings = faradayReading(el.id);
+      assert.equal(crossings.length, 1, JSON.stringify(crossings));
+      assert.ok(crossings[0].lo < 1044 && crossings[0].hi > 1100, JSON.stringify(crossings));
+      assert.equal(faradayDataNotice(el)?.key, `tgg|${el.type}|light`, `${el.type}, ${sources[0].type} first`);
     }
   }
 });
