@@ -117,12 +117,16 @@ own points, up to 4097, rather than on 65), and faint light the tracer keeps
 on purpose (the isolator's output among it) stops at a filter, a dichroic or a
 notch only below 10⁻⁶ of what reaches it (`WEAK_LIGHT_FLOOR`), where other
 light stops below 10⁻⁴. The floor applies where the tracer weighs a
-spectrum. Where a share is a plain number (a neutral density, a partly
-reflecting dichroic band, a partial mirror; a polarizer down to 10⁻¹²) the
-share is passed however faint, as #193 decided for weak beams, so that an
-OD 6 beam is still drawn: a
-neutral density of 5×10⁻⁷ after the isolator passes 0.5 µW of 1 W. Whether
-those should stop below 10⁻⁶ too is Luca's decision, not made here. Luca allowed 10⁻⁵ or 10⁻⁶ for such light, not lower,
+spectrum. Where a share is a plain number (a neutral density, a partial
+mirror, a partly reflecting dichroic band met by light of one wavelength; a
+polarizer down to 10⁻¹²) the share is passed however faint, as #193 decided
+for weak beams, so that an OD 6 beam is still drawn: a neutral density of
+5×10⁻⁷ after the isolator passes 0.5 µW of 1 W. A spectrum crossing a partly
+reflecting dichroic band is weighed across it, so its share meets the floor
+(10⁻⁴, or 10⁻⁶ for light kept on purpose), as on `main`: a 100 fs pulse
+there transmits nothing at 99.99995 % where a line transmits 0.5 µW. Whether
+the plain-number shares should stop below 10⁻⁶ too is Luca's decision, not
+made here. Luca allowed 10⁻⁵ or 10⁻⁶ for such light, not lower,
 so the bench does not fill with light no one would see. At 60 dB (set
 directly in the tests; the setting stops at 50 dB) the 2 nm band holds
 2.2×10⁻⁵ of it, 84.59 nW. Measured in the isolator

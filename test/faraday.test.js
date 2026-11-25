@@ -877,3 +877,17 @@ test('P2 (review 21): the pop-up sees the tail of a pulse past the data, not onl
     assert.match(faradayDataNotice(el)?.key || '', /\|part$/, el.type);
   }
 });
+
+test('P2 (review 22): the pop-up weighs every light that crosses, whatever order the sources come in', () => {
+  // A line and a 40 fs pulse, both at 1064 nm: only the pulse reaches past
+  // 1100 nm, and the pop-up says so with either source first.
+  const line = () => make('cwlaser', 0, 0, { wavelength: 1064, pol: 0, beamMode: 'line', avgPowerW: 0.01 });
+  const pulse = () => make('pulsedlaser', 0, 0, { wavelength: 1064, pulseWidthFs: 40, pol: 0, beamMode: 'line', avgPowerW: 1 });
+  for (const element of [() => make('faraday', 150, 0), () => make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })]) {
+    for (const sources of [[line(), pulse()], [pulse(), line()]]) {
+      const el = element();
+      traceScene([...sources, el, make('detector', 300, 0)]);
+      assert.equal(faradayDataNotice(el)?.key, `tgg|${el.type}|part`, `${el.type}, ${sources[0].type} first`);
+    }
+  }
+});

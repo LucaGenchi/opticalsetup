@@ -2716,13 +2716,16 @@ export function faradayDataNotice(el) {
     const range = rangeAt(Number(p.designWl));
     if (range) return { key: `${p.material}|design`, message: say(range, `the optical isolator cannot be designed at ${nmLabel(Number(p.designWl))}`, `Choose a design wavelength in that range, or “Custom Verdet constant” as the material.`) };
   }
+  // Every lit crossing, not the readout's one per wavelength: a line and a
+  // pulse at the same centre are two lights, and only the pulse may reach
+  // past the data.
   let range = null, whole = [], part = false;
-  for (const c of litCrossings(el, false)) {
+  for (const c of faradayReading(el.id).filter(x => x.power > LIT_POWER_W)) {
     const centre = rangeAt(c.wl);
     // The ends of what the tracer weighed, not the half-maximum width: a
     // pulse's tail past 1100 nm is light TGG cannot turn.
     const edge = c.lo > 0 && c.hi > 0 ? rangeAt(c.lo) || rangeAt(c.hi) : c.bw > 0 ? rangeAt(c.wl - c.bw / 2) || rangeAt(c.wl + c.bw / 2) : null;
-    if (centre) whole.push(nmLabel(c.wl));
+    if (centre && !whole.includes(nmLabel(c.wl))) whole.push(nmLabel(c.wl));
     else if (edge) part = true;
     range = range || centre || edge;
   }
