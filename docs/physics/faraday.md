@@ -126,7 +126,10 @@ supercontinuum) crossing a partly reflecting dichroic band also gets the
 plain share; a sampled or Gaussian spectrum is weighed across it, so its share
 meets the floor (10⁻⁴, or 10⁻⁶ for light kept on purpose), as on `main`: at
 99.99995 % a line and a flat 790–810 nm band transmit 0.5 µW, a 100 fs pulse
-nothing. Whether
+nothing. Where an edge of the band cuts the spectrum, the floor is applied to
+each piece before the band's share multiplies it, so a port can end below the
+floor: at 0.00005 % a 100 fs pulse at 800 nm reflects nothing from a
+700–900 nm band but 0.25 µW from an 800–900 nm one. Whether
 the plain-number shares should stop below 10⁻⁶ too is Luca's decision, not
 made here. Luca allowed 10⁻⁵ or 10⁻⁶ for such light, not lower,
 so the bench does not fill with light no one would see. At 60 dB (set
