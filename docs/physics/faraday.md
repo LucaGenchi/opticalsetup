@@ -243,6 +243,21 @@ along the input polarizer.
 - The polarizers' wavelength dependence and their own losses; the isolator's
   internal reflections and a beam displacer design (polarization-independent
   isolators).
+- Spectral detail about one sample wide through elements other than filters.
+  A fine profile (finer than the tracer's 65-point grid, or cut from one,
+  such as the isolator's leak or an etalon of FWHM 0.04 nm behind it) keeps
+  its own samples, with exact edges, through filters, dichroics, notches,
+  etalons and AOTF channels, and is integrated exactly there. Dispersive
+  glass, which cuts a band into slices weighed on a grid of its own, the
+  AOTF's depleted output, and other elements that re-sample a spectrum
+  (gratings, prisms) still re-sample it, so a reading behind them that
+  depends on features one sample wide can change with the order of the
+  elements: behind 12 mm of N-BK7, a band-pass and a 0.1 nm AOTF channel
+  read 196.4 and 174.1 nW in the two orders, and a band-pass read 425.0 and
+  506.8 nW through an AOTF's depleted output, with an etalon comb. The tested
+  cases with the isolator's own, smooth profile (glass and filters, at 40 and
+  60 dB) agree within 0.1 %. Keeping a fine profile's samples in every
+  element is a separate change.
 - The spectrum that a polarizer leaves of light whose polarization varies
   across its spectrum: the state is carried as the spectrum's average, and
   where the polarizer's share could vary by more than 1 % across the band the
