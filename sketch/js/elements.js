@@ -2697,6 +2697,39 @@ function isolatorReadoutText(p, el) {
   return `${head}\n${lines.join('\n')}\nForward: light polarized along the input polarizer. Isolation: −10·log10 of what returns through it of light polarized along the output polarizer, as a reflection of the forward beam is.`;
 }
 
+// What to say once, as a pop-up, when a rotator's or a physical isolator's
+// material has no Verdet data for light that crosses it (Luca: TGG put in
+// light at 1550 nm should say so at once, not only in the readouts). Returns
+// { key, message }: `key` names the situation (material and which case), so
+// the canvas says it again only when that changes, not at every wavelength
+// step of a drag; null when there is nothing to say.
+export function faradayDataNotice(el) {
+  const p = el?.params;
+  const physical = el?.type === 'isolator' && p?.isolatorModel === 'physical';
+  if (!p || (el.type !== 'faraday' && !physical) || p.material === 'custom') return null;
+  // "Terbium gallium garnet, TGG" -> "Terbium gallium garnet (TGG)".
+  const name = (FARADAY_MATERIAL_OPTIONS.find(([id]) => id === p.material)?.[1] || FARADAY_MATERIAL_OPTIONS[0][1]).replace(/, (.+)$/, ' ($1)');
+  const rangeAt = nm => verdetAt(p, nm).range || null;
+  const say = (range, consequence, advice) => `${name} has Verdet data only for ${range[0]}–${range[1]} nm, so ${consequence}. ${advice}`;
+  const custom = 'For other wavelengths, choose “Custom Verdet constant” as the material.';
+  if (physical) {
+    const range = rangeAt(Number(p.designWl));
+    if (range) return { key: `${p.material}|design`, message: say(range, `the optical isolator cannot be designed at ${nmLabel(Number(p.designWl))}`, `Choose a design wavelength in that range, or “Custom Verdet constant” as the material.`) };
+  }
+  let range = null, whole = [], part = false;
+  for (const c of litCrossings(el, false)) {
+    const centre = rangeAt(c.wl);
+    const edge = c.bw > 0 ? rangeAt(c.wl - c.bw / 2) || rangeAt(c.wl + c.bw / 2) : null;
+    if (centre) whole.push(nmLabel(c.wl));
+    else if (edge) part = true;
+    range = range || centre || edge;
+  }
+  if (!range) return null;
+  const what = whole.length ? `light at ${whole.join(', ')}` : 'the part of its light outside that range';
+  const does = el.type === 'faraday' ? `the Faraday rotator does not turn ${what}` : `the optical isolator passes ${what} as an ideal one-way gate`;
+  return { key: `${p.material}|${el.type}|${whole.length ? 'light' : 'part'}${whole.length && part ? '+part' : ''}`, message: say(range, does, custom) };
+}
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -4701,7 +4734,7 @@ export const registry = {
       { key: 'verdetCustom', label: 'Verdet constant (rad/(T·m), the same at every wavelength)', type: 'number', min: -2000, max: 2000, step: 1, def: -40, show: p => p.isolatorModel === 'physical' && p.material === 'custom' },
       { key: 'designWl', label: 'Design wavelength (nm): 45° of rotation here', type: 'number', min: 200, max: 3000, step: 1, def: 1064, show: p => p.isolatorModel === 'physical' },
       { key: 'inputAxis', label: 'Input polarizer axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, note: AXIS_CROSSING_NOTE, show: p => p.isolatorModel === 'physical' },
-      { key: 'extinctionDb', label: 'Polarizer extinction ratio (dB)', type: 'number', min: 10, max: 80, step: 1, def: 40, show: p => p.isolatorModel === 'physical' },
+      { key: 'extinctionDb', label: 'Polarizer extinction ratio (dB)', type: 'number', min: 10, max: 50, step: 1, def: 40, show: p => p.isolatorModel === 'physical' },
       { key: 'isolation', label: 'Isolation', type: 'readout', wide: true, show: p => p.isolatorModel === 'physical', readout: (p, el) => isolatorReadoutText(p, el) },
     ],
     svg(el) {

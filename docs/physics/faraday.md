@@ -113,10 +113,13 @@ at 60 dB with a band-pass after the isolator re-traces in about 4 ms per move
 in Node (about 12 ms with N-BK7 before it), where it took 57 ms (44 ms)
 before these and 400 ms with 4097 points per slice.
 A filter after it keeps those points (a sampled profile is re-sampled on its
-own points, up to 4097, rather than on 65), and light the tracer keeps however
-weak (the isolator's output among it) is not dropped below the spectral
-integration's floor of 10⁻⁴ of what reaches a filter, a dichroic or a notch:
-at 60 dB the 2 nm band holds 2.2×10⁻⁵ of it, 84.59 nW. Measured in the isolator
+own points, up to 4097, rather than on 65), and faint light the tracer keeps
+on purpose (the isolator's output among it) stops at a filter, a dichroic or a
+notch only below 10⁻⁶ of what reaches it (`WEAK_LIGHT_FLOOR`), where other
+light stops below 10⁻⁴. Luca allowed 10⁻⁵ or 10⁻⁶ for such light, not lower,
+so the bench does not fill with light no one would see. At 60 dB (set
+directly in the tests; the setting stops at 50 dB) the 2 nm band holds
+2.2×10⁻⁵ of it, 84.59 nW. Measured in the isolator
 example with a 2 nm band-pass, a dichroic band or two notches, at 40 and
 60 dB, with and without N-BK7 before the isolator, the two positions agree
 within 0.1 %; this is what the tests check, not a bound for other scenes. An analyzer crossed
@@ -173,6 +176,9 @@ leaks back at the wings of its spectrum and its returning spectrum has a hole
 at λ_d. The transmission is weighed scaled to its largest value over the band,
 so a leak of 10⁻⁴ or less is not lost below the spectral integration's floor,
 and a pulse whose spectrum it reshapes takes the duration of what survives.
+What the isolator passes stops below 10⁻⁶ of what arrives, as at a filter; the
+extinction setting stops at 50 dB (about a good Glan polarizer's 10⁵:1), so
+that at the design wavelength a leak of 10⁻⁵ comes back rather than nothing.
 A pulse whose spectrum the isolator reshapes by more than 1 % (its
 transmission, relative to its largest value, varies by that much across the
 band), or whose state arrives or leaves varying across it, does not get a
@@ -193,9 +199,9 @@ each state, sampled pulse by pulse as a gate is. Pulses synchronized with the
 modulator that all meet one state, and a modulator whose two states are the
 same, cross as light in that state, wavelength by wavelength, exactly as above.
 Only a state that no light meets at all is left out: a weak one can be the one
-a later element passes (6.31×10⁻¹⁰ of the power after a first isolator, but
-along the second one's axis: 320.48 pW where the strong state alone gives
-10.00 pW).
+a later element passes (2.51×10⁻⁵ of the power after a first isolator at
+23 dB, but along the second one's axis: 14.55 µW where the strong state alone
+gives 3.98 µW).
 Light in two different states keeps them: each crosses as its spectrum's
 average, its transmission and the state it leaves in (partly polarized where
 its wavelengths leave in different states), which gives the power right after

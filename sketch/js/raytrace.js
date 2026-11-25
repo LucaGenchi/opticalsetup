@@ -2306,6 +2306,12 @@ const MIN_COHERENT_INT = 1e-4;
 // pale mix rather than as whichever wavelength happens to sit in the middle.
 const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
+// The least share of what reaches it that a filter, a dichroic, a notch or
+// an isolator passes on of faint light the tracer keeps on purpose (a leak):
+// below it the light stops there. Other light stops below 1e-4 of what
+// arrives (spectrum.js BLOCK); Luca allowed leaks down to 1e-5 or 1e-6, not
+// further, so that the bench does not fill with light no one would see.
+export const WEAK_LIGHT_FLOOR = 1e-6;
 // How many rays one shaper hit may leave with, across all of its layers. It
 // bounds a stack that multiplies rays (orders x wavelengths x speckle grains),
 // and every layer sizes its own sampling to fit rather than overflowing and
@@ -6342,12 +6348,12 @@ function interact(ray, hit) {
         const states = { ...m, stokesHigh: hi.stokes, stokesLow: lo.stokes };
         const out = averagedStokes([{ w: pHi * hi.t, stokes: hi.stokes }, { w: pLo * lo.t, stokes: lo.stokes }]) || ray.stokes;
         if (ray.pulse) {
-          if (Math.max(hi.t, lo.t) <= MIN_RETAINED_POWER_INT) return [];
+          if (Math.max(hi.t, lo.t) <= WEAK_LIGHT_FLOOR) return [];
           return [{ d, stokes: out, pol: legacyPolarization(out), polMod: states, retainWeak: true, tag: 'iso', ...twoCaveat,
             pulse: withGate(differs || ray.polarizationSpread ? declined : ray.pulse, gateOf(hi.t, lo.t)) }];
         }
         const mean = m.duty * wHi * hi.t + (1 - m.duty) * wLo * lo.t;
-        if (!(mean > MIN_RETAINED_POWER_INT)) return [];
+        if (!(mean > WEAK_LIGHT_FLOOR)) return [];
         return [{ d, intensity: ray.intensity * mean, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...twoCaveat,
           polMod: { ...states, weightHigh: wHi * hi.t / mean, weightLow: wLo * lo.t / mean } }];
       }
@@ -6390,7 +6396,7 @@ function interact(ray, hit) {
           const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
           const scaled = nm => T(nm) / peak;
           const support = spectrumSupport(ray.spec);
-          const kept = !(peak > MIN_RETAINED_POWER_INT) ? null
+          const kept = !(peak > WEAK_LIGHT_FLOOR) ? null
             : ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, { minGrid: isolatorGrid(support[1] - support[0]) });
           byKey.set(key, kept && { fraction: kept.fraction * peak, spectral: { wl: kept.wl, bw: kept.bw, spec: kept.spec } });
         }
@@ -6399,7 +6405,7 @@ function interact(ray, hit) {
         fraction = known.fraction;
         spectral = known.spectral;
       }
-      if (!(fraction > MIN_RETAINED_POWER_INT)) return [];
+      if (!(fraction > WEAK_LIGHT_FLOOR)) return [];
       const out = stokes || input;
       return [{
         d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral, ...pulseFields,
@@ -7292,12 +7298,12 @@ function notePulseSelection(transmissionFn, edges = []) {
   return uniform;
 }
 // A dichroic's or notch's piece of a profile, under the same floor.
-const spectrumSlice = (spec, lo, hi) => spectralSlice(spec, lo, hi, interactionRay?.retainWeak ? { block: MIN_RETAINED_POWER_INT } : {});
+const spectrumSlice = (spec, lo, hi) => spectralSlice(spec, lo, hi, interactionRay?.retainWeak ? { block: WEAK_LIGHT_FLOOR } : {});
 function applyTransmission(spec, centerWl, transmissionFn, edges = null, options = {}) {
   const uniform = notePulseSelection(transmissionFn);
-  // Light the tracer keeps however weak (an isolator's leak, a polarizer's
-  // output) is not dropped below the spectral integration's floor either.
-  const block = interactionRay?.retainWeak ? MIN_RETAINED_POWER_INT : undefined;
+  // Faint light the tracer keeps on purpose (an isolator's leak, a
+  // polarizer's output) stops only below WEAK_LIGHT_FLOOR of what arrives.
+  const block = interactionRay?.retainWeak ? WEAK_LIGHT_FLOOR : undefined;
   const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges, { ...(block ? { block } : {}), ...options });
   // The integration runs on a finer grid than the band sample: a passband it
   // finds, where the samples saw none, is a reshaping they missed.

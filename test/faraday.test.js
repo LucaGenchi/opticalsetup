@@ -7,8 +7,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry } from '../sketch/js/elements.js';
-import { traceScene, detectorReading, probeAt, faradayReading } from '../sketch/js/raytrace.js';
+import { createElement, registry, faradayDataNotice } from '../sketch/js/elements.js';
+import { traceScene, detectorReading, probeAt, faradayReading, WEAK_LIGHT_FLOOR } from '../sketch/js/raytrace.js';
+import { applyTransmission } from '../sketch/js/spectrum.js';
 import { enhancedReading } from '../sketch/js/detector-measurements.js';
 import { readFile } from 'node:fs/promises';
 import {
@@ -242,15 +243,31 @@ test('P2: saved setups open unchanged; new settings normalise', () => {
 });
 
 // Andrea's review of the first version (PR #335, round 1).
-test('P2 (review): a 40 dB leak is kept and read, down to 80 dB', () => {
-  // 1 W at the design wavelength sent back along the output polarizer.
-  for (const er of [30, 40, 50, 60, 80]) {
+test('P2 (Luca): a leak is read down to 1e-6 of what arrives, and stops below it', () => {
+  // 1 W at the design wavelength sent back along the output polarizer: the
+  // leak is 1/ER, read exactly up to the 50 dB the setting allows.
+  const back = er => {
     const meter = make('powermeter', -100, 0, {}, 180);
     const scene = [make('cwlaser', 300, 0, { wavelength: 800, pol: 135, beamMode: 'line', avgPowerW: 1 }, 180),
       make('isolator', 100, 0, { isolatorModel: 'physical', designWl: 800, extinctionDb: er }), meter];
     traceScene(scene);
-    close(enhancedReading(meter, scene).detectedPowerW, 10 ** (-er / 10), 10 ** (-er / 10) * 1e-6, `${er} dB`);
-  }
+    return enhancedReading(meter, scene)?.detectedPowerW ?? 0;
+  };
+  for (const er of [30, 40, 50]) close(back(er), 10 ** (-er / 10), 10 ** (-er / 10) * 1e-6, `${er} dB`);
+  // Faint light the tracer keeps on purpose stops below 1e-6 of what reaches
+  // an element (Luca: 1e-5 or 1e-6, not 1e-12): 60 and 80 dB, set past the
+  // setting's range, send nothing back.
+  assert.equal(WEAK_LIGHT_FLOOR, 1e-6);
+  assert.equal(back(60), 0);
+  assert.equal(back(80), 0);
+  // A saved setup asking for more opens at the setting's 50 dB.
+  const opened = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [{ id: 'i', type: 'isolator', x: 0, y: 0, rot: 0, params: { isolatorModel: 'physical', extinctionDb: 80 } }], beams: [] }), registry);
+  assert.equal(opened.elements[0].params.extinctionDb, 50);
+  // At a filter, a dichroic or a notch the same floor holds for such light;
+  // other light stops below 1e-4.
+  assert.ok(applyTransmission(null, 800, () => 2e-6, null, { block: WEAK_LIGHT_FLOOR }));
+  assert.equal(applyTransmission(null, 800, () => 5e-7, null, { block: WEAK_LIGHT_FLOOR }), null);
+  assert.equal(applyTransmission(null, 800, () => 2e-6), null);
 });
 
 test('P2 (review): a broadband leak carries its state as the spectrum\'s average, so a polarizer reads the right power', async () => {
@@ -471,19 +488,21 @@ test('P2 (review 6): a rotator checks each of a modulator\'s states for its spre
 test('P2 (review 6, 7): pulses that all meet one of a modulator\'s states cross an isolator as light in that state', () => {
   // Every pulse leaves the synchronized flip at 90°: the isolator sees what
   // a laser at 90° sends it, wavelength by wavelength, and declines the
-  // duration of the spectrum it reshapes.
-  const isolator = () => make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 });
+  // duration of the spectrum it reshapes. Its polarizers are 20 dB: through
+  // both, crossed, 1e-4 gets through (at 40 dB, 1e-8 is below the floor).
+  const isolator = () => make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 20 });
   const [laser, eom] = syncedFlip();
   laser.params.pulseWidthFs = 50;
   const meter = make('powermeter', 400, 0);
   traceScene([laser, eom, isolator(), meter]);
   const reading = detectorReading(meter.id);
-  assert.match(reading.pulse.fieldIssue || '', /not one scalar pulse/);
+  assert.match(reading.pulse.fieldIssue || '', /Spectrum reshaped by an optical isolator/);
   assert.ok(!reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
   const plain = make('powermeter', 400, 0);
   const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pol: 90, beamMode: 'line', avgPowerW: 1, repRateMHz: 80, pulseWidthFs: 50 }), isolator(), plain];
   traceScene(scene);
   const expected = enhancedReading(plain, scene).detectedPowerW;
+  assert.ok(expected > 1e-4, 'light gets through');
   traceScene([laser, eom, isolator(), meter]);
   close(enhancedReading(meter, [laser, eom, meter]).detectedPowerW, expected, 1e-15, 'as a laser at 90°');
 });
@@ -530,23 +549,25 @@ test('P2 (review 7): two states that each leave in a state varying across the ba
 // Andrea's review, round 8.
 test('P2 (review 8): a weak modulator state a later isolator passes is kept', () => {
   // CW 1 W at 800 nm, a flip EOM at 50 %, then two forward isolators with
-  // constant Verdet constants: axis 0° and 46 dB, then axis 135° and 55 dB.
-  // At the second the 90° state carries 6.31e-10 of the power, but it lies
-  // along its axis: 10.00 pW and 630.96 pW for each state alone, so
-  // 320.48 pW together.
+  // constant Verdet constants: axis 0° and 23 dB (L1 = 10^-2.3), then axis
+  // 135° and 27 dB (L2 = 10^-2.7). The 0° state crosses the second one's two
+  // polarizers: L2². The 90° state crossed the first one's two, L1², and
+  // carries that share of the power at the second, but lies along its axis.
+  // (Andrea's case, 46 and 55 dB, now sits below the floor of 1e-6 per
+  // element.)
   const read = (pol, eom) => {
     const meter = make('powermeter', 500, 0);
     const scene = [make('cwlaser', -50, 0, { wavelength: 800, pol, beamMode: 'line', avgPowerW: 1 }),
       ...(eom ? [make('eom', 30, 0, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 1, switchDuty: 0.5 })] : []),
-      make('isolator', 150, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 0, extinctionDb: 46 }),
-      make('isolator', 300, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 135, extinctionDb: 55 }), meter];
+      make('isolator', 150, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 0, extinctionDb: 23 }),
+      make('isolator', 300, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 135, extinctionDb: 27 }), meter];
     traceScene(scene);
     return enhancedReading(meter, scene)?.detectedPowerW ?? 0;
   };
-  close(read(0, false), 10.00e-12, 0.01e-12, '0°');
-  close(read(90, false), 630.96e-12, 0.01e-12, '90°');
+  close(read(0, false), 10 ** -5.4, 10 ** -5.4 * 1e-9, '0°');
+  close(read(90, false), 10 ** -4.6, 10 ** -4.6 * 1e-9, '90°');
   close(read(0, true), (read(0, false) + read(90, false)) / 2, 1e-16, 'both');
-  close(read(0, true), 320.48e-12, 0.01e-12);
+  close(read(0, true), 14.550e-6, 0.001e-6);
 });
 
 test('P2 (review 8): a polarizer after a Faraday element declares the spectrum it cannot weigh', () => {
@@ -813,4 +834,32 @@ test('P2 (review 19): a narrow AOTF channel is read finely on a fine profile, in
   };
   close(await read(false), 165.614e-9, 0.001 * 165.614e-9, 'band-pass, then AOTF');
   close(await read(true), 165.614e-9, 0.001 * 165.614e-9, 'AOTF, then band-pass');
+});
+
+// Luca, on the manual checks: TGG put in light it has no data for should say
+// so at once, as a pop-up, not only in the readouts.
+test('P2 (Luca): TGG in light it has no Verdet data for gives one pop-up message per situation', () => {
+  const notice = (laser, el) => {
+    traceScene([laser, el, make('detector', 300, 0)]);
+    return faradayDataNotice(el);
+  };
+  const cw = wavelength => make('cwlaser', 0, 0, { wavelength, pol: 0, avgPowerW: 0.01 });
+  const at1550 = notice(cw(1550), make('faraday', 150, 0));
+  assert.equal(at1550.key, 'tgg|faraday|light');
+  assert.equal(at1550.message, 'Terbium gallium garnet (TGG) has Verdet data only for 500–1100 nm, so the Faraday rotator does not turn light at 1550 nm. For other wavelengths, choose “Custom Verdet constant” as the material.');
+  // Another wavelength outside the data is the same situation: a drag of the
+  // laser's wavelength does not repeat it.
+  assert.equal(notice(cw(1600), make('faraday', 150, 0)).key, at1550.key);
+  // Inside the data, with a custom constant, or with no light: nothing.
+  assert.equal(notice(cw(1064), make('faraday', 150, 0)), null);
+  assert.equal(notice(cw(1550), make('faraday', 150, 0, { material: 'custom' })), null);
+  assert.equal(faradayDataNotice(make('faraday', 150, 400)), null);
+  // A band that runs past 1100 nm: only part of it.
+  const pulse = make('pulsedlaser', 0, 0, { wavelength: 1080, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 });
+  assert.equal(notice(pulse, make('faraday', 150, 0)).key, 'tgg|faraday|part');
+  // A physical isolator: designed outside the data, or crossed by light
+  // outside it; the ideal one has no material.
+  assert.equal(notice(cw(800), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1550 })).key, 'tgg|design');
+  assert.equal(notice(cw(1550), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })).key, 'tgg|isolator|light');
+  assert.equal(notice(cw(1550), make('isolator', 150, 0)), null);
 });
