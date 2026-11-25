@@ -4584,9 +4584,14 @@ function noteFaradayCrossing(surface, ray, forward) {
   const power = Number(ray.power) || 0;
   const lines = ray.spec?.kind === 'lines' ? ray.spec.lines : null;
   const total = lines ? lines.reduce((sum, l) => sum + l.w, 0) : 0;
+  // The wavelengths the element weighs, to their ends (a pulse's tails reach
+  // past its half-maximum width): what a material without data there cannot
+  // turn, for the pop-up that says so.
+  const sampled = lines ? [] : faradaySamples(ray).filter(x => x.w > 0).map(x => x.nm);
+  const span = sampled.length ? { lo: Math.min(...sampled), hi: Math.max(...sampled) } : { lo: ray.wl, hi: ray.wl };
   const entries = lines && total > 0
-    ? lines.map(l => ({ wl: l.nm, bw: 0, power: power * l.w / total }))
-    : [{ wl: ray.wl, bw: Number(ray.bw) || 0, power }];
+    ? lines.map(l => ({ wl: l.nm, bw: 0, lo: l.nm, hi: l.nm, power: power * l.w / total }))
+    : [{ wl: ray.wl, bw: Number(ray.bw) || 0, ...span, power }];
   for (const e of entries) {
     const same = list.find(c => c.forward === forward && Math.abs(c.wl - e.wl) < 1e-6 && Math.abs(c.bw - e.bw) < 1e-6);
     if (same) same.power += e.power;
@@ -4595,7 +4600,8 @@ function noteFaradayCrossing(surface, ray, forward) {
   faradayCrossings.set(id, list);
 }
 // The light that crossed a Faraday rotator or a physical isolator in the
-// last trace: [{ wl, bw, forward, power }], forward meaning along its arrow.
+// last trace: [{ wl, bw, lo, hi, forward, power }], forward meaning along its
+// arrow, lo and hi the ends of the wavelengths it weighed.
 export const faradayReading = elementId => faradayCrossings.get(elementId) || [];
 
 // The light's spectrum as weighted wavelengths: a lamp's lines, a band on a

@@ -863,3 +863,17 @@ test('P2 (Luca): TGG in light it has no Verdet data for gives one pop-up message
   assert.equal(notice(cw(1550), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })).key, 'tgg|isolator|light');
   assert.equal(notice(cw(1550), make('isolator', 150, 0)), null);
 });
+
+// Andrea's review of Luca's changes: the pop-up sees a pulse's tail; one
+// redraw's messages are joined (checked in the browser).
+test('P2 (review 21): the pop-up sees the tail of a pulse past the data, not only its half-maximum width', () => {
+  // A 40 fs Gaussian at 1064 nm: 1043–1085 nm at half maximum, but the
+  // tracer weighs it out to about 1117 nm, past TGG's 1100 nm.
+  const pulse = () => make('pulsedlaser', 0, 0, { wavelength: 1064, pulseWidthFs: 40, pol: 0, beamMode: 'line', avgPowerW: 1 });
+  for (const el of [make('faraday', 150, 0), make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 1064 })]) {
+    traceScene([pulse(), el, make('detector', 300, 0)]);
+    const [crossing] = faradayReading(el.id);
+    assert.ok(crossing.hi > 1100 && crossing.wl + crossing.bw / 2 < 1100, JSON.stringify(crossing));
+    assert.match(faradayDataNotice(el)?.key || '', /\|part$/, el.type);
+  }
+});

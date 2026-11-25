@@ -509,15 +509,19 @@ function announceMixingState(elements) {
 // data for, or that light sent into it), again only when it changes.
 const announcedFaradayData = new Map();
 
+// Messages that arise in the same redraw are joined into one pop-up, so the
+// second does not replace the first before it can be read.
 function announceFaradayData(elements) {
+  const messages = [];
   for (const el of elements) {
     if (el.type !== 'faraday' && el.type !== 'isolator') continue;
     const notice = faradayDataNotice(el);
     const key = notice?.key || '';
     if (announcedFaradayData.get(el.id) === key) continue;
     announcedFaradayData.set(el.id, key);
-    if (notice) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: notice.message } }));
+    if (notice && !messages.includes(notice.message)) messages.push(notice.message);
   }
+  if (messages.length) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: messages.join(' ') } }));
 }
 
 function renderBeams() {

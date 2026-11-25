@@ -2719,7 +2719,9 @@ export function faradayDataNotice(el) {
   let range = null, whole = [], part = false;
   for (const c of litCrossings(el, false)) {
     const centre = rangeAt(c.wl);
-    const edge = c.bw > 0 ? rangeAt(c.wl - c.bw / 2) || rangeAt(c.wl + c.bw / 2) : null;
+    // The ends of what the tracer weighed, not the half-maximum width: a
+    // pulse's tail past 1100 nm is light TGG cannot turn.
+    const edge = c.lo > 0 && c.hi > 0 ? rangeAt(c.lo) || rangeAt(c.hi) : c.bw > 0 ? rangeAt(c.wl - c.bw / 2) || rangeAt(c.wl + c.bw / 2) : null;
     if (centre) whole.push(nmLabel(c.wl));
     else if (edge) part = true;
     range = range || centre || edge;
