@@ -2593,7 +2593,8 @@ const formatBeamLength = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(
 const gaussianBeamParams = type => [
   { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
   // How the beam is drawn (decision 9, step G2): rays by default, or the
-  // band of its 1/e² radius w(z) with a mark at each waist, or both.
+  // band of its 1/e² radius w(z), or both. Nothing is drawn across the band
+  // (Luca): it is narrowest at the waist, which the probe reads.
   {
     key: 'beamDisplay', label: 'Draw the beam as', type: 'select', def: 'rays',
     options: [['rays', 'Rays'], ['envelope', 'Gaussian beam (1/e² radius)'], ['both', 'Rays and Gaussian beam']],
