@@ -492,6 +492,9 @@ let beamVertexSurfacesOf = new WeakMap();
 // The segments of each path on which the beam's envelope was drawn, for a
 // zoom that would otherwise draw the same waist again.
 let envelopeSegmentsOf = new WeakMap();
+// Each propagated path's straight stretches, with where the beam stops being
+// Gaussian along them (classifyBeamStretches).
+let stretchesOf = new WeakMap();
 // Which emission (a source's, or a fiber's relaunch) traced each path: a
 // route's history string starts afresh in every emission, so the envelope
 // matches the rays' fill to its route within one emission only.
@@ -7421,17 +7424,72 @@ function smoothNeighbour(surface, joint, surfaces) {
   return null;
 }
 
+// The root of f nearest s0: bracketed by stepping out from s0 both ways,
+// doubling, and found by bisection; null when there is none within reach.
+function nearestRoot(f, s0, step0) {
+  const f0 = f(s0);
+  if (!Number.isFinite(f0)) return null;
+  if (f0 === 0) return s0;
+  let best = null;
+  for (const dir of [1, -1]) {
+    let a = s0, fa = f0;
+    for (let step = Math.max(step0, 1e-6), k = 0; k < 60 && step < 1e7; k++, step *= 2) {
+      const b = s0 + dir * step, fb = f(b);
+      if (!Number.isFinite(fb)) break;
+      if ((fa > 0) !== (fb > 0)) {
+        let lo = a, hi = b;
+        for (let j = 0; j < 80 && Math.abs(hi - lo) > 1e-12 * Math.max(1, Math.abs(hi)); j++) {
+          const m = (lo + hi) / 2;
+          if ((f(m) > 0) === (fa > 0)) lo = m; else hi = m;
+        }
+        const root = (lo + hi) / 2;
+        if (best === null || Math.abs(root - s0) < Math.abs(best - s0)) best = root;
+        break;
+      }
+      a = b; fa = fb;
+    }
+  }
+  return best;
+}
+
 // The beam's footprint on the surface it meets, CLIP_RADII radii either
-// side of the central ray (wider on a tilted surface), must lie on that
-// surface or its smooth continuation.
-function hitEdgeIssue(step, w, surfaces) {
+// side of the central ray, must lie on that surface or its smooth
+// continuation. On a flat face the footprint runs from where one edge of the
+// arriving beam (at CLIP_RADII·w) meets the face to where the other does:
+// on a leaning face one edge meets it before the central hit and the other
+// after, where a spreading beam is wider (`radiusAt(s)`, the arriving beam's
+// radius s past the hit along its direction). Without `radiusAt`, or on an
+// arc, the footprint is CLIP_RADII·w/cos(incidence) either side.
+function hitEdgeIssue(step, w, surfaces, radiusAt = null) {
   const surface = step.surface;
   if (!(w > 0) || !surface.a || !surface.b || surface.kind === 'detector' || surface.kind === 'retina') return null;
+  const named = (reach, need, why) => ({
+    elementId: surfaceOwnerId(surface), element: beamElementName(surface), clip: true,
+    reason: why || `its edge lies ${formatBeamMm(reach)} from the beam's centre along its surface, closer than ${CLIP_RADII} beam radii (${formatBeamMm(need)} here${need > CLIP_RADII * w * 1.001 ? ', widened by the tilt' : ''}): it clips the beam, which is no longer Gaussian past it`,
+  });
   const normal = surface.data.arc
     ? norm(sub(step.hit.p, { x: surface.data.arc.cx, y: surface.data.arc.cy }))
     : perp(norm(sub(surface.b, surface.a)));
-  const need = CLIP_RADII * w / Math.max(0.05, Math.abs(dot(step.din, normal)));
+  const tilted = CLIP_RADII * w / Math.max(0.05, Math.abs(dot(step.din, normal)));
+  // How far along the face the footprint reaches towards each end.
+  let needTowards = () => tilted;
+  if (radiusAt && !surface.data.arc) {
+    const tangent = norm(sub(surface.b, surface.a)), d = step.din, across = { x: -d.y, y: d.x };
+    const along = [1, -1].map(side => {
+      const edgeAt = s => ({ x: d.x * s + side * across.x * CLIP_RADII * radiusAt(s), y: d.y * s + side * across.y * CLIP_RADII * radiusAt(s) });
+      const s = nearestRoot(x => dot(normal, edgeAt(x)), 0, w);
+      return s === null ? null : dot(edgeAt(s), tangent);
+    });
+    if (along.some(v => v === null)) {
+      return named(0, Infinity, `the beam spreads faster than its surface leans away from it, so its footprint does not fit on it: it clips the beam, which is no longer Gaussian past it`);
+    }
+    needTowards = end => {
+      const e = Math.sign(dot(sub(end, step.hit.p), tangent)) || 1;
+      return Math.max(0, ...along.map(v => e * v));
+    };
+  }
   for (const end of [surface.a, surface.b]) {
+    const need = needTowards(end);
     let reach = Math.hypot(step.hit.p.x - end.x, step.hit.p.y - end.y);
     let current = surface, joint = end;
     for (let guard = 0; reach < need && guard < 64; guard++) {
@@ -7441,12 +7499,7 @@ function hitEdgeIssue(step, w, surfaces) {
       joint = samePoint(next.a, joint) ? next.b : next.a;
       current = next;
     }
-    if (reach < need) {
-      return {
-        elementId: surfaceOwnerId(surface), element: beamElementName(surface), clip: true,
-        reason: `its edge lies ${formatBeamMm(reach)} from the beam's centre along its surface, closer than ${CLIP_RADII} beam radii (${formatBeamMm(need)} here${need > CLIP_RADII * w * 1.001 ? ', widened by the tilt' : ''}): it clips the beam, which is no longer Gaussian past it`,
-      };
-    }
+    if (reach < need) return named(reach, need);
   }
   return null;
 }
@@ -7472,7 +7525,7 @@ function beamTrailIssue(trail, seed, surfaces) {
     const clip = beamClipIssue(from.p, step.hit.p, q, from.n, seed, surfaces, new Set([from.elementId, elementId].filter(Boolean)));
     if (clip) return clip;
     const arriving = Math.hypot(step.hit.p.x - from.p.x, step.hit.p.y - from.p.y);
-    const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(q, arriving), seed, from.n), surfaces);
+    const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(q, arriving), seed, from.n), surfaces, s => beamRadiusMm(propagateQ(q, arriving + s), seed, from.n));
     if (edge) return edge;
     const beam = beamFromQ(qForSeed(after, seed), { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: after.n });
     if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) {
@@ -7523,7 +7576,7 @@ function advanceBeam(prev, step, sourceSeed, surfaces) {
   const clip = beamClipIssue(prev.p, step.hit.p, arrivingQ, prev.n, seed, surfaces, new Set([prev.elementId, elementId].filter(Boolean)));
   if (clip) return { ...state, issue: named(clip) };
   const arriving = Math.hypot(step.hit.p.x - prev.p.x, step.hit.p.y - prev.p.y);
-  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces);
+  const edge = hitEdgeIssue(step, beamRadiusMm(propagateQ(arrivingQ, arriving), seed, prev.n), surfaces, s => beamRadiusMm(propagateQ(arrivingQ, arriving + s), seed, prev.n));
   if (edge) return { ...state, issue: named(edge) };
   const beam = beamFromQ(q, { wavelengthNm: seed.wavelengthNm, m2: seed.m2, index: step.nOut });
   if (!(beam?.halfDivergenceMrad <= PARAXIAL_LIMIT_RAD * 1000)) return { ...state, issue: named(paraxialReason(beam || { halfDivergenceMrad: Infinity })) };
@@ -7893,6 +7946,9 @@ export function beamOnPathSegment(path, segment) {
     q, p: { x: start.x, y: start.y }, d: at.d, index: at.n, wavelengthNm: seed.wavelengthNm, m2: seed.m2, estimate: at.estimate || null,
     // Whether the bench draws this beam's envelope on the segment (step G2).
     drawnAsEnvelope: envelopeSegmentsOf.get(path)?.has(segment) || false,
+    // Where another arm of the same light begins to overlap this one along
+    // the segment (they recombine there, as the readouts say), or null.
+    overlapAt: stretchesOf.get(path)?.get(segment)?.overlapAt ?? null,
     // How far past the segment's start an edge first clips the beam, within
     // `distanceMm` of it, or null: the beam envelope ends there, and the
     // zoom keeps a propagated waist only where the beam reaches it unclipped.
@@ -7947,12 +8003,13 @@ const RECOMBINE_RAD = 0.1;
 function firstOverlap(p, q) {
   const sq0 = dot(sub(p.a, q.a), q.d), sq1 = dot(p.d, q.d);
   const l0 = cross(sub(p.a, q.a), q.d), l1 = cross(p.d, q.d);
-  let lo = 0, hi = p.length;
+  // Each arm only as far as it carries a Gaussian beam.
+  let lo = 0, hi = p.validEnd;
   if (Math.abs(sq1) > 1e-12) {
-    const x = -sq0 / sq1, y = (q.length - sq0) / sq1;
+    const x = -sq0 / sq1, y = (q.validEnd - sq0) / sq1;
     lo = Math.max(lo, Math.min(x, y));
     hi = Math.min(hi, Math.max(x, y));
-  } else if (sq0 < 0 || sq0 > q.length) return null;
+  } else if (sq0 < 0 || sq0 > q.validEnd) return null;
   if (!(hi > lo)) return null;
   const h = s => CLIP_RADII * (p.w(s) + q.w(sq0 + sq1 * s)) - Math.abs(l0 + l1 * s);
   const cuts = [lo, hi];
@@ -7976,21 +8033,22 @@ function clipsAtVertex(track, vertex) {
   const issue = track.declines?.find(d => d.from === vertex)?.issue || (track.issueVertex === vertex ? track.issue : null);
   return Boolean(issue?.clip);
 }
-function drawBeamEnvelopes(tracks, elements, drawables) {
-  const byId = new Map(elements.map(el => [el.id, el]));
+// Every straight stretch of every propagated path, with how far along it
+// the beam stays Gaussian: up to the first edge that clips it (`clipAt`)
+// and up to where another arm of the same light begins to overlap it
+// (`overlapAt`), each null when nothing ends it. For every source, whatever
+// it draws: the zoom asks too. Dark segments are kept to tell whether a lit
+// one recombines with them (coherent grouping can give one path of an
+// interferometer's output all the power and its partner none), and an arm
+// counts only as far as it carries a Gaussian beam.
+function classifyBeamStretches(tracks) {
+  stretchesOf = new WeakMap();
   const stretches = [];
   for (const track of tracks) {
     const path = track.path;
     if (path.hidden) continue;
-    const origin = byId.get(path.originId);
-    const display = beamDisplayOf(origin);
-    if (display === 'rays') continue;
-    const color = rayColor(path, origin.params.autoColor === false && origin.params.color ? origin.params.color : null);
     const pts = path.pts || [];
     for (let i = 0; i < pts.length - 1; i++) {
-      // A dark segment draws nothing, but it is kept to tell whether a lit
-      // one recombines with it: coherent grouping can give one path of an
-      // interferometer's output all the power and its partner none.
       const lit = path.segmentPowers?.[i] > LIT_W;
       const segment = beamOnPathSegment(path, i);
       if (!segment) continue;
@@ -8000,18 +8058,14 @@ function drawBeamEnvelopes(tracks, elements, drawables) {
       const shape = beamFromQ(segment.q, { wavelengthNm: segment.wavelengthNm, m2: segment.m2, index: segment.index });
       if (!shape) continue;
       const w = s => shape.waistUm / 1000 * Math.sqrt(1 + ((s - shape.waistAheadMm) / shape.rayleighMm) ** 2);
-      // The element that ends the stretch clips the beam with its rim when
-      // the footprint does not fit on it: recorded as a decline where the
-      // light goes on, checked here where the path ends on it (a block
-      // smaller than the beam, which light goes round).
-      const endSurface = (beamVertexSurfacesOf.get(path) || [])[i + 1];
-      const endsHere = i + 1 === pts.length - 1 && endSurface;
-      const rimClips = endsHere && Boolean(hitEdgeIssue({ surface: endSurface, hit: { p: b }, din: segment.d }, w(length), lastBeamSurfaces));
-      stretches.push({
-        track, path, i, a, b, d: segment.d, length, shape, display, origin, color, lit, w,
-        clipAt: lit ? segment.clipAt(length) : null, clippedAtEnd: clipsAtVertex(track, i + 1) || rimClips,
+      const clipAt = segment.clipAt(length);
+      const stretch = {
+        track, path, i, a, b, d: segment.d, length, shape, lit, w, clipAt, validEnd: clipAt ?? length,
         sourceId: track.seed.sourceId, wavelengthNm: segment.wavelengthNm, overlapAt: null,
-      });
+      };
+      stretches.push(stretch);
+      if (!stretchesOf.has(path)) stretchesOf.set(path, new Map());
+      stretchesOf.get(path).set(i, stretch);
     }
   }
   // Recombination, by the readouts' rule: the same light (one source, one
@@ -8026,6 +8080,26 @@ function drawBeamEnvelopes(tracks, elements, drawables) {
         if (at !== null && (x.overlapAt === null || at < x.overlapAt)) x.overlapAt = at;
       }
     }
+  }
+  return stretches;
+}
+function drawBeamEnvelopes(stretchList, elements, drawables) {
+  const byId = new Map(elements.map(el => [el.id, el]));
+  const stretches = [];
+  for (const base of stretchList) {
+    const origin = byId.get(base.path.originId);
+    const display = beamDisplayOf(origin);
+    if (display === 'rays') continue;
+    const { path, i, b, track, w, length } = base;
+    const color = rayColor(path, origin.params.autoColor === false && origin.params.color ? origin.params.color : null);
+    // The element that ends the stretch clips the beam with its rim when
+    // the footprint does not fit on it: recorded as a decline where the
+    // light goes on, checked here where the path ends on it (a block
+    // smaller than the beam, which light goes round).
+    const endSurface = (beamVertexSurfacesOf.get(path) || [])[i + 1];
+    const endsHere = i + 1 === path.pts.length - 1 && endSurface;
+    const rimClips = endsHere && Boolean(hitEdgeIssue({ surface: endSurface, hit: { p: b }, din: base.d }, w(length), lastBeamSurfaces, s => w(length + s)));
+    stretches.push({ ...base, display, origin, color, clippedAtEnd: clipsAtVertex(track, i + 1) || rimClips });
   }
   const covered = new Set();
   for (const s of stretches) {
@@ -9433,6 +9507,7 @@ export function traceScene(elements, beams = [], options = {}) {
   beamVertexOwnersOf = new WeakMap();
   beamVertexSurfacesOf = new WeakMap();
   envelopeSegmentsOf = new WeakMap();
+  stretchesOf = new WeakMap();
   emissionOfPath = new WeakMap();
   emissionCount = 0;
 
@@ -9722,7 +9797,7 @@ export function traceScene(elements, beams = [], options = {}) {
   }
   emitFibers(true);
   lastBeamTracks = propagateBeams(lastPowerPaths, surfaces);
-  drawBeamEnvelopes(lastBeamTracks, elements, drawables);
+  drawBeamEnvelopes(classifyBeamStretches(lastBeamTracks), elements, drawables);
   // image formation for Object elements: locate the image of the object's
   // base and tip by tracing each through every lens on its axis using real
   // per-surface thin-lens physics (two rays per point, then intersect the

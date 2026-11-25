@@ -271,16 +271,29 @@ sampled evenly in asinh(z/z_R) so the samples crowd where the curve bends.
 The zoom's focus is drawn by the same function (`envelopeEdges`).
 
 - **Ends.** A band ends on the surface the beam meets or leaves, along it,
-  as the drawn rays do: on a tilted mirror the incoming and reflected bands
-  meet on the mirror line without a gap or an overlap. The footprint is the
-  same on both sides of any surface (w/cos θᵢ = w′/cos θₜ), so this holds at
-  a tilted refracting surface too. A face met within about 6° of grazing, an
-  asphere's profile and a path's free ends are cut square to the beam.
+  as the drawn rays do: each edge is cut where it meets the surface's line
+  (found by bracketing and bisection, since a spreading beam is wider where
+  its far edge meets a leaning face). On a mirror the incoming and reflected
+  bands meet on the mirror line. At a tilted refracting surface the
+  footprint is the same on both sides to first order (w/cos θᵢ = w′/cos θₜ),
+  but each band's edges are cut on its own envelope, so for a beam that
+  spreads fast across its footprint the two sides' edge points can lie apart
+  along the face: about 1 mm for a 0.1 mm, M² = 25 beam crossing a tilted
+  plate at 56° (Andrea's case). A face met within about 6° of grazing, a face
+  the beam spreads too fast to meet, an asphere's profile and a path's free
+  ends are cut square to the beam.
 - **Marks.** A bar across the band marks each waist that lies on a segment,
   reaching 1.6 w₀ either side of the axis and at least 1.2 mm, so that a
   micron-sized waist can be found on the bench. With *Mark a Rayleigh range
   either side of each waist*, two thinner bars stand one Rayleigh range from
   it, where the beam is √2 w₀.
+- **Clipping by a surface met.** The footprint that must fit on a surface
+  (CLIP_RADII radii either side, for the readouts too) runs from where one
+  edge of the arriving beam meets the surface's line to where the other
+  does: on a leaning face a spreading beam's far edge meets it further out
+  than 1.5 w/cos θ. A fast-spreading beam on a small leaning mirror is
+  therefore declined there, and a beam that spreads faster than the face
+  leans away cannot fit on it at all.
 - **Gaussian beam.** The band is filled in the beam's colour, with the
   opacity the rays' fill has for the same light, and its edges are drawn;
   it replaces the rays' fill on every segment it covers whole, matched by
@@ -293,6 +306,15 @@ The zoom's focus is drawn by the same function (`envelopeEdges`).
   beam keeps its chopped rays.
 - **Rays and Gaussian beam.** The band's edges are drawn dashed over the
   rays, with the marks.
+- **Recombination.** Arms of one source at one wavelength that travel
+  together (within 0.1 rad) and overlap across the beam (closer than
+  1.5 (w₁ + w₂), with the local radii, over the stretch where both still
+  carry a Gaussian beam) recombine, as the readouts say. A band ends where
+  that overlap begins and is drawn there as edges over the rays; it does not
+  resume on the same straight stretch after the arms part (the rays are drawn
+  there), only from the next interaction. This holds for every source,
+  whatever it draws: a zoom draws no waist, and no waist note, where the
+  overlap begins before the waist.
 - **Branches and fibers.** Each branch of a splitter gets its own band. Light
   a fiber relaunches is drawn as the source that sent it in is set to draw
   it; where the fiber starts no beam (no single-mode core set, a focusing

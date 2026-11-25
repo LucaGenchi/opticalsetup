@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
-import { traceScene, beamAtPoint, detectorReading } from '../sketch/js/raytrace.js';
+import { traceScene, beamAtPoint, detectorReading, beamTracksFromLastTrace } from '../sketch/js/raytrace.js';
 import { envelopeEdges, envelopeBand, WAIST_MARK_MIN_MM, RAYLEIGH_MARK_MIN_MM } from '../sketch/js/beam-envelope.js';
 import { beamDisplayOf } from '../sketch/js/beam-propagation.js';
 import { beamFromQ, qFromWaist } from '../sketch/js/gaussian-beam.js';
@@ -433,4 +433,43 @@ test('G2 (review 2): a zoom keeps a micron waist two edges wide', () => {
   const half = band.length / 2;
   const widths = band.slice(0, half).map(([x, y], i) => Math.abs(y - band[band.length - 1 - i][1]));
   assert.ok(Math.min(...widths) > 1e-3, `narrowest ${Math.min(...widths)} around ${mid}`);
+});
+
+// Andrea's review, round 3.
+test('G2 (review 3): a fast-spreading beam that overflows a small leaning mirror is clipped there', () => {
+  // M² = 45 as above, on a 60 mm mirror: the edges meet the mirror's line
+  // 59 mm from its centre, past its 30 mm rim. The readouts decline the
+  // beam there, and the band is drawn as edges over the rays.
+  const { drawables } = traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633, beamM2: 45, beamDisplay: 'envelope' }),
+    make('mirror', 62, 0, { length: 60 }, -78)], []);
+  assert.equal(bands(drawables).length, 0);
+  assert.ok(drawables.some(d => d.dash === '5 3'));
+  const clipped = beamTracksFromLastTrace().some(track => /clips the beam/.test(track.issue?.reason || ''));
+  assert.ok(clipped, 'the reflected beam is declined at the mirror');
+  // On the long mirror it fits, and the reflected beam goes on.
+  traceScene([make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633, beamM2: 4, beamDisplay: 'envelope' }), make('mirror', 62, 0, { length: 150 }, -78)], []);
+  assert.ok(!beamTracksFromLastTrace().some(track => /clips the beam/.test(track.issue?.reason || '')));
+});
+
+test('G2 (review 3): a zoom draws no waist where arms recombine', () => {
+  const zoom = make('zoom', 370, -100, { w: 20, h: 20, diffraction: true });
+  const scene = [make('cwlaser', 0, 0, { beamMode: 'beam', beamWidth: 2, wavelength: 633 }), make('lens', 120, 0, { f: 350 }),
+    make('bs', 200, 0), make('bs', 300, 0), make('bs', 200, -100), make('bs', 300, -100), zoom];
+  const traced = traceScene(scene, []);
+  assert.match(beamAtPoint(368.6, -100, 3)[0]?.issue?.reason || '', /recombine/);
+  assert.deepEqual(zoomFoci(zoom, traced.paths), []);
+  const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: scene });
+  assert.ok(!/data-zoom-focus="true"/.test(svg) && !/w₀/.test(svg));
+});
+
+test('G2 (review 3): an arm counts for recombination only as far as it carries a Gaussian beam', () => {
+  // The crossing arms above, with a block clipping the folded arm at
+  // x ≈ 316.6 mm: at the crossing only the straight arm is a Gaussian beam,
+  // as the probe reads, and its band runs through.
+  const scene = [laser({ beamDisplay: 'envelope' }), make('bs', 200, 0), make('bs', 200, -30, { ratio: 0 }, 2),
+    make('blocker', 320, -24.5, { w: 4, h: 4 }), make('detector', 900, 0, { aperture: 60 })];
+  const { drawables } = traceScene(scene, []);
+  const reads = beamAtPoint(629, 0, 2);
+  assert.ok(reads.some(r => !r.issue && Math.abs(r.radiusUm / 1000 - 1.007) < 0.002), JSON.stringify(reads));
+  assert.ok(bands(drawables).some(b => Math.min(...b.pts.map(p => p.x)) < 629 && Math.max(...b.pts.map(p => p.x)) > 629), 'the straight arm\'s band crosses x = 629');
 });
