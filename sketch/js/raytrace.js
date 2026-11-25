@@ -4654,6 +4654,11 @@ const appendCaveat = (ray, text) => {
 // isolator's own reshaping test) the spectrum and the duration are declared
 // not computed.
 const SPECTRUM_RESHAPE = 0.01;
+// Points across the band on the spectrum a physical isolator reshapes: its
+// leak dips by the polarizers' extinction within a few nm of the design
+// wavelength, which the default 65 points across a 15 fs pulse's 160 nm step
+// over (a 2 nm band-pass after it read 4.8 % off the same filter before it).
+const ISOLATOR_GRID = 1025;
 const spreadSpectrumNote = what => `Spectrum past ${what} not computed: this light's polarization varies across its spectrum since a Faraday element, and ${what} passes each wavelength by its own share; the power right past it is exact only if nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday element), and what a later filter selects is not computed`;
 const spreadPulseIssue = what => `Polarization varying across the spectrum since a Faraday element, passed by ${what} wavelength by wavelength — not one scalar pulse; duration unavailable`;
 function spreadReshape(ray, d, what) {
@@ -6304,14 +6309,26 @@ function interact(ray, hit) {
       // varies by as much as the leak does, relative to itself).
       const T = nm => share(input, nm);
       let fraction, spectral = {};
-      // Light without a spectrum of its own: one wavelength, or a slice of a
-      // band, whose transmission is averaged over its samples.
-      if (!ray.spec) fraction = samples.reduce((a, x) => a + x.w * T(x.nm), 0) / (samples.reduce((a, x) => a + x.w, 0) || 1);
+      // Light without a spectrum of its own: one wavelength, or a slice that
+      // dispersive glass cut from a band, whose profile is weighed by the
+      // transmission across the slice and carried on reshaped, so a filter
+      // after it cuts the light that actually passed.
+      const cell = !ray.spec ? sampleCell(ray) : null;
+      if (cell) {
+        const n = gridFor(cell[1] - cell[0], profileStep(ray.sliceSpec), 257);
+        const at = i => cell[0] + (cell[1] - cell[0]) * i / (n - 1);
+        const incoming = Array.from({ length: n }, (_, i) => (ray.sliceSpec ? Math.max(0, spectrumWeight(ray.sliceSpec, at(i))) : 1));
+        const kept = incoming.map((w, i) => w * T(at(i)));
+        const integral = values => values.reduce((sum, v, i) => sum + v * (i === 0 || i === n - 1 ? 0.5 : 1), 0);
+        const before = integral(incoming), peak = Math.max(...kept);
+        fraction = before > 0 ? integral(kept) / before : 0;
+        if (peak > 0) spectral = { sliceSpec: { kind: 'sampled', lo: cell[0], hi: cell[1], w: kept.map(v => v / peak) } };
+      } else if (!ray.spec) fraction = T(ray.wl);
       else {
         const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
         if (!(peak > MIN_RETAINED_POWER_INT)) return [];
         const scaled = nm => T(nm) / peak;
-        const kept = ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled);
+        const kept = ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, ISOLATOR_GRID);
         if (!kept) return [];
         fraction = kept.fraction * peak;
         spectral = { wl: kept.wl, bw: kept.bw, spec: kept.spec };
@@ -7208,9 +7225,9 @@ function notePulseSelection(transmissionFn, edges = []) {
   }
   return uniform;
 }
-function applyTransmission(spec, centerWl, transmissionFn, edges = null) {
+function applyTransmission(spec, centerWl, transmissionFn, edges = null, minGrid = 0) {
   const uniform = notePulseSelection(transmissionFn);
-  const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges);
+  const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges, minGrid);
   // The integration runs on a finer grid than the band sample: a passband it
   // finds, where the samples saw none, is a reshaping they missed.
   if (Number.isFinite(uniform) && Math.abs((result?.fraction ?? 0) - uniform) > 0.01) interactionReshapesPulse = true;

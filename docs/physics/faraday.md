@@ -78,7 +78,13 @@ after it declares. Dispersive glass cuts a band into slices that carry no
 spectrum of their own but keep the average state and its spread, so a
 polarizer after the glass still declares; a Faraday element or isolator that
 meets a slice samples it across its own part of the band (`sliceProfile`), and
-the isolator averages its transmission over those samples. An analyzer crossed
+the isolator weighs each slice's profile by its transmission across the
+slice and carries it on reshaped, so a filter after it cuts the light that
+passed. The spectrum the isolator reshapes is kept on 1025 points across the
+band rather than the tracer's usual 65: its leak dips by the polarizers'
+extinction within a few nm of the design wavelength, and a 2 nm band-pass after
+it read 4.8 % off the same filter before it on the coarser grid (the two
+positions now agree to 0.03 %, glass or not). An analyzer crossed
 with a forward isolator's output passes only the part of the field that goes as
 sin(θ(λ) − 45°), nought at the design wavelength, so declares; one along that
 output keeps the spectrum and the duration. A polarizer leaves every

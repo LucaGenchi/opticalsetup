@@ -230,14 +230,19 @@ export function spectrumPower(spec, a, b) {
 // exactly where it is instead of between two grid points. The transmission
 // must be constant between consecutive edges; it is read at each piece's
 // midpoint. Line spectra take the sampled path regardless.
-export function applyTransmission(spec, centerWl, transmissionFn, edges = null) {
+//
+// A caller whose transmission has structure finer than the default grid
+// across the band (an optical isolator's leak, which dips by 40 dB within a
+// few nm of its design wavelength) asks for at least `minGrid` points on the
+// reshaped profile.
+export function applyTransmission(spec, centerWl, transmissionFn, edges = null, minGrid = 0) {
   if (!spec) {
     const t = Math.max(0, Math.min(1, transmissionFn(centerWl)));
     return t > BLOCK ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
   }
   if (Array.isArray(edges) && spec.kind !== 'lines') return applyStepTransmission(spec, transmissionFn, edges);
   const [lo, hi] = spectrumSupport(spec);
-  const grid = profileGrid(spec), locateGrid = Math.max(LOCATE_GRID, grid);
+  const grid = Math.max(profileGrid(spec), Math.min(4097, minGrid || 0)), locateGrid = Math.max(LOCATE_GRID, grid);
   const locateStep = (hi - lo) / (locateGrid - 1);
   const incident = [];
   let first = -1, last = -1;

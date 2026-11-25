@@ -658,3 +658,25 @@ test('P2 (review 10): dispersive glass slicing a band keeps the spread, before a
   assert.match(before.text, /varies across its spectrum after a Faraday element/);
   assert.match(before.text, /Spectrum past a polarizer not computed/);
 });
+
+// Andrea's review, round 11.
+test('P2 (review 11): a band-pass reads the same before or after the isolator, glass or not', async () => {
+  // The isolator example (15 fs at 135°, sent back through the isolator) and
+  // a 799–801 nm band-pass, which passes the same light on either side of
+  // the isolator. With N-BK7 before the isolator its slices' profiles are
+  // reshaped by the isolator too (Andrea: 22.73 µW read, 2.935 µW
+  // integrated); without it, the isolator's spectrum is fine enough for its
+  // hole at 800 nm (65 points read 4.8 % high).
+  const read = async (glass, filterAt) => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    if (glass) scene.elements.push(make('freeglass', 400, 250, { vertices: [{ x: -10, y: -30 }, { x: 10, y: -30 }, { x: 10, y: 30 }, { x: -10, y: 30 }], material: 'nbk7' }));
+    scene.elements.push(make('filter', filterAt, 250, { ftype: 'bandpass', center: 800, band: 2, trans: 1 }, 180));
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  for (const glass of [true, false]) {
+    const after = await read(glass, 150), before = await read(glass, 330);
+    close(after, before, 0.001 * before, glass ? 'with glass' : 'without glass');
+  }
+  close(await read(true, 330), 2.935e-6, 0.002e-6, 'with glass, Andrea\'s integral');
+});
