@@ -310,11 +310,42 @@ test('P2 (review 2): a second Faraday element does not pretend to know the state
   const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 }),
     make('faraday', 100, 0), make('faraday', 200, 0, { fieldDir: 'against' }), make('polarizer', 300, 0, { pangle: 90 }), meter];
   traceScene(scene);
-  assert.ok(detectorReading(meter.id).approximations.some(a => /Polarization not computed past a second Faraday element/.test(a)));
-  // A polarizer between them makes the state one again, and the second
-  // rotator acts on it normally.
-  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('faraday', 100, 0), make('polarizer', 150, 0, { pangle: 0 }), make('faraday', 200, 0)]);
-  assert.ok(!/second Faraday element/.test(probeAt(300, 0).approximation || ''));
+  assert.ok(detectorReading(meter.id).approximations.some(a => /not computed past a second Faraday element/.test(a)));
+});
+
+test('P2 (review 3): the mark that states were averaged does not wait for the caveat, and survives a polarizer', () => {
+  const crossed = (fs, between = []) => {
+    const meter = make('powermeter', 400, 0);
+    const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: fs, pol: 0, beamMode: 'line', avgPowerW: 1 }),
+      make('faraday', 100, 0, { fieldT: 5 }), ...between, make('faraday', 200, 0, { fieldT: 5, fieldDir: 'against' }), make('polarizer', 300, 0, { pangle: between.length ? 0 : 90 }), meter];
+    traceScene(scene);
+    return detectorReading(meter.id)?.approximations || [];
+  };
+  // At 30 fs the first rotator lowers the degree of polarization by less
+  // than its caveat's 0.01, but the second still needs each wavelength's
+  // state (Andrea: 6.78 mW of 1 W read, none should pass).
+  assert.ok(crossed(30).some(a => /not computed past a second Faraday element/.test(a)));
+  // A polarizer between them leaves one state but passes each wavelength
+  // by cos²θ(λ), which the average spectrum does not carry.
+  assert.ok(crossed(15, [make('polarizer', 150, 0, { pangle: 0 })]).some(a => /not computed past a second Faraday element/.test(a)));
+  // One isolator's forward pass changes the states by less than 1e-6 of
+  // the power: its own return through it is still computed (the example).
+});
+
+test('P2 (review 3): every sign change of the leak declines the duration, and so does the modulator branch', () => {
+  // Designed at 1064 nm, 60 dB: a 100 fs pulse at 547 nm sent back along the
+  // output polarizer crosses δ = 180° at 547.5 nm.
+  const back = (extra = []) => {
+    const meter = make('powermeter', -100, 0, {}, 180);
+    traceScene([make('pulsedlaser', 300, 0, { wavelength: 547, pulseWidthFs: 100, pol: 135, beamMode: 'line', avgPowerW: 1 }, 180), ...extra,
+      make('isolator', 100, 0, { isolatorModel: 'physical', designWl: 1064, extinctionDb: 60 }), meter]);
+    return detectorReading(meter.id)?.pulse;
+  };
+  assert.match(back().fieldIssue || '', /not one scalar pulse/);
+  // The same field through a switching modulator that does nothing (both
+  // states unretarded): still declined.
+  const eom = make('eom', 200, 0, { modulate: true, driveMode: 'switching', switchMode: 'custom', retardanceLow: 0, retardanceHigh: 0, a: 0 }, 180);
+  assert.match(back([eom]).fieldIssue || '', /not one scalar pulse/);
 });
 
 test('P2 (review 2): a polarimeter after the isolator reads the state of the pulses that arrive', () => {
