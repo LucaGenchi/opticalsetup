@@ -227,6 +227,31 @@ function sampledIntegral(spec, a, b) {
   return sum;
 }
 
+// A profile finer than the grid is cut on a grid finer than its own: re-
+// sampling it on a grid as coarse as its samples moves features a sample or
+// two wide (an etalon's resonances through a wide band-pass read 21.6 % off).
+// The cut runs from a to b exactly (widened by `pad` points on each side,
+// within the profile) with points h/k apart, h its own spacing and k a whole
+// number (up to 64, about OWN_GRID points across the cut): a cut over the
+// whole profile lands on its own samples, and any other moves a sample by
+// less than h/k, which changes a one-sample feature's area by about 1/(4k²).
+// Null for any other profile, or when fewer than four points lie there.
+const OWN_GRID = 4097;
+function ownSamples(spec, a, b, pad = 0) {
+  if (spec?.kind !== 'sampled' || profileGrid(spec) <= GRID) return null;
+  const n = spec.w.length, h = (spec.hi - spec.lo) / (n - 1);
+  if (!(h > 0) || !(b > a)) return null;
+  const k = Math.max(1, Math.min(64, Math.floor((OWN_GRID - 1) * h / (b - a))));
+  const from = Math.max(spec.lo, a - pad * h / k), to = Math.min(spec.hi, b + pad * h / k);
+  const count = Math.max(4, Math.round((to - from) / (h / k)) + 1);
+  const step = (to - from) / (count - 1);
+  return {
+    j0: 0, j1: count - 1, h: step,
+    at: j => (j === count - 1 ? to : from + j * step),
+    weight: j => Math.max(0, spectrumWeight(spec, j === count - 1 ? to : from + j * step)),
+  };
+}
+
 function incidentOver(spec, a, b) {
   if (!(b > a)) return 0;
   // A profile finer than the grid is integrated on its own samples, exactly.
@@ -290,14 +315,25 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null, 
   // Re-grid onto the surviving slice (plus a point of margin on each side):
   // a 20 nm filter out of a 400 nm source deserves the whole grid, not the
   // handful of coarse points it happens to straddle.
-  const from = lo + locateStep * Math.max(0, first - 1);
-  const to = lo + locateStep * Math.min(locateGrid - 1, last + 1);
-  const step = (to - from) / (grid - 1);
+  let from = lo + locateStep * Math.max(0, first - 1);
+  let to = lo + locateStep * Math.min(locateGrid - 1, last + 1);
+  // A fine profile keeps its own samples (with one beyond each end of the
+  // slice), unless the caller asked for a finer grid.
+  const own = grid <= profileGrid(spec) ? ownSamples(spec, from, to, 1) : null;
+  let step = (to - from) / (grid - 1);
   const shaped = [], sliceIncident = [];
-  for (let i = 0; i < grid; i++) {
-    const wl = from + step * i;
-    sliceIncident.push(Math.max(0, spectrumWeight(spec, wl)));
-    shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
+  if (own) {
+    from = own.at(own.j0); to = own.at(own.j1); step = own.h;
+    for (let j = own.j0; j <= own.j1; j++) {
+      sliceIncident.push(own.weight(j));
+      shaped.push(sliceIncident[sliceIncident.length - 1] * Math.max(0, Math.min(1, transmissionFn(own.at(j)))));
+    }
+  } else {
+    for (let i = 0; i < grid; i++) {
+      const wl = from + step * i;
+      sliceIncident.push(Math.max(0, spectrumWeight(spec, wl)));
+      shaped.push(sliceIncident[i] * Math.max(0, Math.min(1, transmissionFn(wl))));
+    }
   }
   const transmittedTotal = integrate(shaped, step);
   // A line spectrum's lines are narrower than either grid's spacing, so
@@ -363,16 +399,24 @@ function stepTransmission(spec, pieces, block = BLOCK) {
   // takes its own piece's transmission, and a sample on an edge the side
   // that passes more, so the profile's edges sit on the filter's.
   const from = kept[0].a, to = kept[kept.length - 1].b;
-  const grid = gridAcross(spec, from, to);
-  const step = (to - from) / (grid - 1);
-  const shaped = Array.from({ length: grid }, (_, i) => {
-    const wl = i === grid - 1 ? to : from + step * i;
-    const t = pieces.reduce((best, p) => (wl >= p.a && wl <= p.b ? Math.max(best, p.t) : best), 0);
-    return Math.max(0, spectrumWeight(spec, wl)) * t;
-  });
+  const tAt = wl => pieces.reduce((best, p) => (wl >= p.a && wl <= p.b ? Math.max(best, p.t) : best), 0);
+  const own = ownSamples(spec, from, to);
+  let shaped, profileLo = from, profileHi = to;
+  if (own) {
+    shaped = [];
+    for (let j = own.j0; j <= own.j1; j++) shaped.push(own.weight(j) * tAt(own.at(j)));
+    profileLo = own.at(own.j0); profileHi = own.at(own.j1);
+  } else {
+    const grid = gridAcross(spec, from, to);
+    const step = (to - from) / (grid - 1);
+    shaped = Array.from({ length: grid }, (_, i) => {
+      const wl = i === grid - 1 ? to : from + step * i;
+      return Math.max(0, spectrumWeight(spec, wl)) * tAt(wl);
+    });
+  }
   const peak = Math.max(...shaped);
   if (!(peak > 0)) return null;
-  const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak) };
+  const profile = { kind: 'sampled', lo: profileLo, hi: profileHi, w: shaped.map(v => v / peak) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return { fraction: Math.min(1, fraction), spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };
@@ -392,14 +436,15 @@ export function spectrumSlice(spec, lo, hi, { block = BLOCK } = {}) {
     const step = (b - a) / (n - 1);
     return { step, w: Array.from({ length: n }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))) };
   };
-  const part = sample(from, to, gridAcross(spec, from, to));
+  const own = ownSamples(spec, from, to);
+  const part = own ? { w: Array.from({ length: own.j1 - own.j0 + 1 }, (_, i) => own.weight(own.j0 + i)) } : sample(from, to, gridAcross(spec, from, to));
   const kept = profileGrid(spec) > GRID ? incidentOver(spec, from, to) : integrate(part.w, part.step);
   const total = incidentOver(spec, supportLo, from) + kept + incidentOver(spec, to, supportHi);
   const peak = Math.max(...part.w);
   if (!(total > 0) || !(peak > 0)) return null;
   const fraction = Math.min(1, kept / total);
   if (!(fraction > block)) return null;
-  const profile = { kind: 'sampled', lo: from, hi: to, w: part.w.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
+  const profile = { kind: 'sampled', lo: own ? own.at(own.j0) : from, hi: own ? own.at(own.j1) : to, w: part.w.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
   return { fraction, spec: stats.fwhm > 0 ? profile : null, wl: stats.center, bw: stats.fwhm };

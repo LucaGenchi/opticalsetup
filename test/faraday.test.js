@@ -740,4 +740,33 @@ test('P2 (review 15): a fine profile is integrated on its own samples, exactly',
   const exact = (ramp(820.7) ** 2 - ramp(750.3) ** 2) / (ramp(900) ** 2 - ramp(700) ** 2);
   const result = through(spec, 800, wl => (wl >= 750.3 && wl <= 820.7 ? 1 : 0), [750.3, 820.7]);
   close(result.fraction, exact, 1e-12, 'box over a fine ramp');
+  // Round 16: the same box after a wider one passes the same light, in
+  // either order (the wider cut keeps the profile it leaves unchanged).
+  const box = (lo, hi) => [wl => (wl >= lo && wl <= hi ? 1 : 0), [lo, hi]];
+  const wide = through(spec, 800, ...box(740.1, 860.9));
+  const narrowAfterWide = wide.fraction * through(wide.spec, 800, ...box(750.3, 820.7)).fraction;
+  const narrow = through(spec, 800, ...box(750.3, 820.7));
+  const wideAfterNarrow = narrow.fraction * through(narrow.spec, 800, ...box(740.1, 860.9)).fraction;
+  close(narrowAfterWide, exact, 1e-9, 'narrow after wide');
+  close(wideAfterNarrow, exact, 1e-9, 'wide after narrow');
+});
+
+test('P2 (review 16): a band-pass holding a narrow one does not move an etalon\'s resonances', async () => {
+  await import('../sketch/js/etalon.js');
+  // The isolator example at 40 dB, an etalon at 820 nm (FWHM 0.04 nm, FSR
+  // 2 nm) after the isolator, and a filter from 820.02 to 821.02 nm: a
+  // 815–825 nm band-pass between them read 516.82 nW against 425.03 nW
+  // (Andrea), the wide cut having re-sampled resonances a sample wide.
+  const read = async wideAt => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.push(make('etalon', 210, 250, { centerWavelength: 820, bandwidth: 0.04, fsr: 2 }, 180));
+    scene.elements.push(make('filter', 130, 250, { ftype: 'bandpass', center: 820.52, band: 1, trans: 1 }, 180));
+    if (wideAt) scene.elements.push(make('filter', wideAt, 250, { ftype: 'bandpass', center: 820, band: 10, trans: 1 }, 180));
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  const alone = await read(null);
+  close(alone, 425.03e-9, 0.02e-9, 'the narrow filter alone');
+  close(await read(170), alone, 0.001 * alone, 'the wide one before it');
+  close(await read(100), alone, 0.001 * alone, 'the wide one after it');
 });

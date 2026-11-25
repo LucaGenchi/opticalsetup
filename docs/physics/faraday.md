@@ -93,7 +93,14 @@ and one matrix; within one trace its transmission at each wavelength, and
 the spectrum an arriving spectrum leaves with, are kept and shared by the rays
 that cross it the same way in the same state (a sized beam's 25 parallel
 rays), keyed by the arriving spectrum's content. A profile finer than the
-tracer's 65-point grid is integrated exactly on its own samples. The example
+tracer's 65-point grid is integrated exactly on its own samples, and a filter,
+dichroic or notch cuts it on a grid h/k apart that starts exactly at its edge
+(h the profile's own spacing, k a whole number up to 64, about 4097 points
+across the cut): a cut over the whole profile lands on its own samples, and
+any other moves a sample by less than h/k. Re-sampled as coarsely as its own
+samples, the resonances of an etalon of FWHM 0.04 nm, about one sample wide,
+read 21.6 % off through a 10 nm band-pass in front of a 1 nm one; they now
+agree within 0.02 % either way. The example
 at 60 dB with a band-pass after the isolator re-traces in about 4 ms per move
 in Node (about 12 ms with N-BK7 before it), where it took 57 ms (44 ms)
 before these and 400 ms with 4097 points per slice.
