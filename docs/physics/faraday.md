@@ -55,7 +55,19 @@ is, to an instrument that does not resolve the spectrum, partly polarized.
 That gives the power a polarizer passes after it exactly, as long as no other
 element that acts differently at each wavelength follows; the spectrum the
 polarizer leaves is not, and where the degree of polarization falls by more
-than 0.01 the light carries a caveat saying so. Light whose wavelengths a
+than 0.01 the light carries a caveat saying so. The light also carries how far
+the state of any wavelength in its band lies from the average (the largest
+distance of their normalized Stokes vectors, `stateSpread`). An element that
+passes each wavelength by a share depending on its polarization, m00·(1 + d·s)
+for its diattenuation vector d (a polarizer, a polarizing beamsplitter's port,
+a glass face at an angle), uses it: the share of any wavelength differs from
+the average's by at most |d|·spread/(1 + d·s̄) of it, and where that exceeds
+1 % (the isolator's own reshaping test) the spectrum it leaves and the pulse's
+duration are declared not computed, its power still given. An analyzer crossed
+with a forward isolator's output passes only the part of the field that goes as
+sin(θ(λ) − 45°), nought at the design wavelength, so declares; one along that
+output keeps the spectrum and the duration. A polarizer leaves every
+wavelength in one state, so the spread after it is zero. Light whose wavelengths a
 Faraday element left in states that differ at all (the weighted mean distance
 of their normalized Stokes vectors from the mean one above 10⁻⁹, numerical
 noise) is marked, caveat or not. A second Faraday rotator or physical isolator
@@ -124,6 +136,10 @@ the states that carry it: for a pulse train, the share of its pulses that meet
 each state, sampled pulse by pulse as a gate is. Pulses synchronized with the
 modulator that all meet one state, and a modulator whose two states are the
 same, cross as light in that state, wavelength by wavelength, exactly as above.
+Only a state that no light meets at all is left out: a weak one can be the one
+a later element passes (6.31×10⁻¹⁰ of the power after a first isolator, but
+along the second one's axis: 320.48 pW where the strong state alone gives
+10.00 pW).
 Light in two different states keeps them: each crosses as its spectrum's
 average, its transmission and the state it leaves in (partly polarized where
 its wavelengths leave in different states), which gives the power right after
@@ -172,7 +188,9 @@ along the input polarizer.
   internal reflections and a beam displacer design (polarization-independent
   isolators).
 - The spectrum that a polarizer leaves of light whose polarization varies
-  across its spectrum: the state is carried as the spectrum's average.
+  across its spectrum: the state is carried as the spectrum's average, and
+  where the polarizer's share could vary by more than 1 % across the band the
+  spectrum and duration past it are declared not computed.
 
 ## Validation
 

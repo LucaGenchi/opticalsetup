@@ -526,3 +526,63 @@ test('P2 (review 7): two states that each leave in a state varying across the ba
   assert.ok(both.reading.approximations.some(a => /Spectrum and polarization past an optical isolator not computed for a modulator's two states/.test(a)), JSON.stringify(both.reading.approximations));
   assert.match(both.reading.pulse.fieldIssue || '', /not one scalar pulse/);
 });
+
+// Andrea's review, round 8.
+test('P2 (review 8): a weak modulator state a later isolator passes is kept', () => {
+  // CW 1 W at 800 nm, a flip EOM at 50 %, then two forward isolators with
+  // constant Verdet constants: axis 0° and 46 dB, then axis 135° and 55 dB.
+  // At the second the 90° state carries 6.31e-10 of the power, but it lies
+  // along its axis: 10.00 pW and 630.96 pW for each state alone, so
+  // 320.48 pW together.
+  const read = (pol, eom) => {
+    const meter = make('powermeter', 500, 0);
+    const scene = [make('cwlaser', -50, 0, { wavelength: 800, pol, beamMode: 'line', avgPowerW: 1 }),
+      ...(eom ? [make('eom', 30, 0, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 1, switchDuty: 0.5 })] : []),
+      make('isolator', 150, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 0, extinctionDb: 46 }),
+      make('isolator', 300, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, inputAxis: 135, extinctionDb: 55 }), meter];
+    traceScene(scene);
+    return enhancedReading(meter, scene)?.detectedPowerW ?? 0;
+  };
+  close(read(0, false), 10.00e-12, 0.01e-12, '0°');
+  close(read(90, false), 630.96e-12, 0.01e-12, '90°');
+  close(read(0, true), (read(0, false) + read(90, false)) / 2, 1e-16, 'both');
+  close(read(0, true), 320.48e-12, 0.01e-12);
+});
+
+test('P2 (review 8): a polarizer after a Faraday element declares the spectrum it cannot weigh', () => {
+  // 50 fs at 0° through a forward isolator and an analyzer at 135°: the
+  // analyzer passes the part of the field that goes as sin(θ(λ) − 45°),
+  // nought at 800 nm (Andrea: humps at 788.5 and 811.2 nm, two lobes). The
+  // power stays right, 34.10 nW; the spectrum and duration are declared.
+  const read = pangle => {
+    const spectrometer = make('spectrometer', 400, 0);
+    const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 50, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80 }),
+      make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), make('polarizer', 300, 0, { pangle }), spectrometer];
+    traceScene(scene);
+    return { watts: enhancedReading(spectrometer, scene)?.detectedPowerW ?? 0, reading: detectorReading(spectrometer.id) };
+  };
+  const crossed = read(135);
+  close(crossed.watts, 34.10e-9, 0.01e-9, 'crossed');
+  assert.ok(crossed.reading.approximations.some(a => /Spectrum past a polarizer not computed/.test(a)), JSON.stringify(crossed.reading.approximations));
+  assert.equal(crossed.reading.pulse.stretchedPulseWidthFs, null);
+  assert.match(crossed.reading.pulse.fieldIssue || '', /passed by a polarizer wavelength by wavelength — not one scalar pulse/);
+  // Along the isolator's output the shares differ by far less than 1 %:
+  // spectrum and 50 fs as before.
+  const along = read(45);
+  assert.ok(!along.reading.approximations.some(a => /Spectrum past a polarizer/.test(a)));
+  close(along.reading.pulse.stretchedPulseWidthFs, 50, 0.5, 'duration along the output');
+});
+
+test('P2 (review 8): a polarizing beamsplitter after a rotator declares its port\'s spectrum, and caveats add up', () => {
+  // 15 fs through 20 mm of TGG at 10 T, then a polarizing beamsplitter.
+  const port = make('powermeter', 400, 0);
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 }), make('faraday', 100, 0, { fieldT: 10 }), make('pbs', 250, 0), port]);
+  assert.ok(detectorReading(port.id).approximations.some(a => /Spectrum past a polarizing beamsplitter not computed/.test(a)));
+  // A caveat joins those the light already carries: the rotator's on the
+  // part of a supercontinuum outside TGG's data, then the polarizer's.
+  const meter = make('powermeter', 400, 0);
+  traceScene([make('sclaser', 0, 0, { scMin: 450, scMax: 1200, beamMode: 'line', pol: 0 }), make('faraday', 150, 0), make('polarizer', 250, 0, { pangle: 90 }), meter]);
+  const text = detectorReading(meter.id).approximations.join(' | ');
+  assert.match(text, /Polarization not computed past a Faraday rotator for 450–\d+ nm/);
+  assert.match(text, /Spectrum past a polarizer not computed/);
+});
