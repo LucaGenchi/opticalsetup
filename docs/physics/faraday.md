@@ -74,7 +74,11 @@ apart than the Faraday element left them (at 80° incidence on index 2.5, an
 analyzer's share then runs from 44.52 % at 780 nm to 38.73 % at 820 nm, 41.50 %
 for the average): past such a face the spread is not bounded any more (it is
 set to 2, the widest two normalized Stokes vectors can lie), so a polarizer
-after it declares. An analyzer crossed
+after it declares. Dispersive glass cuts a band into slices that carry no
+spectrum of their own but keep the average state and its spread, so a
+polarizer after the glass still declares; a Faraday element or isolator that
+meets a slice samples it across its own part of the band (`sliceProfile`), and
+the isolator averages its transmission over those samples. An analyzer crossed
 with a forward isolator's output passes only the part of the field that goes as
 sin(θ(λ) − 45°), nought at the design wavelength, so declares; one along that
 output keeps the spectrum and the duration. A polarizer leaves every

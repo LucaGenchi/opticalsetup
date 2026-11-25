@@ -4575,8 +4575,15 @@ export const faradayReading = elementId => faradayCrossings.get(elementId) || []
 // The light's spectrum as weighted wavelengths: a lamp's lines, a band on a
 // grid, or the one wavelength of a line without a spectrum.
 const FARADAY_GRID = 96;
-const faradaySamples = ray => spectrumSamples(ray.spec, FARADAY_GRID)?.map(s => ({ nm: s.wl, w: s.weight }))
-  || [{ nm: ray.wl, w: 1 }];
+// A slice that dispersive glass cut from a band (spec null) is sampled
+// across its own part of the band, so a Faraday element still sees its
+// wavelengths turn apart.
+const faradaySamples = ray => {
+  const of = spec => spectrumSamples(spec, FARADAY_GRID)?.map(s => ({ nm: s.wl, w: s.weight }));
+  return of(ray.spec)
+    || (!ray.spec && ray.spectralContinuum && ray.spectralHi > ray.spectralLo ? of(sliceProfile(ray, [ray.spectralLo, ray.spectralHi])) : null)
+    || [{ nm: ray.wl, w: 1 }];
+};
 // The Stokes vectors of the samples added in power and normalized: light of
 // one band whose state differs from one wavelength to another is, to an
 // instrument that does not resolve the spectrum, partly polarized. Null
@@ -4650,8 +4657,10 @@ const SPECTRUM_RESHAPE = 0.01;
 const spreadSpectrumNote = what => `Spectrum past ${what} not computed: this light's polarization varies across its spectrum since a Faraday element, and ${what} passes each wavelength by its own share; the power right past it is exact only if nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday element), and what a later filter selects is not computed`;
 const spreadPulseIssue = what => `Polarization varying across the spectrum since a Faraday element, passed by ${what} wavelength by wavelength — not one scalar pulse; duration unavailable`;
 function spreadReshape(ray, d, what) {
+  // Only light that was broadband at a Faraday element has a spread; a slice
+  // dispersive glass cut from it (spec null) still carries the average state.
   const spread = ray.stateSpread || 0;
-  if (!(spread > 0) || !ray.spec) return null;
+  if (!(spread > 0)) return null;
   const size = Math.hypot(d[0], d[1], d[2]);
   const states = ray.polMod ? [ray.polMod.stokesHigh, ray.polMod.stokesLow] : [ray.stokes];
   const lowest = Math.min(...states.map(st => 1 + (st ? d[0] * st.s1 + d[1] * st.s2 + d[2] * st.s3 : 0)));
@@ -6295,7 +6304,9 @@ function interact(ray, hit) {
       // varies by as much as the leak does, relative to itself).
       const T = nm => share(input, nm);
       let fraction, spectral = {};
-      if (!ray.spec) fraction = T(ray.wl);
+      // Light without a spectrum of its own: one wavelength, or a slice of a
+      // band, whose transmission is averaged over its samples.
+      if (!ray.spec) fraction = samples.reduce((a, x) => a + x.w * T(x.nm), 0) / (samples.reduce((a, x) => a + x.w, 0) || 1);
       else {
         const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
         if (!(peak > MIN_RETAINED_POWER_INT)) return [];

@@ -628,3 +628,33 @@ test('P2 (review 9): past a glass face that passes p and s differently, a polari
   // the analyzer: no caveat.
   assert.doesNotMatch(read([], 0), /Spectrum past a polarizer/);
 });
+
+// Andrea's review, round 10.
+test('P2 (review 10): dispersive glass slicing a band keeps the spread, before and after a Faraday element', () => {
+  const nbk7 = x => make('freeglass', x, 0, { vertices: [{ x: -10, y: -30 }, { x: 10, y: -30 }, { x: 10, y: 30 }, { x: -10, y: 30 }], material: 'nbk7', surfaceModel: 'fresnel' });
+  // 20 mm of N-BK7 between a forward isolator and a crossed analyzer, then a
+  // 799–801 nm band-pass: the glass cuts the band into slices without a
+  // spectrum of their own, which still carry the average state (Andrea:
+  // 3.127 nW and 943 fs shown, 16.65 pW integrated).
+  const meter = make('powermeter', 500, 0, { aperture: 60 });
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 50, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80 }),
+    make('isolator', 100, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), nbk7(200),
+    make('polarizer', 300, 0, { pangle: 135 }), make('filter', 380, 0, { ftype: 'bandpass', center: 800, band: 2, trans: 1 }), meter]);
+  const reading = detectorReading(meter.id);
+  assert.ok(reading.approximations.some(a => /Spectrum past a polarizer not computed/.test(a)), JSON.stringify(reading.approximations));
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  // A slice met by a rotator is sampled across its own part of the band:
+  // glass before or after 20 mm of TGG at 10 T reads the same past a
+  // polarizer, with the same caveats.
+  const read = glassFirst => {
+    const m = make('powermeter', 500, 0, { aperture: 60 });
+    const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 }),
+      nbk7(glassFirst ? 60 : 250), make('faraday', 150, 0, { fieldT: 10 }), make('polarizer', 350, 0, { pangle: 0 }), m];
+    traceScene(scene);
+    return { watts: enhancedReading(m, scene).detectedPowerW, text: detectorReading(m.id).approximations.join(' | ') };
+  };
+  const before = read(true), after = read(false);
+  close(before.watts, after.watts, 0.002 * after.watts, 'glass before or after the rotator');
+  assert.match(before.text, /varies across its spectrum after a Faraday element/);
+  assert.match(before.text, /Spectrum past a polarizer not computed/);
+});
