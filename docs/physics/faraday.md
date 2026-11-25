@@ -80,12 +80,17 @@ polarizer after the glass still declares; a Faraday element or isolator that
 meets a slice samples it across its own part of the band (`sliceProfile`), and
 the isolator weighs each slice's profile by its transmission across the
 slice and carries it on reshaped, so a filter after it cuts the light that
-passed. The spectrum the isolator reshapes is kept on 4097 points across the
-band rather than the tracer's usual 65: its leak dips by the polarizers'
+passed. The spectrum the isolator reshapes is kept on one point every 0.04 nm
+(257 to 4097 points; 4001 across a 15 fs pulse's band) rather than the
+tracer's usual 65 across the band, and a slice of a band on the same spacing:
+its leak dips by the polarizers'
 extinction within a few nm of the design wavelength, and a 2 nm band-pass after
 it read 4.8 % off the same filter before it on the coarser grid (0.8 % at
-60 dB on 1025 points). A slice of a band that glass cut is reshaped on as many
-points across the slice (on 257 the two positions were 0.97 % apart at 60 dB).
+60 dB on 1025 points; slices on 257 points each were 0.97 % apart). The
+isolator's polarizers and the state past the first are set up once per
+arriving state (`isolatorCrosser`), so each wavelength costs only a rotation
+and one matrix: the example with N-BK7 and a band-pass re-traces in about
+40 ms in Node, where 4097 points per slice took 400 ms.
 A filter after it keeps those points (a sampled profile is re-sampled on its
 own points, up to 4097, rather than on 65), and light the tracer keeps however
 weak (the isolator's output among it) is not dropped below the spectral

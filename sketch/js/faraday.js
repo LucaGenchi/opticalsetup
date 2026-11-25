@@ -26,7 +26,7 @@
 // component along the ray falls as cos θ.
 
 import { MATERIAL_RECORDS, verdetConstant } from './materials/catalogue.js';
-import { applyMueller, composeMueller, linearDiattenuatorMueller, rotatorMueller, stokesVector } from './mueller.js';
+import { applyMueller, linearDiattenuatorMueller, rotatorMueller, stokesVector } from './mueller.js';
 
 const R2D = 180 / Math.PI;
 
@@ -133,19 +133,36 @@ export const leakOfExtinction = db => 10 ** (-Math.max(0, Number(db) || 0) / 10)
 // (an axis set for forward light appears at −θ to light going the other
 // way). Or { issue }.
 export function isolatorCrossing(params, wavelengthNm, stokes, forward, axisFor = a => (forward ? a : -a)) {
-  const rotation = isolatorRotationDeg(params, wavelengthNm);
-  if (rotation.issue) return rotation;
+  return isolatorCrosser(params, stokes, forward, axisFor)(wavelengthNm);
+}
+
+// The same crossing for many wavelengths of one arriving state: the
+// polarizers, the design's Verdet constant and the state past the first
+// polarizer are set up once, and each wavelength only turns that state and
+// meets the second polarizer. Returns nm => the result isolatorCrossing gives.
+export function isolatorCrosser(params, stokes, forward, axisFor = a => (forward ? a : -a)) {
+  const design = verdetAt(params, params.designWl);
+  const designIssue = design.issue ? `the design wavelength: ${design.issue}`
+    : !(Math.abs(design.verdet) > 0) ? 'the Verdet constant at the design wavelength is zero' : null;
   const leak = leakOfExtinction(params.extinctionDb);
   const a = Number(params.inputAxis) || 0;
   const input = linearDiattenuatorMueller(axisFor(a), 1, leak);
   const output = linearDiattenuatorMueller(axisFor(a + 45), 1, leak);
-  // Forward light is turned by +45° at λd in its own basis; light going back
-  // by the opposite amount in its own basis, the same turn about the field.
-  const rotator = rotatorMueller(forward ? rotation.deg : -rotation.deg);
-  const m = forward ? composeMueller(composeMueller(input, rotator), output) : composeMueller(composeMueller(output, rotator), input);
-  const [s0, s1, s2, s3] = applyMueller(m, stokesVector(stokes));
-  if (!(s0 > 0)) return { transmission: 0, stokes: null, rotationDeg: rotation.deg };
-  return { transmission: s0, stokes: { s1: s1 / s0, s2: s2 / s0, s3: s3 / s0 }, rotationDeg: rotation.deg };
+  // Forward light meets the input polarizer first, light going back the
+  // output one; between them the rotator turns it, forward light by +45° at
+  // λd in its own basis, light going back by the opposite amount in its own
+  // basis (the same turn about the field).
+  const [first, second] = forward ? [input, output] : [output, input];
+  const entering = applyMueller(first, stokesVector(stokes));
+  return wavelengthNm => {
+    if (designIssue) return { issue: designIssue };
+    const here = verdetAt(params, wavelengthNm);
+    if (here.issue) return here;
+    const deg = 45 * here.verdet / design.verdet;
+    const [s0, s1, s2, s3] = applyMueller(second, applyMueller(rotatorMueller(forward ? deg : -deg), entering));
+    if (!(s0 > 0)) return { transmission: 0, stokes: null, rotationDeg: deg };
+    return { transmission: s0, stokes: { s1: s1 / s0, s2: s2 / s0, s3: s3 / s0 }, rotationDeg: deg };
+  };
 }
 
 // The isolator's figures at one wavelength: the forward transmission of
