@@ -52,8 +52,9 @@ spectrum. Each wavelength turns by its own amount, so the state carried on is
 the power-weighted average of the turned states (the Stokes vectors of the
 spectrum's samples, added): light whose wavelengths now point different ways
 is, to an instrument that does not resolve the spectrum, partly polarized.
-That gives the power a polarizer passes after it exactly, as long as no other
-element that acts differently at each wavelength follows; the spectrum the
+That gives the power a polarizer passes after it exactly, as long as nothing
+between them passes wavelengths by their own shares (a filter, an angled glass
+face, another Faraday element); the spectrum the
 polarizer leaves is not, and where the degree of polarization falls by more
 than 0.01 the light carries a caveat saying so. The light also carries how far
 the state of any wavelength in its band lies from the average (the largest
@@ -63,7 +64,17 @@ for its diattenuation vector d (a polarizer, a polarizing beamsplitter's port,
 a glass face at an angle), uses it: the share of any wavelength differs from
 the average's by at most |d|·spread/(1 + d·s̄) of it, and where that exceeds
 1 % (the isolator's own reshaping test) the spectrum it leaves and the pulse's
-duration are declared not computed, its power still given. An analyzer crossed
+duration are declared not computed. The power right past it is exact only if
+nothing between it and the Faraday element passes wavelengths by their own
+shares, and what a later filter selects from its spectrum is not computed
+(a 2 nm band-pass after Andrea's crossed analyzer reads 3.4 nW against
+18.12 pW integrated), so the caveat says both and vouches for no power. A glass
+face that passes p and s differently can move the wavelengths' states further
+apart than the Faraday element left them (at 80° incidence on index 2.5, an
+analyzer's share then runs from 44.52 % at 780 nm to 38.73 % at 820 nm, 41.50 %
+for the average): past such a face the spread is not bounded any more (it is
+set to 2, the widest two normalized Stokes vectors can lie), so a polarizer
+after it declares. An analyzer crossed
 with a forward isolator's output passes only the part of the field that goes as
 sin(θ(λ) − 45°), nought at the design wavelength, so declares; one along that
 output keeps the spectrum and the duration. A polarizer leaves every

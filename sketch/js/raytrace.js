@@ -4647,7 +4647,7 @@ const appendCaveat = (ray, text) => {
 // isolator's own reshaping test) the spectrum and the duration are declared
 // not computed.
 const SPECTRUM_RESHAPE = 0.01;
-const spreadSpectrumNote = what => `Spectrum past ${what} not computed: this light's polarization varies across its spectrum since a Faraday element, and ${what} passes each wavelength by its own share; the power shown is right`;
+const spreadSpectrumNote = what => `Spectrum past ${what} not computed: this light's polarization varies across its spectrum since a Faraday element, and ${what} passes each wavelength by its own share; the power right past it is exact only if nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday element), and what a later filter selects is not computed`;
 const spreadPulseIssue = what => `Polarization varying across the spectrum since a Faraday element, passed by ${what} wavelength by wavelength — not one scalar pulse; duration unavailable`;
 function spreadReshape(ray, d, what) {
   const spread = ray.stateSpread || 0;
@@ -4682,7 +4682,7 @@ const faradayUnknownNote = issue => `Polarization not computed past a Faraday ro
 const faradayPartNote = (part, issue) => `Polarization not computed past a Faraday rotator for ${part} of this light's spectrum (${issue}); that part keeps the state it arrived with`;
 const faradayIsolatorNote = issue => `Isolation not computed at an optical isolator: ${issue}; this light passed as through an ideal one-way gate`;
 const faradayIsolatorPartNote = (part, issue) => `Isolation not computed at an optical isolator for ${part} of this light's spectrum (${issue}); that part passed as through an ideal one-way gate`;
-const faradaySpreadNote = 'The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum\'s average, which gives the power a polarizer passes but not the spectrum it leaves, as long as no other element that acts differently at each wavelength (a Faraday rotator or isolator) follows';
+const faradaySpreadNote = 'The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum\'s average, which gives the power a polarizer passes but not the spectrum it leaves, as long as nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday rotator or isolator)';
 // Light whose state is already a spectrum's average meets an element that
 // turns each wavelength differently: the wavelengths' own states, which it
 // needs, are no longer known.
@@ -5162,6 +5162,10 @@ function interact(ray, hit) {
         const polarization = face ? {
           stokes: face.stokes, faceStokes: true,
           ...(faceShape ? faceShape.caveat : {}),
+          // A face that passes p and s differently can move the wavelengths'
+          // states apart: past it the spread has no bound (2, the widest two
+          // normalized Stokes vectors can lie), so a polarizer declares.
+          ...(ray.stateSpread > 0 && Math.abs(fresnel.Tp - fresnel.Ts) > 1e-12 * (fresnel.Tp + fresnel.Ts) ? { stateSpread: 2 } : {}),
           ...(faceShape?.pulse && !(modulation && ray.pulse) ? { pulse: faceShape.pulse } : {}),
           // The legacy label follows the state: circular light leaves
           // elliptical, unpolarized light partly p-polarized.
@@ -8787,6 +8791,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if (Number.isInteger(c0.fieldGroupCount)) r.fieldGroupCount = c0.fieldGroupCount;
         if ('pickoffPasses' in c0) r.pickoffPasses = c0.pickoffPasses;
         if ('retainZeroField' in c0) r.retainZeroField = Boolean(c0.retainZeroField);
+        // Step P2: a glass face can leave its wavelengths' states further
+        // apart than the Faraday element did (stateSpread).
+        if ('polarizationSpread' in c0) r.polarizationSpread = c0.polarizationSpread;
+        if ('stateSpread' in c0) r.stateSpread = c0.stateSpread;
         if (c0.phaseValid === false) {
           r.phaseValid = false;
           r.phaseIssue = c0.phaseIssue || r.phaseIssue || 'carrier phase became unavailable';

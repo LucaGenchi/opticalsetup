@@ -29,7 +29,7 @@
   "isolator:isolator": "25a48414",
   "pulsedlaser:laser": "2c669f0d",
   "spectrometer:spectrometer": "b586053c",
-  "display:screen": "464997c7"
+  "display:screen": "70e172b6"
  },
  "pulseTracks": [
   {
@@ -81,7 +81,7 @@
   "spectrometer:spectrometer": {
    "detector": {
     "approximations": [
-     "The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum's average, which gives the power a polarizer passes but not the spectrum it leaves, as long as no other element that acts differently at each wavelength (a Faraday rotator or isolator) follows"
+     "The polarization of this light varies across its spectrum after a Faraday element: it is carried as the spectrum's average, which gives the power a polarizer passes but not the spectrum it leaves, as long as nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday rotator or isolator)"
     ],
     "bandMax": 850.344585,
     "bandMin": 733.495787,

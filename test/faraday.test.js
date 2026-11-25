@@ -586,3 +586,45 @@ test('P2 (review 8): a polarizing beamsplitter after a rotator declares its port
   assert.match(text, /Polarization not computed past a Faraday rotator for 450–\d+ nm/);
   assert.match(text, /Spectrum past a polarizer not computed/);
 });
+
+// Andrea's review, round 9.
+test('P2 (review 9): the polarizer\'s caveat does not vouch for a power a later filter selects', () => {
+  // The crossed analyzer of round 8, then a band-pass from 799 to 801 nm:
+  // the band's power is not computed (Andrea: 18.12 pW, the tracer 3.4 nW),
+  // and the caveat says what a later filter selects is not computed.
+  const meter = make('powermeter', 450, 0);
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 50, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80 }),
+    make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), make('polarizer', 300, 0, { pangle: 135 }),
+    make('filter', 370, 0, { ftype: 'bandpass', center: 800, band: 2, trans: 1 }), meter]);
+  const text = detectorReading(meter.id).approximations.join(' | ');
+  assert.match(text, /what a later filter selects is not computed/);
+  assert.doesNotMatch(text, /power shown is right/);
+  // Two rotators that undo each other and a crossed analyzer: the chain's
+  // "power not computed" stands, and nothing says the power is right.
+  const crossed = make('powermeter', 400, 0);
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 30, pol: 0, beamMode: 'line', avgPowerW: 1 }),
+    make('faraday', 100, 0), make('faraday', 200, 0, { fieldDir: 'against' }), make('polarizer', 300, 0, { pangle: 90 }), crossed]);
+  const chain = detectorReading(crossed.id).approximations.join(' | ');
+  assert.match(chain, /Polarization and power not computed past a second Faraday element/);
+  assert.doesNotMatch(chain, /power shown is right/);
+});
+
+test('P2 (review 9): past a glass face that passes p and s differently, a polarizer no longer trusts the spread', () => {
+  // 50 fs at 93°, 12 mm of TGG at 0.05 T, then plates of index 2.5 at 80°
+  // incidence and an analyzer at 45°: the analyzer's share runs from 44.52 %
+  // at 780 nm to 38.73 % at 820 nm (Andrea), 41.50 % for the band's
+  // average state. The spread the rotator left grows at the faces.
+  const plate = x => make('freeglass', x, 0, { vertices: [{ x: -10, y: -250 }, { x: 10, y: -250 }, { x: 10, y: 250 }, { x: -10, y: 250 }], material: 'constant', ior: 2.5, surfaceModel: 'fresnel' }, 80);
+  const read = (plates, y) => {
+    const meter = make('powermeter', 700, y, { aperture: 60 });
+    const scene = [make('pulsedlaser', -100, 0, { wavelength: 800, pulseWidthFs: 50, pol: 93, beamMode: 'line', avgPowerW: 1 }), make('faraday', -20, 0, { lengthMm: 12, fieldT: 0.05 }),
+      ...plates, make('polarizer', 620, y, { pangle: 45, length: 60 }), meter];
+    traceScene(scene);
+    return (detectorReading(meter.id)?.approximations || []).join(' | ');
+  };
+  assert.match(read([plate(150), plate(350)], 36), /Spectrum past a polarizer not computed/);
+  assert.match(read([plate(150)], 18), /Spectrum past a polarizer not computed/);
+  // Without the plates the rotator's spread stays below the 1 % bound at
+  // the analyzer: no caveat.
+  assert.doesNotMatch(read([], 0), /Spectrum past a polarizer/);
+});
