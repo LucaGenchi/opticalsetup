@@ -413,3 +413,42 @@ test('P2 (review): a lamp\'s lines are read one by one', () => {
   }
   assert.match(text, /435\.8 nm: not computed/);
 });
+
+// Andrea's review, round 5.
+test('P2 (review 5): a modulator whose two states are the same changes nothing at the isolator', async () => {
+  const read = async (extra, analyzer = false) => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.push(...extra);
+    if (analyzer) scene.elements.push(make('polarizer', 150, 250, { pangle: 0 }));
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  const neutral = () => [make('eom', 400, 250, { modulate: true, driveMode: 'switching', switchMode: 'custom', retardanceLow: 0, retardanceHigh: 0, a: 0 }, 180)];
+  close(await read(neutral()), await read([]), 1e-9, 'unchanged');
+  close(await read([]), 3.953e-3, 0.002e-3);
+  close(await read(neutral(), true), await read([], true), 1e-9, 'with an analyzer, unchanged');
+});
+
+test('P2 (review 5): a rotator that turns a pulse\'s wavelengths differently declines its duration', () => {
+  const after = fieldT => {
+    const meter = make('powermeter', 300, 0);
+    traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line' }), make('faraday', 150, 0, { fieldT }), meter]);
+    return detectorReading(meter.id).pulse;
+  };
+  // 20 mm of TGG at 10 T: two lobes at ±15.2 fs (Andrea's Jones transform).
+  assert.match(after(10).fieldIssue || '', /not one scalar pulse/);
+  // No field, no turn: the duration stays.
+  assert.ok(!after(0).fieldIssue && Number.isFinite(after(0).stretchedPulseWidthFs));
+});
+
+test('P2 (review 5): identical partly polarized states are not taken for a spread', () => {
+  // An unpolarized LED through a forward isolator with a constant Verdet
+  // constant and 10 dB polarizers leaves every wavelength in the same partly
+  // polarized state; a rotator at zero field and an analyzer at 45° read
+  // 0.5 W with no caveat.
+  const meter = make('powermeter', 450, 0);
+  traceScene([make('ledsource', -50, 0, { ledPreset: 'custom', wavelength: 800, bandwidth: 60, avgPowerW: 1, beamMode: 'line' }),
+    make('isolator', 100, 0, { isolatorModel: 'physical', material: 'custom', verdetCustom: -40, designWl: 800, extinctionDb: 10 }),
+    make('faraday', 200, 0, { fieldT: 0 }), make('polarizer', 300, 0, { pangle: 45 }), meter]);
+  assert.ok(!(detectorReading(meter.id).approximations || []).some(a => /second Faraday element/.test(a)));
+});

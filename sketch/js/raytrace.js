@@ -4606,11 +4606,12 @@ const STATES_DIFFER = 1e-9;
 function statesSpread(parts) {
   const mean = averagedStokes(parts);
   if (!mean) return 0;
+  // The components are already S/S0, as the mean's are: identical partly
+  // polarized states are at distance zero.
   let total = 0, sum = 0;
   for (const { w, stokes } of parts) {
     if (!(w > 0) || !stokes) continue;
-    const m = dop(stokes) || 1;
-    sum += w * Math.hypot(stokes.s1 / m - mean.s1, stokes.s2 / m - mean.s2, stokes.s3 / m - mean.s3);
+    sum += w * Math.hypot(stokes.s1 - mean.s1, stokes.s2 - mean.s2, stokes.s3 - mean.s3);
     total += w;
   }
   return total > 0 ? sum / total : 0;
@@ -4644,6 +4645,9 @@ const faradayChainNote = 'Polarization and power not computed past a second Fara
 // A leak whose field changes sign across the band, or whose state varies
 // across it, is not one scalar pulse: its duration is not computed.
 const FARADAY_PULSE_UNAVAILABLE = 'Spectrum reshaped by an optical isolator, whose field can change sign or polarization across it — not one scalar pulse; duration unavailable';
+const FARADAY_ROTATOR_PULSE_UNAVAILABLE = 'Polarization turned differently across the spectrum by a Faraday rotator — not one scalar pulse; duration unavailable';
+const FARADAY_MODULATOR_NOTE = 'Power and spectrum past an optical isolator not computed for a modulator\'s two states: they cross it differently at each wavelength, and are weighed at the centre one';
+const sameStokes = (a, b) => (!a && !b) || (a && b && Math.hypot(a.s1 - b.s1, a.s2 - b.s2, a.s3 - b.s3) < 1e-9);
 
 function crossingAxisDeg(surface, d, axisDeg) {
   const forward = rotPt(1, 0, surface.el?.rot || 0);
@@ -6167,8 +6171,15 @@ function interact(ray, hit) {
       // its own transmission and leaves in its own state, at the centre
       // wavelength (as at a Fresnel face): a pulse train carries the
       // difference as a gate, continuous light as each state's weight.
-      if (ray.polMod) {
+      // A modulator whose two states are the same (and equally weighted) is
+      // no modulation here: the light takes the ordinary path below, and
+      // both states leave in the state it leaves in.
+      const neutral = ray.polMod && sameStokes(ray.polMod.stokesHigh, ray.polMod.stokesLow) && (ray.polMod.weightHigh ?? 1) === (ray.polMod.weightLow ?? 1);
+      if (ray.polMod && !neutral) {
         const m = ray.polMod, hi = through(m.stokesHigh, ray.wl), lo = through(m.stokesLow, ray.wl);
+        // Across a band the two states cross differently at each wavelength,
+        // which these centre-wavelength figures do not follow.
+        if (reshapes && !caveat.replacesApproximation) caveat.approximation = [caveat.approximation, FARADAY_MODULATOR_NOTE].filter(Boolean).join('. ');
         const tHi = hi.issue ? (forward ? 1 : 0) : hi.transmission, tLo = lo.issue ? (forward ? 1 : 0) : lo.transmission;
         const sHi = hi.issue ? m.stokesHigh : hi.stokes, sLo = lo.issue ? m.stokesLow : lo.stokes;
         const states = { ...m, stokesHigh: sHi, stokesLow: sLo };
@@ -6210,7 +6221,10 @@ function interact(ray, hit) {
       }
       if (!(fraction > MIN_RETAINED_POWER_INT)) return [];
       const out = stokes || ray.stokes;
-      return [{ d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral, ...pulseFields }];
+      return [{
+        d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral, ...pulseFields,
+        ...(neutral ? { polMod: { ...ray.polMod, stokesHigh: out, stokesLow: out } } : {}),
+      }];
     }
     case 'faraday': {
       // Step P2: the polarization turns by V·B·L about the field, which
@@ -6232,8 +6246,12 @@ function interact(ray, hit) {
       const drop = stokes ? dop(ray.stokes) - dop(stokes) : 0;
       if (drop > FARADAY_DOP_DROP && !ray.polarizationSpread) notes.push(faradaySpreadNote);
       const turned = ray.stokes ? samples.map(x => ({ w: x.w, stokes: x.turn.issue ? ray.stokes : rotateStokes(ray.stokes, x.turn.deg) })) : [];
+      const differ = statesSpread(turned) > STATES_DIFFER;
       return [{
-        d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || statesSpread(turned) > STATES_DIFFER),
+        d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || differ),
+        // Its wavelengths now point different ways: the field is not one
+        // scalar pulse, and its duration is not computed.
+        ...(ray.pulse && (differ || ray.polarizationSpread) ? { pulse: { ...ray.pulse, field: null, fieldIssue: FARADAY_ROTATOR_PULSE_UNAVAILABLE } } : {}),
         ...(ray.polarizationSpread ? chainCaveat(ray.approximation) : notes.length ? { approximation: notes.join('. ') } : {}),
         // An EOM's two states turn by the rotation at the centre wavelength.
         ...(ray.polMod && !centre.issue ? { polMod: { ...ray.polMod, stokesHigh: rotateStokes(ray.polMod.stokesHigh, centre.deg), stokesLow: rotateStokes(ray.polMod.stokesLow, centre.deg) } } : {}),
