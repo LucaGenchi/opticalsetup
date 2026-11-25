@@ -119,18 +119,24 @@ The light leaves in the spectrum's average state, as above: going forward,
 along the output polarizer to the polarizers' extinction; coming back, the
 leak at the design wavelength (across the input polarizer) and at the wings
 (along it) average to a partly polarized state, which gives the power a
-polarizer after it passes. Light from a switching modulator keeps its two
-states, each crossing with its own transmission at the centre wavelength: a
-pulse train carries the difference as a gate, continuous light as each state's
-weight (as at a Fresnel face). The state it leaves in is the two states'
-average weighted by the light that arrives in each: for a pulse train, the
-share of its pulses that meet each state, sampled pulse by pulse as a gate is,
-so pulses synchronized with the modulator read the state of their phase. A
-modulator whose two states are the same takes the ordinary path, wavelength
-by wavelength. Where two different states meet a band the isolator reshapes (each
-state that carries light is checked on its own), the figures are at the centre
-wavelength and the light says its power and spectrum are not computed, and
-the pulse gets no duration.
+polarizer after it passes. Light from a switching modulator is first sorted by
+the states that carry it: for a pulse train, the share of its pulses that meet
+each state, sampled pulse by pulse as a gate is. Pulses synchronized with the
+modulator that all meet one state, and a modulator whose two states are the
+same, cross as light in that state, wavelength by wavelength, exactly as above.
+Light in two different states keeps them: each crosses as its spectrum's
+average, its transmission and the state it leaves in (partly polarized where
+its wavelengths leave in different states), which gives the power right after
+the isolator and after one polarizer; a pulse train carries the difference as
+a gate, continuous light as each state's weight (as at a Fresnel face). Its
+spectrum is not reshaped: where either state's transmission or the state it
+leaves in varies across the band (each state checked on its own, since two
+orthogonal states average to no polarization at all), the light says its
+spectrum and polarization past the isolator are not computed, is marked for a
+later Faraday element, and a pulse gets no duration. In Andrea's case, an EOM
+alternating linear and circular pulses into an isolator and an analyzer at
+135°, this reads 28.08 nW, the mean of the two states prepared on their own
+(34.10 and 22.05 nW), against 28.02 nW from an independent integration.
 
 The inspector's isolation is −10·log10 of what returns through the isolator
 of light polarized along the output polarizer, which is the state of a

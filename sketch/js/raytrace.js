@@ -4646,7 +4646,7 @@ const faradayChainNote = 'Polarization and power not computed past a second Fara
 // across it, is not one scalar pulse: its duration is not computed.
 const FARADAY_PULSE_UNAVAILABLE = 'Spectrum reshaped by an optical isolator, whose field can change sign or polarization across it — not one scalar pulse; duration unavailable';
 const FARADAY_ROTATOR_PULSE_UNAVAILABLE = 'Polarization turned differently across the spectrum by a Faraday rotator — not one scalar pulse; duration unavailable';
-const FARADAY_MODULATOR_NOTE = 'Power and spectrum past an optical isolator not computed for a modulator\'s two states: they cross it differently at each wavelength, and are weighed at the centre one';
+const FARADAY_MODULATOR_NOTE = 'Spectrum and polarization past an optical isolator not computed for a modulator\'s two states: each crosses it differently at each wavelength, and its power and state are averaged over the spectrum';
 const FARADAY_MODULATOR_ROTATOR_NOTE = 'Polarization and power past a Faraday rotator not computed for a modulator\'s two states: each turns differently at each wavelength, and they are turned at the centre one';
 const sameStokes = (a, b) => (!a && !b) || (a && b && Math.hypot(a.s1 - b.s1, a.s2 - b.s2, a.s3 - b.s3) < 1e-9);
 
@@ -6141,7 +6141,19 @@ function interact(ray, hit) {
       const axisFor = a => crossingAxisDeg(s, d, a);
       const through = (stokes, nm) => isolatorCrossing(data, nm, stokes, forward, axisFor);
       const samples = faradaySamples(ray);
-      const crossings = samples.map(x => ({ ...x, c: through(ray.stokes, x.nm) }));
+      // A switching modulator's states that carry light: pulses synchronized
+      // with the modulator can all meet one of them (sampled pulse by pulse,
+      // as a gate is), and light that meets one state, or two that are the
+      // same, crosses as light in that state.
+      const m = ray.polMod;
+      const wHi = m?.weightHigh ?? 1, wLo = m?.weightLow ?? 1;
+      const gateOf = (high, low) => ({ opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high, low });
+      const before = m && ray.pulse ? pulseGateTransmission(ray.pulse) : 1;
+      const shareHi = !m ? 0 : ray.pulse ? (before > 0 ? pulseGateTransmission(withGate(ray.pulse, gateOf(1, 0))) / before : m.duty) : m.duty;
+      const pHi = shareHi * wHi, pLo = (1 - shareHi) * wLo;
+      const twoStates = Boolean(m) && !sameStokes(m.stokesHigh, m.stokesLow) && pHi > STATES_DIFFER * (pHi + pLo) && pLo > STATES_DIFFER * (pHi + pLo);
+      const input = !m || twoStates ? ray.stokes : pHi >= pLo ? m.stokesHigh : m.stokesLow;
+      const crossings = samples.map(x => ({ ...x, c: through(input, x.nm) }));
       const missing = crossings.filter(x => x.c.issue);
       if (missing.length === crossings.length) {
         return forward ? [{ d, approximation: faradayIsolatorNote(missing[0].c.issue) }] : [];
@@ -6149,10 +6161,10 @@ function interact(ray, hit) {
       // Each wavelength's share and the state it leaves in; a wavelength
       // without data passes (forward) or stops (back) as at the ideal gate.
       const share = (stokes, nm) => { const c = through(stokes, nm); return c.issue ? (forward ? 1 : 0) : c.transmission; };
-      const stokes = averagedStokes(crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? ray.stokes : x.c.stokes })));
+      const stokes = averagedStokes(crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? input : x.c.stokes })));
       const notes = [];
       if (missing.length) notes.push(faradayIsolatorPartNote(nmRanges(crossings, x => x.c.issue), missing[0].c.issue));
-      const leaving = crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? ray.stokes : x.c.stokes }));
+      const leaving = crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? input : x.c.stokes }));
       const drop = crossings.length > 1 && stokes ? Math.min(...crossings.filter(x => !x.c.issue && x.c.stokes).map(x => dop(x.c.stokes))) - dop(stokes) : 0;
       const spread = drop > FARADAY_DOP_DROP;
       if (spread && !ray.polarizationSpread) notes.push(faradaySpreadNote);
@@ -6164,57 +6176,55 @@ function interact(ray, hit) {
       // largest value), or whose state arrives or leaves varying across the
       // band, is not computed as one scalar pulse: the field that passes
       // can change sign or polarization from one wavelength to another.
-      // Each state that carries light is checked on its own: a switching
-      // modulator's two states can average to no polarization at all.
-      const neutral = ray.polMod && sameStokes(ray.polMod.stokesHigh, ray.polMod.stokesLow) && (ray.polMod.weightHigh ?? 1) === (ray.polMod.weightLow ?? 1);
       const bandNm = crossings.filter(x => x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => x.nm);
       const varies = st => {
         const v = bandNm.map(nm => share(st, nm));
         return v.length > 1 && Math.max(...v) - Math.min(...v) > 0.01 * Math.max(...v);
       };
-      const reshapes = varies(ray.stokes) || Boolean(ray.polMod && !neutral && (varies(ray.polMod.stokesHigh) || varies(ray.polMod.stokesLow)));
-      const pulseFields = ray.pulse && (reshapes || spread || ray.polarizationSpread)
-        ? { pulse: { ...ray.pulse, field: null, fieldIssue: FARADAY_PULSE_UNAVAILABLE, spectrumReshaped: true } } : {};
-      // Light an EOM switches between two states: each state crosses with
-      // its own transmission and leaves in its own state, at the centre
-      // wavelength (as at a Fresnel face): a pulse train carries the
-      // difference as a gate, continuous light as each state's weight.
-      // A modulator whose two states are the same (and equally weighted) is
-      // no modulation here: the light takes the ordinary path below, and
-      // both states leave in the state it leaves in.
-      if (ray.polMod && !neutral) {
-        const m = ray.polMod, hi = through(m.stokesHigh, ray.wl), lo = through(m.stokesLow, ray.wl);
-        // Across a band the two states cross differently at each wavelength,
-        // which these centre-wavelength figures do not follow.
-        if (reshapes && !caveat.replacesApproximation) caveat.approximation = [caveat.approximation, FARADAY_MODULATOR_NOTE].filter(Boolean).join('. ');
-        const tHi = hi.issue ? (forward ? 1 : 0) : hi.transmission, tLo = lo.issue ? (forward ? 1 : 0) : lo.transmission;
-        const sHi = hi.issue ? m.stokesHigh : hi.stokes, sLo = lo.issue ? m.stokesLow : lo.stokes;
-        const states = { ...m, stokesHigh: sHi, stokesLow: sLo };
-        const wHi = m.weightHigh ?? 1, wLo = m.weightLow ?? 1;
-        // The state the light leaves in is the two states' average weighted
-        // by the light that actually arrives in each: for a pulse train, the
-        // share of its pulses that meet the high state (sampled pulse by
-        // pulse, as a gate is), not the modulator's duty.
-        const gateOf = (high, low) => ({ opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs, duty: m.duty, shape: 'square', high, low });
-        const before = ray.pulse ? pulseGateTransmission(ray.pulse) : 1;
-        const shareHi = ray.pulse ? (before > 0 ? pulseGateTransmission(withGate(ray.pulse, gateOf(1, 0))) / before : m.duty) : m.duty;
-        const out = averagedStokes([{ w: shareHi * wHi * tHi, stokes: sHi }, { w: (1 - shareHi) * wLo * tLo, stokes: sLo }]) || stokes || ray.stokes;
+      const declined = { ...ray.pulse, field: null, fieldIssue: FARADAY_PULSE_UNAVAILABLE, spectrumReshaped: true };
+      // Light in two different states, both carrying light: each crosses as
+      // its spectrum's average, its transmission and the state it leaves in
+      // (partly polarized where its wavelengths leave in different states),
+      // which gives the power right after the isolator and after one
+      // polarizer. A pulse train carries the difference as a gate,
+      // continuous light as each state's weight (as at a Fresnel face). The
+      // spectrum is not reshaped: where either state's transmission or the
+      // state it leaves in varies across the band, the light says its
+      // spectrum and polarization are not computed, and a pulse gets no
+      // duration.
+      if (twoStates) {
+        const acrossBand = st => {
+          const each = crossings.map(x => { const c = through(st, x.nm); return { w: x.w * (c.issue ? (forward ? 1 : 0) : c.transmission), stokes: c.issue ? st : c.stokes }; });
+          const total = crossings.reduce((a, x) => a + x.w, 0);
+          return { t: total > 0 ? each.reduce((a, x) => a + x.w, 0) / total : 0, stokes: averagedStokes(each) || st, differs: varies(st) || statesSpread(each) > STATES_DIFFER };
+        };
+        const hi = acrossBand(m.stokesHigh), lo = acrossBand(m.stokesLow);
+        const differs = hi.differs || lo.differs;
+        // Only the missing-data note applies here: the spread note above is
+        // for light in one state.
+        const own = [...notes.filter(n => n !== faradaySpreadNote), ...(differs ? [FARADAY_MODULATOR_NOTE] : [])];
+        const twoCaveat = ray.polarizationSpread
+          ? { ...chainCaveat(ray.approximation), polarizationSpread: true }
+          : { ...(own.length ? { approximation: own.join('. ') } : {}), polarizationSpread: differs };
+        const states = { ...m, stokesHigh: hi.stokes, stokesLow: lo.stokes };
+        const out = averagedStokes([{ w: pHi * hi.t, stokes: hi.stokes }, { w: pLo * lo.t, stokes: lo.stokes }]) || ray.stokes;
         if (ray.pulse) {
-          if (Math.max(tHi, tLo) <= MIN_RETAINED_POWER_INT) return [];
-          return [{ d, stokes: out, pol: legacyPolarization(out), polMod: states, retainWeak: true, tag: 'iso', ...caveat,
-            pulse: withGate(pulseFields.pulse || ray.pulse, gateOf(tHi, tLo)) }];
+          if (Math.max(hi.t, lo.t) <= MIN_RETAINED_POWER_INT) return [];
+          return [{ d, stokes: out, pol: legacyPolarization(out), polMod: states, retainWeak: true, tag: 'iso', ...twoCaveat,
+            pulse: withGate(differs || ray.polarizationSpread ? declined : ray.pulse, gateOf(hi.t, lo.t)) }];
         }
-        const mean = m.duty * wHi * tHi + (1 - m.duty) * wLo * tLo;
+        const mean = m.duty * wHi * hi.t + (1 - m.duty) * wLo * lo.t;
         if (!(mean > MIN_RETAINED_POWER_INT)) return [];
-        return [{ d, intensity: ray.intensity * mean, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat,
-          polMod: { ...states, weightHigh: wHi * tHi / mean, weightLow: wLo * tLo / mean } }];
+        return [{ d, intensity: ray.intensity * mean, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...twoCaveat,
+          polMod: { ...states, weightHigh: wHi * hi.t / mean, weightLow: wLo * lo.t / mean } }];
       }
+      const pulseFields = ray.pulse && (varies(input) || spread || ray.polarizationSpread) ? { pulse: declined } : {};
       // The power that passes, and its spectrum. The leak is weighed with the
       // transmission scaled to its largest value over the band, so a
       // 40 dB leak is not lost below the spectral integration's floor, and
       // a pulse whose spectrum it reshapes is marked so (the scaled curve
       // varies by as much as the leak does, relative to itself).
-      const T = nm => share(ray.stokes, nm);
+      const T = nm => share(input, nm);
       let fraction, spectral = {};
       if (!ray.spec) fraction = T(ray.wl);
       else {
@@ -6227,10 +6237,10 @@ function interact(ray, hit) {
         spectral = { wl: kept.wl, bw: kept.bw, spec: kept.spec };
       }
       if (!(fraction > MIN_RETAINED_POWER_INT)) return [];
-      const out = stokes || ray.stokes;
+      const out = stokes || input;
       return [{
         d, intensity: ray.intensity * fraction, stokes: out, pol: legacyPolarization(out), retainWeak: true, tag: 'iso', ...caveat, ...spectral, ...pulseFields,
-        ...(neutral ? { polMod: { ...ray.polMod, stokesHigh: out, stokesLow: out } } : {}),
+        ...(m ? { polMod: { ...m, stokesHigh: out, stokesLow: out } } : {}),
       }];
     }
     case 'faraday': {

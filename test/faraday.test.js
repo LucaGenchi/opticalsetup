@@ -468,12 +468,61 @@ test('P2 (review 6): a rotator checks each of a modulator\'s states for its spre
   assert.ok(reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
 });
 
-test('P2 (review 6): an isolator checks each of a modulator\'s states for reshaping', () => {
+test('P2 (review 6, 7): pulses that all meet one of a modulator\'s states cross an isolator as light in that state', () => {
+  // Every pulse leaves the synchronized flip at 90°: the isolator sees what
+  // a laser at 90° sends it, wavelength by wavelength, and declines the
+  // duration of the spectrum it reshapes.
+  const isolator = () => make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 });
   const [laser, eom] = syncedFlip();
   laser.params.pulseWidthFs = 50;
   const meter = make('powermeter', 400, 0);
-  traceScene([laser, eom, make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), meter]);
+  traceScene([laser, eom, isolator(), meter]);
   const reading = detectorReading(meter.id);
   assert.match(reading.pulse.fieldIssue || '', /not one scalar pulse/);
-  assert.ok(reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
+  assert.ok(!reading.approximations.some(a => /modulator's two states/.test(a)), JSON.stringify(reading.approximations));
+  const plain = make('powermeter', 400, 0);
+  const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pol: 90, beamMode: 'line', avgPowerW: 1, repRateMHz: 80, pulseWidthFs: 50 }), isolator(), plain];
+  traceScene(scene);
+  const expected = enhancedReading(plain, scene).detectedPowerW;
+  traceScene([laser, eom, isolator(), meter]);
+  close(enhancedReading(meter, [laser, eom, meter]).detectedPowerW, expected, 1e-15, 'as a laser at 90°');
+});
+
+// Andrea's review, round 7.
+test('P2 (review 7): a synchronized modulator before the isolator example changes nothing, even after an analyzer', async () => {
+  // A flip EOM at 80 MHz, phase 6.25 ns, sends every pulse in at 135°, as
+  // the example's laser does; an analyzer at 0° after the isolator stops the
+  // centre of the spectrum and passes its wings: 3.854 mW either way.
+  const read = async extra => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.push(...extra, make('polarizer', 150, 250, { pangle: 0 }, 180));
+    traceScene(scene.elements, scene.beams);
+    assert.ok(detectorReading('spectrometer'), 'the spectrometer has light');
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  const eom = make('eom', 400, 250, { modulate: true, driveMode: 'switching', switchMode: 'flip', a: 0, switchFreqMHz: 80, switchDuty: 0.5, switchPhaseNs: 6.25 }, 180);
+  close(await read([]), 3.854e-3, 0.001e-3, 'without the modulator');
+  close(await read([eom]), await read([]), 1e-12, 'with it');
+});
+
+test('P2 (review 7): two states that each leave in a state varying across the band are averaged, and say so', () => {
+  // A 50 fs pulse train at 80 MHz, an EOM at 40 MHz alternating linear and
+  // circular pulses, a forward isolator at 40 dB and an analyzer at 135°:
+  // each state's transmission varies by 0.35 % across the band, its output
+  // state more. Andrea: 34.10 and 22.05 nW for the states on their own,
+  // 28.02 nW from an independent integration.
+  const read = (retardanceLow, retardanceHigh) => {
+    const meter = make('powermeter', 400, 0);
+    const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 50, pol: 0, beamMode: 'line', avgPowerW: 1, repRateMHz: 80 }),
+      make('eom', 30, 0, { modulate: true, driveMode: 'switching', switchMode: 'custom', a: 45, retardanceLow, retardanceHigh, switchFreqMHz: 40, switchDuty: 0.5, switchPhaseNs: 0 }),
+      make('isolator', 150, 0, { isolatorModel: 'physical', designWl: 800, inputAxis: 0, extinctionDb: 40 }), make('polarizer', 300, 0, { pangle: 135 }), meter];
+    traceScene(scene);
+    return { watts: enhancedReading(meter, scene)?.detectedPowerW ?? 0, reading: detectorReading(meter.id) };
+  };
+  close(read(0, 0).watts, 34.10e-9, 0.01e-9, 'linear pulses');
+  close(read(90, 90).watts, 22.05e-9, 0.01e-9, 'circular pulses');
+  const both = read(0, 90);
+  close(both.watts, 28.05e-9, 0.05e-9, 'alternating');
+  assert.ok(both.reading.approximations.some(a => /Spectrum and polarization past an optical isolator not computed for a modulator's two states/.test(a)), JSON.stringify(both.reading.approximations));
+  assert.match(both.reading.pulse.fieldIssue || '', /not one scalar pulse/);
 });
