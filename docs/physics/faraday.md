@@ -96,7 +96,11 @@ rays), keyed by the arriving spectrum's content. A profile finer than the
 tracer's 65-point grid is integrated exactly on its own samples, and a filter,
 dichroic or notch that cuts it keeps those samples and the cut's exact edges as
 a window (nothing lies outside it; spectrumSupport, spectrumWeight and the
-integrals read it). Re-sampling the cut moved features a sample or two wide:
+integrals read it). The cut is marked fine, so it keeps this path however few
+samples it left (a 2.5 nm cut leaving 65 samples read 1.8 % off when it was
+re-sampled again); a caller asking for a finer grid than its samples (the
+isolator) divides each sample's step into equal parts, whose points lie on
+the same straight segments. Re-sampling the cut moved features a sample or two wide:
 the resonances of an etalon of FWHM 0.04 nm, about one sample wide, read
 21.6 % off through a 10 nm band-pass in front of a 1 nm one, and 21.8 %
 through a 101 nm one; keeping only the samples inside left a sliver at each

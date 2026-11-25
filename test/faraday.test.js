@@ -768,8 +768,11 @@ test('P2 (review 16): a band-pass holding a narrow one does not move an etalon\'
   const alone = await read(null);
   close(alone, 425.03e-9, 0.02e-9, 'the narrow filter alone');
   // Round 17: also 41 and 101 nm wide (101 nm read 517.54 nW before the cut
-  // kept the profile's own samples and its exact edges as a window).
-  for (const band of [10, 41, 101]) {
+  // kept the profile's own samples and its exact edges as a window). Round
+  // 18: 2.1, 2.5 and 2.6 nm, whose cut leaves 55, 65 and 67 samples (2.1 nm
+  // read 2.31 % off when a cut with no more samples than the grid was no
+  // longer taken as fine).
+  for (const band of [2.1, 2.5, 2.6, 10, 41, 101]) {
     close(await read(170, band), alone, 0.001 * alone, `the ${band} nm one before it`);
     close(await read(100, band), alone, 0.001 * alone, `the ${band} nm one after it`);
   }

@@ -74,6 +74,7 @@ export function scaleSpectrum(spec, factor) {
     return {
       kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w],
       ...(spec.window ? { window: [spec.window[0] * factor, spec.window[1] * factor] } : {}),
+      ...(spec.fine ? { fine: true } : {}),
       ...(spec.interference ? { interference: true } : {}),
     };
   }
@@ -237,33 +238,48 @@ function sampledIntegral(spec, a, b) {
   return sum;
 }
 
-// A profile finer than the grid cut between a and b: its own samples that
-// cover the cut, each times the transmission `tAt` (read at the nearer edge
-// for the one sample beyond each end), and the cut's exact edges as a window.
+// A profile with samples of its own to keep: finer than the grid, or cut
+// from one (marked `fine`), however few samples the cut left.
+const isFine = spec => spec?.kind === 'sampled' && Array.isArray(spec.w) && spec.w.length > 1
+  && (spec.w.length > GRID || spec.fine === true);
+
+// A fine profile cut between a and b: its own samples that cover the cut
+// (each divided into `refine` equal steps, whose points lie on the same
+// straight segments), each times the transmission `tAt` (read at the nearer
+// edge for the point beyond each end), and the cut's exact edges as a window.
 // Re-sampling it moved features a sample or two wide (an etalon's resonances
-// through a 101 nm band-pass read 21.8 % off), and keeping only the samples
-// inside left a sliver at each edge that a narrower filter after it missed
-// (two notches read 2.2 % off). Null for any other profile.
-function cutOwnSamples(spec, a, b, tAt = () => 1) {
-  if (spec?.kind !== 'sampled' || profileGrid(spec) <= GRID) return null;
+// through a 101 nm band-pass read 21.8 % off, through a 2.5 nm one after a
+// cut left 65 samples 1.8 %), and keeping only the samples inside left a
+// sliver at each edge that a narrower filter after it missed (two notches
+// read 2.2 % off). Null for any other profile.
+function cutOwnSamples(spec, a, b, tAt = () => 1, refine = 1) {
+  if (!isFine(spec)) return null;
   const n = spec.w.length, h = (spec.hi - spec.lo) / (n - 1);
   const from = Math.max(a, spec.lo, spec.window ? spec.window[0] : -Infinity);
   const to = Math.min(b, spec.hi, spec.window ? spec.window[1] : Infinity);
   if (!(h > 0) || !(to > from)) return null;
-  const i0 = Math.max(0, Math.floor((from - spec.lo) / h + 1e-9));
-  const i1 = Math.min(n - 1, Math.ceil((to - spec.lo) / h - 1e-9));
-  if (!(i1 > i0)) return null;
-  const at = i => spec.lo + i * h;
+  const k = Math.max(1, Math.round(refine)), step = h / k;
+  const j0 = Math.max(0, Math.floor((from - spec.lo) / step + 1e-9));
+  const j1 = Math.min((n - 1) * k, Math.ceil((to - spec.lo) / step - 1e-9));
+  if (!(j1 > j0)) return null;
+  const at = j => spec.lo + j * step;
+  // The profile's own straight segments, read past its window too: the
+  // point beyond each end of the cut carries the slope inside it.
+  const own = j => {
+    if (j % k === 0) return Math.max(0, spec.w[j / k]);
+    const i = Math.floor(j / k), f = (j - i * k) / k;
+    return Math.max(0, spec.w[i] + (spec.w[i + 1] - spec.w[i]) * f);
+  };
   const w = [];
-  for (let i = i0; i <= i1; i++) w.push(Math.max(0, spec.w[i]) * tAt(Math.min(to, Math.max(from, at(i)))));
-  const lo = at(i0), hi = at(i1);
-  return { kind: 'sampled', lo, hi, w, ...(from > lo || to < hi ? { window: [from, to] } : {}) };
+  for (let j = j0; j <= j1; j++) w.push(own(j) * tAt(Math.min(to, Math.max(from, at(j)))));
+  const lo = at(j0), hi = at(j1);
+  return { kind: 'sampled', lo, hi, w, fine: true, ...(from > lo || to < hi ? { window: [from, to] } : {}) };
 }
 
 function incidentOver(spec, a, b) {
   if (!(b > a)) return 0;
-  // A profile finer than the grid is integrated on its own samples, exactly.
-  if (spec?.kind === 'sampled' && profileGrid(spec) > GRID) return sampledIntegral(spec, a, b);
+  // A fine profile is integrated on its own samples, exactly.
+  if (isFine(spec)) return sampledIntegral(spec, a, b);
   const count = GRID;
   const step = (b - a) / (count - 1);
   return integrate(Array.from({ length: count }, (_, i) => Math.max(0, spectrumWeight(spec, a + step * i))), step);
@@ -325,9 +341,11 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null, 
   // handful of coarse points it happens to straddle.
   const from = lo + locateStep * Math.max(0, first - 1);
   const to = lo + locateStep * Math.min(locateGrid - 1, last + 1);
-  // A fine profile keeps its own samples and window (cutOwnSamples), unless
-  // the caller asked for a finer grid than its own.
-  const own = grid <= profileGrid(spec) ? cutOwnSamples(spec, from, to, wl => Math.max(0, Math.min(1, transmissionFn(wl)))) : null;
+  // A fine profile keeps its own samples and window (cutOwnSamples), each
+  // divided as many times as a finer grid the caller asks for needs.
+  const ownStep = isFine(spec) ? (spec.hi - spec.lo) / (spec.w.length - 1) : 0;
+  const refine = ownStep > 0 && minGrid > 0 ? Math.max(1, Math.min(64, Math.ceil(ownStep / ((hi - lo) / (grid - 1)) - 1e-9))) : 1;
+  const own = cutOwnSamples(spec, from, to, wl => Math.max(0, Math.min(1, transmissionFn(wl))), refine);
   if (own) {
     const total = incidentOver(spec, lo, hi);
     const fraction = total > 0 ? sampledIntegral(own, own.lo, own.hi) / total : 0;
