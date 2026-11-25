@@ -55,19 +55,22 @@ is, to an instrument that does not resolve the spectrum, partly polarized.
 That gives the power a polarizer passes after it exactly, as long as no other
 element that acts differently at each wavelength follows; the spectrum the
 polarizer leaves is not, and where the degree of polarization falls by more
-than 0.01 the light carries a caveat saying so. Light whose degree of
-polarization a Faraday element lowered by more than 10⁻⁶ is marked, caveat or
-not: a second Faraday rotator or physical isolator met anywhere after it would
-need each wavelength's own state, which the average has lost (two rotators
-with opposite fields undo each other wavelength by wavelength, which the
-average cannot show; at 30 fs that error is 6.8 mW of 1 W through a crossed
-analyzer, the size of the fall), so its result is declared not computed, with
-that caveat replacing the earlier Faraday ones. A polarizer or a polarizing
-beamsplitter does not clear the mark: it leaves one state, but passes each
-wavelength by its own share, which the average spectrum does not carry. Below
-10⁻⁶ the error a later element makes from the average is under 10⁻⁶ of the
-power; one isolator's forward pass changes a 15 fs pulse's states by 10⁻⁷ to
-10⁻⁶, so its return through the same isolator is still computed. Part of a band outside the
+than 0.01 the light carries a caveat saying so. Light whose wavelengths a
+Faraday element left in states that differ at all (the weighted mean distance
+of their normalized Stokes vectors from the mean one above 10⁻⁹, numerical
+noise) is marked, caveat or not. A second Faraday rotator or physical isolator
+met anywhere after it would need each wavelength's own state, which the
+average has lost: its result could be off by up to that distance times the
+power, and no smaller bound holds in general (a fall of 4×10⁻⁷ in the degree
+of polarization gave 53 µW of 1 W in Andrea's case, because the power after an
+analyzer depends on the states to first order and the degree of polarization
+only to second). So its result is declared not computed, with that caveat
+replacing the earlier Faraday ones. A polarizer or a polarizing beamsplitter
+does not clear the mark: it leaves one state, but passes each wavelength by
+its own share, which the average spectrum does not carry. This includes a
+broadband beam that crosses a physical isolator forward and comes back
+through it; the isolator example therefore sends its pulse in backwards, in
+the state a reflection has. Part of a band outside the
 material's data keeps the state it arrived with, and the caveat names that
 part. A switching modulator's two states are turned by the rotation at the
 centre wavelength.
@@ -95,13 +98,16 @@ leaks back at the wings of its spectrum and its returning spectrum has a hole
 at λ_d. The transmission is weighed scaled to its largest value over the band,
 so a leak of 10⁻⁴ or less is not lost below the spectral integration's floor,
 and a pulse whose spectrum it reshapes takes the duration of what survives.
-That duration is a scalar transform of the surviving power spectrum; where the
-amplitude that passes changes sign across the band (going back it follows
-sin δ, which changes sign wherever δ passes a multiple of 180°, at λ_d
-among others; going forward cos δ, wherever δ passes 90° plus a multiple of
-180°), or its state varies across the band, the light is not one scalar
-pulse, and the duration is declined ("not one scalar pulse"), also on the
-path a switching modulator's light takes.
+A pulse whose spectrum the isolator reshapes by more than 1 % (its
+transmission, relative to its largest value, varies by that much across the
+band), or whose state arrives or leaves varying across it, does not get a
+duration: the field that passes can change sign or polarization from one
+wavelength to another (the leak going back follows sin δ, which changes sign at
+λ_d; light entering across the input polarizer follows it going forward too),
+and a scalar transform of its power spectrum would be wrong (195 fs against
+91.7 fs in one case). The duration is declined ("not one scalar pulse"), also
+on the path a switching modulator's light takes. A pulse the isolator barely
+changes (a 100 fs pulse going forward near λ_d) keeps its duration.
 The light leaves in the spectrum's average state, as above: going forward,
 along the output polarizer to the polarizers' extinction; coming back, the
 leak at the design wavelength (across the input polarizer) and at the wings
@@ -172,8 +178,9 @@ quote.
 ## Examples
 
 - *Optical isolator — isolation across a pulse spectrum* (Ultrashort Pulses):
-  a 15 fs pulse at 800 nm leaks back through an isolator designed for 800 nm
-  at the wings of its spectrum.
+  a 15 fs pulse at 800 nm, sent into an isolator designed for 800 nm from its
+  output side in the state a reflection has, gets through at the wings of its
+  spectrum.
 - *Faraday mirror — a double pass that undoes an unknown retarder* (Beam
   Routing): a quarter-wave plate at any angle, a 45° rotator and a mirror send
   every return to the beamsplitter's return port. The fiber element passes

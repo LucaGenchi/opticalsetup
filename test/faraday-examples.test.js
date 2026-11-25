@@ -38,7 +38,7 @@ test('optical isolator example: the figures and the returned spectrum its page q
   assert.match(text, /800 nm: rotation \+45\.0°, forward transmission 100\.0 %, isolation 40\.0 dB; at 768\.6 nm and 831\.4 nm, the edges of its band, 22\.0 dB and 23\.2 dB/);
   // About 63 nm wide (768.6 to 831.4 nm at half maximum).
   close(831.4 - 768.6, 63, 0.5, 'bandwidth');
-  close(shipped.watts('spectrometer'), 0.352 * mW, 0.0005 * mW, 'returned power');
+  close(shipped.watts('spectrometer'), 3.95 * mW, 0.005 * mW, 'power that gets through');
   // Two humps, at 761 and 836 nm, and a hole at 800 nm.
   const spectrum = detectorReading('spectrometer').spectrum;
   const peaks = spectrum.filter((p, i) => i > 0 && i < spectrum.length - 1 && p.power > spectrum[i - 1].power && p.power > spectrum[i + 1].power);
@@ -51,23 +51,27 @@ test('optical isolator example: each change in its table', async () => {
   const ideal = await run(ISOLATOR, get => { get('isolator').params.isolatorModel = 'ideal'; });
   assert.equal(ideal.watts('spectrometer'), 0);
   const moved = await run(ISOLATOR, get => { get('isolator').params.designWl = 780; });
-  close(moved.watts('spectrometer'), 0.473 * mW, 0.0005 * mW, 'design at 780 nm');
+  close(moved.watts('spectrometer'), 5.32 * mW, 0.005 * mW, 'design at 780 nm');
   const spectrum = detectorReading('spectrometer').spectrum;
   const inner = spectrum.filter(p => p.wavelength > 765 && p.wavelength < 800);
   const hole = inner.reduce((a, b) => (b.power < a.power ? b : a));
   close(hole.wavelength, 780, 4, 'the hole moves to 780 nm');
-  close((await run(ISOLATOR, get => { get('isolator').params.extinctionDb = 30; })).watts('spectrometer'), 0.432 * mW, 0.0005 * mW, '30 dB');
-  close((await run(ISOLATOR, get => { get('laser').params.pulseWidthFs = 100; })).watts('spectrometer'), 16.6 * uW, 0.05 * uW, '100 fs');
+  // What gets through is said to vary in state across its spectrum, and its
+  // duration is not computed.
+  assert.ok(detectorReading('spectrometer').approximations.some(a => /varies across its spectrum/.test(a)));
+  assert.match(detectorReading('spectrometer').pulse.fieldIssue, /not one scalar pulse/);
+  close((await run(ISOLATOR, get => { get('isolator').params.extinctionDb = 30; })).watts('spectrometer'), 4.85 * mW, 0.005 * mW, '30 dB');
+  close((await run(ISOLATOR, get => { get('laser').params.pulseWidthFs = 100; })).watts('spectrometer'), 185 * uW, 0.5 * uW, '100 fs');
   // About 9 nm wide at 100 fs, under 1 nm at 1000 fs (transform-limited
   // Gaussians at 800 nm).
   close(transformLimitedBandwidthNm(100, 800, 'gauss'), 9.4, 0.05, '100 fs bandwidth');
   assert.ok(transformLimitedBandwidthNm(1000, 800, 'gauss') < 1);
   const narrow = await run(ISOLATOR, get => { get('laser').params.pulseWidthFs = 1000; });
-  close(narrow.watts('spectrometer'), 9.08 * uW, 0.005 * uW, '1000 fs');
-  // 1 W × 0.9 × 0.1 × 1e-4 is the 40 dB floor, and the 15 fs pulse returns 39
-  // times more.
-  close(narrow.watts('spectrometer'), 9 * uW, 0.1 * uW);
-  close(0.352 * mW / (9.08 * uW), 39, 0.5);
+  close(narrow.watts('spectrometer'), 101 * uW, 0.5 * uW, '1000 fs');
+  // 1 W × 1e-4 is the 40 dB floor, and the 15 fs pulse gets through 39 times
+  // more.
+  close(narrow.watts('spectrometer'), 100 * uW, 1.5 * uW);
+  close(3.95 * mW / (101 * uW), 39, 0.5);
 });
 
 test('Faraday mirror example: every return reaches the power meter, whatever the plate', async () => {

@@ -25,51 +25,15 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "A 15 fs pulse at 800 nm is about 63 nm wide. The isolator turns light by 45° at 800 nm only:\nits wings come back. The spectrometer shows what returns past the pick-off, with a hole at 800 nm.",
+    "text": "A 15 fs pulse at 800 nm, about 63 nm wide, enters the isolator from its output side, polarized as a reflection\nof the forward beam would be. The isolator turns light by 45° at 800 nm only: what gets through is its wings.",
     "fontSize": 14,
     "fill": "#333333"
    }
   },
   {
-   "id": "laser",
-   "type": "pulsedlaser",
-   "x": -25,
-   "y": 250,
-   "rot": 0,
-   "label": "Ti:sapphire, 800 nm, 15 fs, 1 W",
-   "showLabel": true,
-   "params": {
-    "wavelength": 800,
-    "avgPowerW": 1,
-    "beamMode": "beam",
-    "beamWidth": 3,
-    "repRateMHz": 80,
-    "transformLimited": true,
-    "pulseWidthFs": 15,
-    "pulseShape": "gauss",
-    "pol": 0,
-    "autoColor": true,
-    "color": "#e02020",
-    "temporalMode": "pulsed"
-   }
-  },
-  {
-   "id": "pickoff",
-   "type": "bs",
-   "x": 125,
-   "y": 250,
-   "rot": 0,
-   "label": "90:10 pick-off",
-   "showLabel": true,
-   "params": {
-    "ratio": 0.9,
-    "size": 25.4
-   }
-  },
-  {
    "id": "isolator",
    "type": "isolator",
-   "x": 275,
+   "x": 250,
    "y": 250,
    "rot": 0,
    "label": "Isolator, TGG, designed for 800 nm",
@@ -84,38 +48,35 @@
    }
   },
   {
-   "id": "reflector",
-   "type": "mirror",
-   "x": 450,
+   "id": "laser",
+   "type": "pulsedlaser",
+   "x": 520,
    "y": 250,
-   "rot": 0,
-   "label": "A surface that reflects back",
+   "rot": 180,
+   "label": "Ti:sapphire, 800 nm, 15 fs, 1 W, sent back",
    "showLabel": true,
    "params": {
-    "length": 40,
-    "refl": 100,
-    "showTransmitted": false
-   }
-  },
-  {
-   "id": "dump",
-   "type": "beamdump",
-   "x": 125,
-   "y": 150,
-   "rot": 270,
-   "label": "Forward pick-off",
-   "showLabel": true,
-   "params": {
-    "aperture": 22
+    "wavelength": 800,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "transformLimited": true,
+    "pulseWidthFs": 15,
+    "pulseShape": "gauss",
+    "pol": 135,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "pulsed"
    }
   },
   {
    "id": "spectrometer",
    "type": "spectrometer",
-   "x": 125,
-   "y": 375,
-   "rot": 90,
-   "label": "Light sent back",
+   "x": 60,
+   "y": 250,
+   "rot": 180,
+   "label": "What gets through",
    "showLabel": true,
    "params": {
     "aperture": 30,
@@ -125,12 +86,12 @@
     "intensityScale": "density",
     "labelPeaks": false
    },
-   "labelPos": "l"
+   "labelPos": "b"
   },
   {
    "id": "screen",
    "type": "display",
-   "x": 330,
+   "x": 150,
    "y": 400,
    "rot": 0,
    "label": "",

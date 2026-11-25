@@ -1819,43 +1819,52 @@ export const exampleEntries = [
       wide, does.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>A Ti:sapphire laser sends 1&nbsp;W of 15&nbsp;fs pulses at 800&nbsp;nm,
-      a spectrum about 63&nbsp;nm wide, through a 90:10 pick-off and an
-      <a href="../../wiki/isolator/">optical isolator</a> set to its physical
-      model: TGG, designed for 800&nbsp;nm, with polarizers of 40&nbsp;dB
-      extinction. A mirror sends the beam back. What the isolator lets through
-      on the way back is picked off onto a
-      <a href="../../wiki/spectrometer/">spectrometer</a>.</p>
+      <p>A Ti:sapphire laser sends 1&nbsp;W of 15&nbsp;fs pulses at 800&nbsp;nm, a
+      spectrum about 63&nbsp;nm wide, into an
+      <a href="../../wiki/isolator/">optical isolator</a> from its output side,
+      polarized along its output polarizer: the state in which a reflection of
+      the forward beam comes back. The isolator is set to its physical model:
+      TGG, designed for 800&nbsp;nm, with polarizers of 40&nbsp;dB extinction. A
+      <a href="../../wiki/spectrometer/">spectrometer</a> behind it shows what
+      gets through.</p>
       <p>The isolator's inspector gives its figures: a field-length product of
       0.0106&nbsp;T·m makes the turn 45° at 800&nbsp;nm, where the isolation is the
       polarizers' 40.0&nbsp;dB; at 768.6 and 831.4&nbsp;nm, half the pulse's
       bandwidth either side, it is only 22.0 and 23.2&nbsp;dB. The spectrometer
-      reads 0.352&nbsp;mW, and its spectrum is two humps, at 761 and 836&nbsp;nm,
-      with a hole at 800&nbsp;nm: the light that comes back is the light whose
+      reads 3.95&nbsp;mW, and its spectrum is two humps, at 761 and 836&nbsp;nm,
+      with a hole at 800&nbsp;nm: what gets through is the light whose
       wavelength the isolator was not built for.</p>
       <p>Things to try. Each starts from the setup as it opens:</p>
       <div class="table-wrap"><table>
         <thead><tr><th>One change</th><th>Spectrometer</th></tr></thead>
         <tbody>
           <tr><td>Isolator model to the ideal one-way gate</td><td>nothing</td></tr>
-          <tr><td>Design wavelength to 780&nbsp;nm: the hole moves there</td><td>0.473&nbsp;mW</td></tr>
-          <tr><td>Polarizer extinction to 30&nbsp;dB</td><td>0.432&nbsp;mW</td></tr>
-          <tr><td>Laser pulse to 100&nbsp;fs, about 9&nbsp;nm wide</td><td>16.6&nbsp;µW</td></tr>
-          <tr><td>Laser pulse to 1000&nbsp;fs, under 1&nbsp;nm wide</td><td>9.08&nbsp;µW</td></tr>
+          <tr><td>Design wavelength to 780&nbsp;nm: the hole moves there</td><td>5.32&nbsp;mW</td></tr>
+          <tr><td>Polarizer extinction to 30&nbsp;dB</td><td>4.85&nbsp;mW</td></tr>
+          <tr><td>Laser pulse to 100&nbsp;fs, about 9&nbsp;nm wide</td><td>185&nbsp;µW</td></tr>
+          <tr><td>Laser pulse to 1000&nbsp;fs, under 1&nbsp;nm wide</td><td>101&nbsp;µW</td></tr>
         </tbody>
       </table></div>
-      <p>The last line is the isolator at its best: 1&nbsp;W × 0.9 × 0.1 × 10⁻⁴,
-      the 40&nbsp;dB of its polarizers. The 15&nbsp;fs pulse returns 39 times
+      <p>The last line is the isolator at its best: 1&nbsp;W × 10⁻⁴, the
+      40&nbsp;dB of its polarizers. The 15&nbsp;fs pulse gets through 39 times
       more.</p>`,
-    limitations: `<p>The isolator's rotator uses the Verdet constant of one TGG
-      sample at room temperature, measured between 500 and 1100&nbsp;nm; other
-      samples read up to about 19&nbsp;% higher, which moves the figures away from
-      the design wavelength. Each wavelength of the spectrum is weighed on its own,
-      but the polarizers are ideal apart from their extinction, which is the same at
-      every wavelength, and absorption, thermal effects at high power, the rotator's
-      dispersion of the pulse and the pick-off's own polarization dependence are not
-      modelled. The light that the isolator lets back and the pick-off does not take
-      ends at the laser: there is no feedback into it.</p>`,
+    limitations: `<p>The pulse is sent into the isolator backwards rather than
+      reflected after a forward pass. A beam that has crossed the isolator
+      forward leaves in a state that differs very slightly from one wavelength to
+      another; the app carries a beam's polarization as one state, the average
+      over its spectrum, and past a second pass through a Faraday element it
+      says the result is not computed. Light arriving along the output
+      polarizer is what a reflection of the forward beam is, so the leak is the
+      same, computed exactly. The light that gets through also leaves in a state
+      that varies across its spectrum (along the input polarizer at the wings,
+      across it at the centre, where only the polarizers' leak passes), which the
+      spectrometer's card says; its duration is not computed.</p>
+      <p>The isolator's rotator uses the Verdet constant of one TGG sample at room
+      temperature, measured between 500 and 1100&nbsp;nm; other samples read up to
+      about 19&nbsp;% higher, which moves the figures away from the design
+      wavelength. The polarizers are ideal apart from their extinction, which is
+      the same at every wavelength, and absorption, thermal effects at high power
+      and the rotator's dispersion of the pulse are not modelled.</p>`,
     citations: [
       { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
       { label: 'D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Applied Sciences 9, 3160 (2019) — open access (CC BY 4.0)', url: 'https://doi.org/10.3390/app9153160' },

@@ -4595,13 +4595,26 @@ const dop = stokes => (stokes ? Math.hypot(stokes.s1, stokes.s2, stokes.s3) : 0)
 // A state's degree of polarization may fall by this much across a band
 // before the readings past it say the state varies with wavelength.
 const FARADAY_DOP_DROP = 0.01;
-// Beyond this fall, each wavelength's own state is taken as no longer
-// carried: a later element that acts differently at each wavelength, given
-// the average, can be wrong by about the fall times the power (two rotators
-// that undo each other leave 6.8 mW of 1 W through a crossed analyzer at
-// 30 fs, where the fall is 6.8e-3). Below it the error is under 1e-6 of the
-// power: one isolator's forward pass leaves 1e-7 to 1e-6 on a 15 fs pulse.
-const FARADAY_STATES_DIFFER = 1e-6;
+// Whether a Faraday element left the wavelengths of a light in states that
+// differ at all: the weighted mean distance of their normalized Stokes
+// vectors from the mean one. Any difference is information the average
+// does not carry: a later element that acts differently at each wavelength
+// can be wrong by up to this distance times the power, and no smaller bound
+// holds in general (Andrea's 53 µW of 1 W from a fall in the degree of
+// polarization of 4e-7), so any is marked.
+const STATES_DIFFER = 1e-9;
+function statesSpread(parts) {
+  const mean = averagedStokes(parts);
+  if (!mean) return 0;
+  let total = 0, sum = 0;
+  for (const { w, stokes } of parts) {
+    if (!(w > 0) || !stokes) continue;
+    const m = dop(stokes) || 1;
+    sum += w * Math.hypot(stokes.s1 / m - mean.s1, stokes.s2 / m - mean.s2, stokes.s3 / m - mean.s3);
+    total += w;
+  }
+  return total > 0 ? sum / total : 0;
+}
 // The caveat a second Faraday element leaves: it replaces the caveats an
 // earlier Faraday element left, and joins any other.
 const chainCaveat = previous => {
@@ -4630,7 +4643,7 @@ const faradaySpreadNote = 'The polarization of this light varies across its spec
 const faradayChainNote = 'Polarization and power not computed past a second Faraday element: an earlier one turned this light\'s wavelengths differently, and its state and spectrum since are averages; this element acts differently at each wavelength, so what leaves it, and what a polarizer passes after it, are not computed';
 // A leak whose field changes sign across the band, or whose state varies
 // across it, is not one scalar pulse: its duration is not computed.
-const FARADAY_PULSE_UNAVAILABLE = 'Polarization or field sign varies across the spectrum after an optical isolator — not one scalar pulse; duration unavailable';
+const FARADAY_PULSE_UNAVAILABLE = 'Spectrum reshaped by an optical isolator, whose field can change sign or polarization across it — not one scalar pulse; duration unavailable';
 
 function crossingAxisDeg(surface, d, axisDeg) {
   const forward = rotPt(1, 0, surface.el?.rot || 0);
@@ -6134,23 +6147,22 @@ function interact(ray, hit) {
       const stokes = averagedStokes(crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? ray.stokes : x.c.stokes })));
       const notes = [];
       if (missing.length) notes.push(faradayIsolatorPartNote(nmRanges(crossings, x => x.c.issue), missing[0].c.issue));
+      const leaving = crossings.map(x => ({ w: x.w * (x.c.issue ? (forward ? 1 : 0) : x.c.transmission), stokes: x.c.issue ? ray.stokes : x.c.stokes }));
       const drop = crossings.length > 1 && stokes ? Math.min(...crossings.filter(x => !x.c.issue && x.c.stokes).map(x => dop(x.c.stokes))) - dop(stokes) : 0;
       const spread = drop > FARADAY_DOP_DROP;
       if (spread && !ray.polarizationSpread) notes.push(faradaySpreadNote);
       const caveat = ray.polarizationSpread
         ? { ...chainCaveat(ray.approximation), polarizationSpread: true }
-        : { ...(notes.length ? { approximation: notes.join('. ') } : {}), polarizationSpread: drop > FARADAY_STATES_DIFFER };
-      // A pulse whose leak changes sign across its band (the rotation error
-      // passes through zero going back, or through 90° going forward), or
-      // whose state varies across it, is not one scalar pulse.
-      // The amplitude that passes follows cos δ going forward and sin δ going
-      // back: its sign across the band, at every zero (δ = 90°, 180°, …).
-      const amplitudes = crossings.filter(x => !x.c.issue && x.w > 1e-3 * Math.max(...crossings.map(y => y.w)))
-        .map(x => { const delta = (x.c.rotationDeg - 45) * Math.PI / 180; return forward ? Math.cos(delta) : Math.sin(delta); });
-      const flips = amplitudes.some(a => a > 0) && amplitudes.some(a => a < 0);
-      const pulseFields = ray.pulse && (flips || spread || ray.polarizationSpread)
+        : { ...(notes.length ? { approximation: notes.join('. ') } : {}), polarizationSpread: statesSpread(leaving) > STATES_DIFFER };
+      // A pulse whose spectrum the isolator reshapes by more than 1 % (its
+      // transmission varies by that much across the band, relative to its
+      // largest value), or whose state arrives or leaves varying across the
+      // band, is not computed as one scalar pulse: the field that passes
+      // can change sign or polarization from one wavelength to another.
+      const weighed = crossings.filter(x => x.w > 1e-3 * Math.max(...crossings.map(y => y.w))).map(x => share(ray.stokes, x.nm));
+      const reshapes = weighed.length > 1 && Math.max(...weighed) - Math.min(...weighed) > 0.01 * Math.max(...weighed);
+      const pulseFields = ray.pulse && (reshapes || spread || ray.polarizationSpread)
         ? { pulse: { ...ray.pulse, field: null, fieldIssue: FARADAY_PULSE_UNAVAILABLE, spectrumReshaped: true } } : {};
-      const centre = through(ray.stokes, ray.wl);
       // Light an EOM switches between two states: each state crosses with
       // its own transmission and leaves in its own state, at the centre
       // wavelength (as at a Fresnel face): a pulse train carries the
@@ -6219,8 +6231,9 @@ function interact(ray, hit) {
       if (missing.length) notes.push(faradayPartNote(nmRanges(samples, x => x.turn.issue), missing[0].turn.issue));
       const drop = stokes ? dop(ray.stokes) - dop(stokes) : 0;
       if (drop > FARADAY_DOP_DROP && !ray.polarizationSpread) notes.push(faradaySpreadNote);
+      const turned = ray.stokes ? samples.map(x => ({ w: x.w, stokes: x.turn.issue ? ray.stokes : rotateStokes(ray.stokes, x.turn.deg) })) : [];
       return [{
-        d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || drop > FARADAY_STATES_DIFFER),
+        d, stokes, pol: legacyPolarization(stokes), tag: 'far', polarizationSpread: Boolean(ray.polarizationSpread || statesSpread(turned) > STATES_DIFFER),
         ...(ray.polarizationSpread ? chainCaveat(ray.approximation) : notes.length ? { approximation: notes.join('. ') } : {}),
         // An EOM's two states turn by the rotation at the centre wavelength.
         ...(ray.polMod && !centre.issue ? { polMod: { ...ray.polMod, stokesHigh: rotateStokes(ray.polMod.stokesHigh, centre.deg), stokesLow: rotateStokes(ray.polMod.stokesLow, centre.deg) } } : {}),

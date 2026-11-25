@@ -30,6 +30,7 @@ const make = (type, x, y, params = {}, rot = 0) => {
 const close = (a, b, tol, label = '') => assert.ok(Math.abs(a - b) <= tol, `${label} ${a} vs ${b}`);
 const tgg = MATERIAL_RECORDS.get('tgg');
 const linear = deg => ({ s1: Math.cos(2 * deg * Math.PI / 180), s2: Math.sin(2 * deg * Math.PI / 180), s3: 0 });
+const dopOf = s => (s ? Math.hypot(s.s1, s.s2, s.s3) : 0);
 const readout = (el, key) => registry[el.type].params.find(p => p.key === key).readout(el.params, el);
 
 test('P2: the Verdet constant comes from the catalogue, or a custom constant, and is refused outside its data', () => {
@@ -253,16 +254,46 @@ test('P2 (review): a 40 dB leak is kept and read, down to 80 dB', () => {
 });
 
 test('P2 (review): a broadband leak carries its state as the spectrum\'s average, so a polarizer reads the right power', async () => {
-  // The example with a polarizer at 0° before the spectrometer: the leak at
-  // the wings passes, the leak at the centre (across the input polarizer)
-  // does not. A Jones double pass integrated over the source's spectrum
-  // gives 343 µW (Andrea); the state of the centre alone gave 20 nW.
+  // The example (a 15 fs pulse sent into the isolator from its output side)
+  // with a polarizer at 0° after it: the leak at the wings, along the input
+  // polarizer, passes; the leak at the centre, across it, does not. The
+  // average state gives what a per-wavelength sum gives (the state of the
+  // centre alone gave a few nW in the first version).
   const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
-  scene.elements.push(make('polarizer', 125, 320, { pangle: 0 }, 90));
+  const meter = make('powermeter', 60, 250, {}, 180);
+  scene.elements.splice(scene.elements.findIndex(e => e.id === 'spectrometer'), 1, make('polarizer', 150, 250, { pangle: 0 }), meter);
   traceScene(scene.elements, scene.beams);
-  const spectrometer = scene.elements.find(e => e.id === 'spectrometer');
-  close(enhancedReading(spectrometer, scene.elements).detectedPowerW, 343e-6, 2e-6);
-  assert.ok(detectorReading('spectrometer').approximations.some(a => /varies across its spectrum/.test(a)));
+  const iso = scene.elements.find(e => e.id === 'isolator'), laser = scene.elements.find(e => e.id === 'laser');
+  // The sum over the source's spectrum, wavelength by wavelength, of what
+  // crosses the isolator back and then the polarizer (axis 0° in the light's
+  // own frame, going back).
+  const { spectrumSamples, gaussianSpectrum, transformLimitedBandwidthNm } = await import('../sketch/js/spectrum.js');
+  const samples = spectrumSamples(gaussianSpectrum(800, transformLimitedBandwidthNm(laser.params.pulseWidthFs, 800, 'gauss')), 400);
+  let expected = 0;
+  for (const { wl, weight } of samples) {
+    const c = isolatorCrossing(iso.params, wl, linear(135), false);
+    const angle = stokesAngleDeg(c.stokes);
+    expected += weight * c.transmission * (Math.cos((angle - 0) * Math.PI / 180) ** 2 * dopOf(c.stokes) + (1 - dopOf(c.stokes)) / 2);
+  }
+  close(enhancedReading(meter, scene.elements).detectedPowerW, expected * laser.params.avgPowerW, expected * 0.01);
+});
+
+test('P2 (review 4): a beam that crossed an isolator forward and comes back through it is declared, not computed', () => {
+  // Forward through the isolator its wavelengths leave in states that differ
+  // very slightly; the app carries one average state, and the return pass
+  // needs each one: it says so instead of quoting a figure that could be off
+  // by as much as that spread times the power.
+  const meter = make('powermeter', 60, 140, {}, 90);
+  const scene = [make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 15, pol: 0, beamMode: 'line', avgPowerW: 1 }), make('bs', 60, 0, { ratio: 0.9 }),
+    make('isolator', 200, 0, { isolatorModel: 'physical', designWl: 800, extinctionDb: 40 }), make('mirror', 350, 0), meter];
+  traceScene(scene);
+  assert.ok(detectorReading(meter.id).approximations.some(a => /not computed past a second Faraday element/.test(a)));
+  // Andrea's round-4 cases: a rotator whose spread lowers the degree of
+  // polarization by only 4e-7, then a second rotator and an analyzer at 150°.
+  const second = make('powermeter', 400, 0);
+  traceScene([make('pulsedlaser', -50, 0, { wavelength: 800, pulseWidthFs: 100, pol: 0, beamMode: 'line', avgPowerW: 1 }),
+    make('faraday', 100, 0, { lengthMm: 10, fieldT: 0.05 }), make('faraday', 200, 0, { lengthMm: 10, fieldT: 7 }), make('polarizer', 300, 0, { pangle: 150 }), second]);
+  assert.ok(detectorReading(second.id).approximations.some(a => /not computed past a second Faraday element/.test(a)));
 });
 
 test('P2 (review): a switching modulator keeps its two states through the isolator', () => {

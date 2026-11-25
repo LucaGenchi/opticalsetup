@@ -2628,7 +2628,12 @@ export const wikiEntries = [
         <p>Put one right after a laser, aim a mirror or a partially reflecting surface
         downstream, and the return beam that would otherwise travel back into the source is
         blocked, or, with the physical model, attenuated by what the isolator really
-        achieves at that wavelength.</p>`,
+        achieves at that wavelength. For a broadband beam the forward pass leaves its
+        wavelengths in states that differ very slightly, which the app carries as one
+        average, and the return pass through the same isolator then says its result is not
+        computed; to see the leak across a spectrum, send the light in from the output side,
+        polarized along the output polarizer, as a reflection of the forward beam is (the
+        example <em>Optical isolator: isolation across a pulse spectrum</em> does this).</p>`,
       limitations: `<p>The ideal gate has no wavelength, temperature or field dependence,
         perfect isolation and no forward loss, and leaves the polarization as it arrived;
         place a <a href="../polarizer/">polarizer</a> after it if your setup needs the
