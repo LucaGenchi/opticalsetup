@@ -93,10 +93,10 @@ and one matrix; within one trace its transmission at each wavelength, and
 the spectrum an arriving spectrum leaves with, are kept and shared by the rays
 that cross it the same way in the same state (a sized beam's 25 parallel
 rays), keyed by the arriving spectrum's content. A profile finer than the
-tracer's 65-point grid is integrated exactly on its own samples, and a filter,
-dichroic or notch that cuts it keeps those samples and the cut's exact edges as
-a window (nothing lies outside it; spectrumSupport, spectrumWeight and the
-integrals read it). The cut is marked fine, so it keeps this path however few
+tracer's 65-point grid is integrated on its own samples (exactly for the
+straight lines that join them), and a filter, dichroic or notch that cuts it
+keeps those samples and the cut's exact edges as a window (nothing lies
+outside it; spectrumSupport, spectrumWeight and the integrals read it). The cut is marked fine, so it keeps this path however few
 samples it left (a 2.5 nm cut leaving 65 samples read 1.8 % off when it was
 re-sampled again); a smooth transmission applied to it is read as finely as on any
 other profile across the light that survives, each sample's step divided into
@@ -247,7 +247,10 @@ along the input polarizer.
   A fine profile (finer than the tracer's 65-point grid, or cut from one,
   such as the isolator's leak or an etalon of FWHM 0.04 nm behind it) keeps
   its own samples, with exact edges, through filters, dichroics, notches,
-  etalons and AOTF channels, and is integrated exactly there. Dispersive
+  etalons and AOTF channels. Its integral is exact for the straight lines
+  that join its samples; a smooth transmission (an etalon, an AOTF channel)
+  is multiplied in at those samples and at points that divide each step
+  between them, so it is read on that finer grid, not exactly. Dispersive
   glass, which cuts a band into slices weighed on a grid of its own, the
   AOTF's depleted output, and other elements that re-sample a spectrum
   (gratings, prisms) still re-sample it, so a reading behind them that
