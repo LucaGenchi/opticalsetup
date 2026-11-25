@@ -379,7 +379,7 @@ function spectrumKey(spec) {
   if (!Array.isArray(spec.w)) return `${spec.kind}|${spec.center}|${spec.fwhm}|${spec.lo}|${spec.hi}|${spec.lines ? JSON.stringify(spec.lines) : ''}`;
   let a = 0, b = 0;
   for (let i = 0; i < spec.w.length; i++) { a += spec.w[i] * (i + 1); b = b * 0.999 + spec.w[i]; }
-  return `${spec.kind}|${spec.lo}|${spec.hi}|${spec.w.length}|${a}|${b}`;
+  return `${spec.kind}|${spec.lo}|${spec.hi}|${spec.window || ''}|${spec.w.length}|${a}|${b}`;
 }
 
 export function specimenFocusReading(elementId) {

@@ -757,16 +757,39 @@ test('P2 (review 16): a band-pass holding a narrow one does not move an etalon\'
   // 2 nm) after the isolator, and a filter from 820.02 to 821.02 nm: a
   // 815–825 nm band-pass between them read 516.82 nW against 425.03 nW
   // (Andrea), the wide cut having re-sampled resonances a sample wide.
-  const read = async wideAt => {
+  const read = async (wideAt, band = 10) => {
     const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
     scene.elements.push(make('etalon', 210, 250, { centerWavelength: 820, bandwidth: 0.04, fsr: 2 }, 180));
     scene.elements.push(make('filter', 130, 250, { ftype: 'bandpass', center: 820.52, band: 1, trans: 1 }, 180));
-    if (wideAt) scene.elements.push(make('filter', wideAt, 250, { ftype: 'bandpass', center: 820, band: 10, trans: 1 }, 180));
+    if (wideAt) scene.elements.push(make('filter', wideAt, 250, { ftype: 'bandpass', center: 820, band, trans: 1 }, 180));
     traceScene(scene.elements, scene.beams);
     return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
   };
   const alone = await read(null);
   close(alone, 425.03e-9, 0.02e-9, 'the narrow filter alone');
-  close(await read(170), alone, 0.001 * alone, 'the wide one before it');
-  close(await read(100), alone, 0.001 * alone, 'the wide one after it');
+  // Round 17: also 41 and 101 nm wide (101 nm read 517.54 nW before the cut
+  // kept the profile's own samples and its exact edges as a window).
+  for (const band of [10, 41, 101]) {
+    close(await read(170, band), alone, 0.001 * alone, `the ${band} nm one before it`);
+    close(await read(100, band), alone, 0.001 * alone, `the ${band} nm one after it`);
+  }
+});
+
+test('P2 (review 17): a cut of a fine profile keeps its samples and its exact edges', async () => {
+  const { spectrumSlice, spectrumSupport, spectrumWeight, applyTransmission: through } = await import('../sketch/js/spectrum.js');
+  // A 257-point ramp from 700 to 900 nm, cut from 750.3 to 820.7 nm (edges
+  // between samples): the piece ends exactly there, holds the ramp's own
+  // samples inside, and nothing outside.
+  const spec = { kind: 'sampled', lo: 700, hi: 900, w: Array.from({ length: 257 }, (_, i) => i / 256) };
+  const ramp = wl => (wl - 700) / 200;
+  const piece = spectrumSlice(spec, 750.3, 820.7);
+  assert.deepEqual(spectrumSupport(piece.spec), [750.3, 820.7]);
+  assert.equal(spectrumWeight(piece.spec, 750.29), 0);
+  assert.equal(spectrumWeight(piece.spec, 820.71), 0);
+  close(spectrumWeight(piece.spec, 800) / spectrumWeight(piece.spec, 820.7), ramp(800) / ramp(820.7), 1e-12, 'the ramp kept');
+  close(piece.fraction, (ramp(820.7) ** 2 - ramp(750.3) ** 2) / (ramp(900) ** 2 - ramp(700) ** 2), 1e-12, 'its power');
+  // A band-pass over the band beside it finds nothing; one over the piece
+  // passes all of it.
+  assert.equal(through(piece.spec, 800, wl => (wl >= 820.71 && wl <= 830 ? 1 : 0), [820.71, 830]), null);
+  close(through(piece.spec, 800, wl => (wl >= 740 && wl <= 830 ? 1 : 0), [740, 830]).fraction, 1, 1e-12, 'all of it');
 });
