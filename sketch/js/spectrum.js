@@ -197,7 +197,10 @@ function integrate(values, step) {
 // outside a slice on this rule too, rather than the whole profile on a
 // different grid, makes a slice covering the whole profile exactly 1 and a
 // transmission uniform over it exactly that value.
-const profileGrid = spec => spec?.interference ? Math.max(GRID, Math.min(4097, spec.w?.length || GRID)) : GRID;
+// A sampled profile finer than the grid (an etalon's fringes, an optical
+// isolator's leak) is integrated and re-sampled on its own points, so a
+// filter that passes it, or part of it, does not step over its features.
+const profileGrid = spec => (spec?.kind === 'sampled' ? Math.max(GRID, Math.min(4097, spec.w?.length || GRID)) : GRID);
 
 function incidentOver(spec, a, b) {
   if (!(b > a)) return 0;
@@ -231,16 +234,17 @@ export function spectrumPower(spec, a, b) {
 // must be constant between consecutive edges; it is read at each piece's
 // midpoint. Line spectra take the sampled path regardless.
 //
-// A caller whose transmission has structure finer than the default grid
-// across the band (an optical isolator's leak, which dips by 40 dB within a
-// few nm of its design wavelength) asks for at least `minGrid` points on the
-// reshaped profile.
-export function applyTransmission(spec, centerWl, transmissionFn, edges = null, minGrid = 0) {
+// Options: a caller whose transmission has structure finer than the default
+// grid across the band (an optical isolator's leak, which dips by 40 dB
+// within a few nm of its design wavelength) asks for at least `minGrid`
+// points on the reshaped profile; light the tracer keeps however weak passes
+// a lower `block` than BLOCK.
+export function applyTransmission(spec, centerWl, transmissionFn, edges = null, { minGrid = 0, block = BLOCK } = {}) {
   if (!spec) {
     const t = Math.max(0, Math.min(1, transmissionFn(centerWl)));
-    return t > BLOCK ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
+    return t > block ? { fraction: t, spec: null, wl: centerWl, bw: 0 } : null;
   }
-  if (Array.isArray(edges) && spec.kind !== 'lines') return applyStepTransmission(spec, transmissionFn, edges);
+  if (Array.isArray(edges) && spec.kind !== 'lines') return applyStepTransmission(spec, transmissionFn, edges, block);
   const [lo, hi] = spectrumSupport(spec);
   const grid = Math.max(profileGrid(spec), Math.min(4097, minGrid || 0)), locateGrid = Math.max(LOCATE_GRID, grid);
   const locateStep = (hi - lo) / (locateGrid - 1);
@@ -279,7 +283,7 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null, 
     : incidentOver(spec, lo, from) + integrate(sliceIncident, step) + incidentOver(spec, to, hi);
   const fraction = total > 0 ? transmittedTotal / total : 0;
   const peak = Math.max(...shaped);
-  if (!(fraction > BLOCK) || !(peak > 0)) return null;
+  if (!(fraction > block) || !(peak > 0)) return null;
   const profile = { kind: 'sampled', lo: from, hi: to, w: shaped.map(v => v / peak), ...(spec.interference ? { interference: true } : {}) };
   const stats = spectrumStats(profile);
   if (!stats) return null;
@@ -299,7 +303,7 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null, 
 // own copy. Sampled and line profiles are computed afresh.
 const stepCache = new Map();
 const STEP_CACHE_SIZE = 256;
-function applyStepTransmission(spec, transmissionFn, edges) {
+function applyStepTransmission(spec, transmissionFn, edges, block = BLOCK) {
   const [lo, hi] = spectrumSupport(spec);
   const cuts = [...new Set(edges.filter(e => Number.isFinite(e) && e > lo && e < hi))].sort((a, b) => a - b);
   const bounds = [lo, ...cuts, hi];
@@ -310,31 +314,32 @@ function applyStepTransmission(spec, transmissionFn, edges) {
     const t = Math.max(0, Math.min(1, Number(transmissionFn((a + b) / 2)) || 0));
     pieces.push({ a, b, t });
   }
-  if (spec.kind !== 'gauss' && spec.kind !== 'flat') return stepTransmission(spec, pieces);
-  const key = [spec.kind, spec.center, spec.fwhm, spec.lo, spec.hi, spec.interference ? 1 : 0,
+  if (spec.kind !== 'gauss' && spec.kind !== 'flat') return stepTransmission(spec, pieces, block);
+  const key = [spec.kind, spec.center, spec.fwhm, spec.lo, spec.hi, spec.interference ? 1 : 0, block,
     ...pieces.flatMap(p => [p.a, p.b, p.t])].join('|');
   if (!stepCache.has(key)) {
     if (stepCache.size >= STEP_CACHE_SIZE) stepCache.clear();
-    stepCache.set(key, stepTransmission(spec, pieces));
+    stepCache.set(key, stepTransmission(spec, pieces, block));
   }
   const result = stepCache.get(key);
   return result && { ...result, spec: result.spec && { ...result.spec, w: [...result.spec.w] } };
 }
 
-function stepTransmission(spec, pieces) {
+function stepTransmission(spec, pieces, block = BLOCK) {
   for (const p of pieces) p.power = incidentOver(spec, p.a, p.b);
   const total = pieces.reduce((sum, p) => sum + p.power, 0);
   if (!(total > 0)) return null;
   const fraction = pieces.reduce((sum, p) => sum + p.t * p.power, 0) / total;
   const kept = pieces.filter(p => p.t > 0);
-  if (!(fraction > BLOCK) || !kept.length) return null;
+  if (!(fraction > block) || !kept.length) return null;
   // The profile spans exactly the pieces that pass anything; each sample
   // takes its own piece's transmission, and a sample on an edge the side
   // that passes more, so the profile's edges sit on the filter's.
   const from = kept[0].a, to = kept[kept.length - 1].b;
-  const step = (to - from) / (GRID - 1);
-  const shaped = Array.from({ length: GRID }, (_, i) => {
-    const wl = i === GRID - 1 ? to : from + step * i;
+  const grid = profileGrid(spec);
+  const step = (to - from) / (grid - 1);
+  const shaped = Array.from({ length: grid }, (_, i) => {
+    const wl = i === grid - 1 ? to : from + step * i;
     const t = pieces.reduce((best, p) => (wl >= p.a && wl <= p.b ? Math.max(best, p.t) : best), 0);
     return Math.max(0, spectrumWeight(spec, wl)) * t;
   });

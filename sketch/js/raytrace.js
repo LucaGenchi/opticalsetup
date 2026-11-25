@@ -4658,7 +4658,7 @@ const SPECTRUM_RESHAPE = 0.01;
 // leak dips by the polarizers' extinction within a few nm of the design
 // wavelength, which the default 65 points across a 15 fs pulse's 160 nm step
 // over (a 2 nm band-pass after it read 4.8 % off the same filter before it).
-const ISOLATOR_GRID = 1025;
+const ISOLATOR_GRID = 4097;
 const spreadSpectrumNote = what => `Spectrum past ${what} not computed: this light's polarization varies across its spectrum since a Faraday element, and ${what} passes each wavelength by its own share; the power right past it is exact only if nothing between them passes wavelengths by their own shares (a filter, an angled glass face, a Faraday element), and what a later filter selects is not computed`;
 const spreadPulseIssue = what => `Polarization varying across the spectrum since a Faraday element, passed by ${what} wavelength by wavelength — not one scalar pulse; duration unavailable`;
 function spreadReshape(ray, d, what) {
@@ -6328,7 +6328,7 @@ function interact(ray, hit) {
         const peak = Math.max(...samples.map(x => T(x.nm)), T(ray.wl));
         if (!(peak > MIN_RETAINED_POWER_INT)) return [];
         const scaled = nm => T(nm) / peak;
-        const kept = ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, ISOLATOR_GRID);
+        const kept = ray.spec.kind === 'lines' ? lineTransmission(ray.spec, scaled) : applyTransmission(ray.spec, ray.wl, scaled, null, { minGrid: ISOLATOR_GRID });
         if (!kept) return [];
         fraction = kept.fraction * peak;
         spectral = { wl: kept.wl, bw: kept.bw, spec: kept.spec };
@@ -7225,9 +7225,12 @@ function notePulseSelection(transmissionFn, edges = []) {
   }
   return uniform;
 }
-function applyTransmission(spec, centerWl, transmissionFn, edges = null, minGrid = 0) {
+function applyTransmission(spec, centerWl, transmissionFn, edges = null, options = {}) {
   const uniform = notePulseSelection(transmissionFn);
-  const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges, minGrid);
+  // Light the tracer keeps however weak (an isolator's leak, a polarizer's
+  // output) is not dropped below the spectral integration's floor either.
+  const block = interactionRay?.retainWeak ? MIN_RETAINED_POWER_INT : undefined;
+  const result = applySpectralTransmission(spec, centerWl, transmissionFn, edges, { ...(block ? { block } : {}), ...options });
   // The integration runs on a finer grid than the band sample: a passband it
   // finds, where the samples saw none, is a reshaping they missed.
   if (Number.isFinite(uniform) && Math.abs((result?.fraction ?? 0) - uniform) > 0.01) interactionReshapesPulse = true;

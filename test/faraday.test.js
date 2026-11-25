@@ -680,3 +680,24 @@ test('P2 (review 11): a band-pass reads the same before or after the isolator, g
   }
   close(await read(true, 330), 2.935e-6, 0.002e-6, 'with glass, Andrea\'s integral');
 });
+
+// Andrea's review, round 12.
+test('P2 (review 12): a filter after the isolator keeps a weak in-band part and the profile\'s detail', async () => {
+  const read = async (filters, db = 40) => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.find(e => e.id === 'isolator').params.extinctionDb = db;
+    scene.elements.push(...filters.map(([x, center, band]) => make('filter', x, 250, { ftype: 'bandpass', center, band, trans: 1 }, 180)));
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  // At 60 dB the 799–801 nm band holds 2.2e-5 of what reaches a filter
+  // after the isolator, below the spectral floor of 1e-4 that light the
+  // tracer keeps however weak no longer meets: 84.59 nW either side.
+  const before60 = await read([[330, 800, 2]], 60);
+  close(before60, 84.59e-9, 0.02e-9, '60 dB, filter before');
+  close(await read([[150, 800, 2]], 60), before60, 0.002 * before60, '60 dB, filter after');
+  // A 700–900 nm band-pass between them passes the whole spectrum on its
+  // own points, not 65 of them (it read 3.2037 against 3.0563 µW).
+  const before = await read([[330, 800, 2]]);
+  close(await read([[170, 800, 200], [130, 800, 2]]), before, 0.001 * before, 'through a wide band-pass first');
+});
