@@ -63,7 +63,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
-  transformLimitedBandwidthNm, spectrumSlice as spectralSlice, spectrumPower,
+  transformLimitedBandwidthNm, spectrumSlice as spectralSlice, spectrumPower, isFineSpectrum,
 } from './spectrum.js';
 import { spectralFieldResult, spectralTermsAt, SPECTRAL_UNAVAILABLE, RECOMBINED_PULSE_UNAVAILABLE } from './spectral-coherence.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -5607,6 +5607,12 @@ function interact(ray, hit) {
       // What is left at one wavelength once every channel has taken its share.
       const leftAt = wl => Math.max(0, 1 - Math.min(1, askedAt(wl)));
       const reach = aotfWingHalfWidth(passband);
+      // Points across a channel's window on a fine spectrum it passes (one
+      // with samples of its own to keep): one every 1/32 of the passband, so
+      // the sinc² is read finely between them (a 0.1 nm channel read 8.85 %
+      // low at a fine profile's 0.04 nm samples). Other spectra keep the
+      // grid they had.
+      const channelGrid = spec => (isFineSpectrum(spec) ? { minGrid: Math.min(4097, Math.ceil(2 * reach / (passband / 32)) + 1) } : {});
       interactionPorts = {
         edges: open.flatMap(o => [o.c.wl - reach, o.c.wl + reach]),
         keyFor: child => (String(child.tag || '').startsWith('depleted') ? 'depleted' : String(child.tag || '')),
@@ -5644,7 +5650,8 @@ function interact(ray, hit) {
           // slice would otherwise fall between the points of a grid spanning
           // the whole of it.
           const inWindow = slicePart(ray.sliceSpec, cell, window[0], window[1]);
-          const shaped = applyTransmission(sliceProfile(ray, window), ray.wl, transmission);
+          const slice = sliceProfile(ray, window);
+          const shaped = applyTransmission(slice, ray.wl, transmission, null, channelGrid(slice));
           if (!shaped || !(inWindow > 0)) return;
           const trans = { ...shaped, fraction: shaped.fraction * inWindow };
           takenFraction += trans.fraction * pass;
@@ -5685,7 +5692,7 @@ function interact(ray, hit) {
         // cutting a slice out of it, so a flat band leaves peaked, not flat.
         const incident = ray.spec
           || flatSpectrum(ray.wl - ray.bw / 2, ray.wl + ray.bw / 2);
-        const trans = applyTransmission(incident, ray.wl, transmission);
+        const trans = applyTransmission(incident, ray.wl, transmission, null, channelGrid(incident));
         if (!trans) return;
         takenFraction += trans.fraction * pass;
         out.push(withGate({

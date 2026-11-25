@@ -98,9 +98,12 @@ dichroic or notch that cuts it keeps those samples and the cut's exact edges as
 a window (nothing lies outside it; spectrumSupport, spectrumWeight and the
 integrals read it). The cut is marked fine, so it keeps this path however few
 samples it left (a 2.5 nm cut leaving 65 samples read 1.8 % off when it was
-re-sampled again); a caller asking for a finer grid than its samples (the
-isolator) divides each sample's step into equal parts, whose points lie on
-the same straight segments. Re-sampling the cut moved features a sample or two wide:
+re-sampled again); a smooth transmission applied to it is read as finely as on any
+other profile across the light that survives, each sample's step divided into
+equal parts whose points lie on the same straight segments; an AOTF channel
+asks for one point every 1/32 of its passband there (a 0.1 nm channel read at
+0.04 nm samples alone passed 8.85 % too little; both orders now agree with
+the integral within 0.04 %). Re-sampling the cut moved features a sample or two wide:
 the resonances of an etalon of FWHM 0.04 nm, about one sample wide, read
 21.6 % off through a 10 nm band-pass in front of a 1 nm one, and 21.8 %
 through a 101 nm one; keeping only the samples inside left a sliver at each

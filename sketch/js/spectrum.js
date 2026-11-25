@@ -240,8 +240,9 @@ function sampledIntegral(spec, a, b) {
 
 // A profile with samples of its own to keep: finer than the grid, or cut
 // from one (marked `fine`), however few samples the cut left.
-const isFine = spec => spec?.kind === 'sampled' && Array.isArray(spec.w) && spec.w.length > 1
+export const isFineSpectrum = spec => spec?.kind === 'sampled' && Array.isArray(spec.w) && spec.w.length > 1
   && (spec.w.length > GRID || spec.fine === true);
+const isFine = isFineSpectrum;
 
 // A fine profile cut between a and b: its own samples that cover the cut
 // (each divided into `refine` equal steps, whose points lie on the same
@@ -342,9 +343,12 @@ export function applyTransmission(spec, centerWl, transmissionFn, edges = null, 
   const from = lo + locateStep * Math.max(0, first - 1);
   const to = lo + locateStep * Math.min(locateGrid - 1, last + 1);
   // A fine profile keeps its own samples and window (cutOwnSamples), each
-  // divided as many times as a finer grid the caller asks for needs.
+  // step divided into as many parts as the grid across the light that
+  // survives needs: the transmission is read as finely as on any other
+  // profile (a 0.1 nm AOTF channel read at 0.04 nm samples alone passed
+  // 8.85 % too little).
   const ownStep = isFine(spec) ? (spec.hi - spec.lo) / (spec.w.length - 1) : 0;
-  const refine = ownStep > 0 && minGrid > 0 ? Math.max(1, Math.min(64, Math.ceil(ownStep / ((hi - lo) / (grid - 1)) - 1e-9))) : 1;
+  const refine = ownStep > 0 ? Math.max(1, Math.min(64, Math.ceil(ownStep / ((to - from) / (grid - 1)) - 1e-9))) : 1;
   const own = cutOwnSamples(spec, from, to, wl => Math.max(0, Math.min(1, transmissionFn(wl))), refine);
   if (own) {
     const total = incidentOver(spec, lo, hi);

@@ -796,3 +796,21 @@ test('P2 (review 17): a cut of a fine profile keeps its samples and its exact ed
   assert.equal(through(piece.spec, 800, wl => (wl >= 820.71 && wl <= 830 ? 1 : 0), [820.71, 830]), null);
   close(through(piece.spec, 800, wl => (wl >= 740 && wl <= 830 ? 1 : 0), [740, 830]).fraction, 1, 1e-12, 'all of it');
 });
+
+test('P2 (review 19): a narrow AOTF channel is read finely on a fine profile, in either order', async () => {
+  await import('../sketch/js/etalon.js');
+  // The etalon scene of round 16, the 820.02–821.02 nm band-pass and an AOTF
+  // channel at 820.10 nm, FWHM 0.10 nm, 100 %: read only at the profile's
+  // 0.04 nm samples it passed 150.955 nW; the integral of the arriving
+  // profile times the channel's sinc² is 165.614 nW (Andrea).
+  const read = async aotfFirst => {
+    const scene = parseSketch(await readFile(new URL('../Examples/Ultrashort Pulses/Optical isolator — isolation across a pulse spectrum.json', import.meta.url), 'utf8'), registry);
+    scene.elements.push(make('etalon', 210, 250, { centerWavelength: 820, bandwidth: 0.04, fsr: 2 }, 180));
+    scene.elements.push(make('filter', aotfFirst ? 120 : 150, 250, { ftype: 'bandpass', center: 820.52, band: 1, trans: 1 }, 180));
+    scene.elements.push(make('aotf', aotfFirst ? 170 : 110, 250, { passband: 0.1, channels: [{ wl: 820.10, eff: 1 }], showDepleted: false, deflect: 0 }, 180));
+    traceScene(scene.elements, scene.beams);
+    return enhancedReading(scene.elements.find(e => e.id === 'spectrometer'), scene.elements)?.detectedPowerW ?? 0;
+  };
+  close(await read(false), 165.614e-9, 0.001 * 165.614e-9, 'band-pass, then AOTF');
+  close(await read(true), 165.614e-9, 0.001 * 165.614e-9, 'AOTF, then band-pass');
+});
