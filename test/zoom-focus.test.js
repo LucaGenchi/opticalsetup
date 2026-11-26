@@ -280,3 +280,72 @@ test('an off-centre focus is drawn to the edge of the view on both sides', () =>
   assert.ok(Math.min(...xs) <= 196.1 + 1e-6, `reaches the region's left edge at 196.1: ${Math.min(...xs)}`);
   assert.ok(Math.max(...xs) >= 200.1 - 1e-6, `and its right edge at 200.1: ${Math.max(...xs)}`);
 });
+
+// A high-NA water objective (EFL 10 mm, WD 2 mm, NA 1) at x = 150 focuses a
+// 16 mm wide 532 nm beam at x = 168, onto a sample's specimen plane there,
+// square to the beam: the tracer ends the incoming rays at the focus and
+// starts the next ones from it.
+function specimenFocusScene(extra = []) {
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 16, wavelength: 532 });
+  const objective = createElement('objective', 150, 0);
+  Object.assign(objective.params, { efl: 10, workingDistance: 2, immersion: 'water', na: 1 });
+  const zoom = createElement('zoom', 168, 0);
+  Object.assign(zoom.params, { w: 0.5, mag: 300 });
+  const elements = [laser, objective, ...extra, zoom];
+  return { zoom, elements, traced: traceScene(elements, []) };
+}
+
+function squareSample(x) {
+  const sample = createElement('sample', x, 0);
+  sample.rot = 90;
+  sample.params.thickness = 3;
+  return sample;
+}
+
+test('a focus on a specimen plane the light crosses gets its waist on both sides', () => {
+  const free = specimenFocusScene();
+  const [open] = zoomFoci(free.zoom, free.traced.paths);
+  const scene = specimenFocusScene([squareSample(168)]);
+  // The rays do stop at the focus and set off again from it.
+  assert.ok(scene.traced.paths.some(path => path.pts.some((p, i) => i > 0 && i < path.pts.length - 1 && Math.abs(p.x - 168) < 1e-9)));
+  const foci = zoomFoci(scene.zoom, scene.traced.paths);
+  assert.equal(foci.length, 1);
+  const [focus] = foci;
+  assert.ok(Math.abs(focus.point.x - 168) < 1e-6 && Math.abs(focus.point.y) < 1e-6, `at the focus: ${focus.point.x}`);
+  // The same waist as without the sample: the cone of the same rays.
+  assert.equal(focus.model, open.model);
+  assert.ok(Math.abs(focus.w0Mm / open.w0Mm - 1) < 1e-12, `w0 ${focus.w0Mm} vs ${open.w0Mm}`);
+  assert.ok(Math.abs(focus.w0Mm * 1e6 - 271.08) < 0.01, `w0 ${focus.w0Mm}`);
+  // Drawn from the objective's front, through the specimen plane and on
+  // past it, still cut at the objective's face.
+  assert.ok(focus.from < -1 && focus.to > 1, `stretch ${focus.from} to ${focus.to}`);
+  const outline = focusEnvelope(focus, -0.05, 0.05);
+  assert.ok(outline.some(p => p.x < 167.99) && outline.some(p => p.x > 168.01), 'both sides of the specimen plane');
+  assert.match(view(scene), /data-zoom-focus="true"[^]*w₀ 271 nm/);
+});
+
+test('light that stops at the focus, an emitter and a virtual focus on a specimen plane get no waist', () => {
+  // The same focus on the face of an opaque box: nothing goes on from it.
+  const box = createElement('box', 173, 0);
+  Object.assign(box.params, { w: 10, h: 40 });
+  const blocked = specimenFocusScene([box]);
+  assert.equal(zoomFoci(blocked.zoom, blocked.traced.paths).length, 0, 'stopped at the focus');
+  // A point source on the specimen plane: its rays start there.
+  const point = createElement('pointsource', 168, 0);
+  const atEmitter = createElement('zoom', 168, 0);
+  Object.assign(atEmitter.params, { w: 0.5, mag: 300 });
+  const emitted = traceScene([point, squareSample(168), atEmitter], []);
+  assert.equal(zoomFoci(atEmitter, emitted.paths).length, 0, 'an emitter on the plane');
+  // A diverging lens whose virtual focus lies on a specimen plane the
+  // collimated beam crossed before it: the rays never went there.
+  const laser = createElement('cwlaser', 0, 0);
+  const lens = createElement('lens', 100, 0);
+  lens.params.f = -25;
+  const zoom = createElement('zoom', 75, 0);
+  Object.assign(zoom.params, { w: 160 });
+  const paths = traceScene([laser, squareSample(75), lens, zoom], []).paths;
+  assert.ok(paths.some(path => path.pts.some((p, i) => i > 0 && Math.abs(p.x - 75) < 1e-9)), 'the beam crosses the plane');
+  assert.ok(paths.some(path => path.pts.some(p => p.x > 100)), 'rays leave the lens');
+  assert.equal(zoomFoci(zoom, paths).length, 0, 'a virtual focus on the plane');
+});

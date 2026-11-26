@@ -41,6 +41,17 @@ function bundleKey(path, segment) {
   return [path.originId || '', path.sourceId || '', path.branch || '', path.wl, segment].join('|');
 }
 
+// A path's segment after segment i, as a ray from the point segment i ends
+// at, where the light goes on (finite, lit and of some length); else null.
+function continuation(path, i) {
+  const a = path.pts[i + 1], b = path.pts[i + 2];
+  if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
+  if (!(len > 0) || !(w > 0)) return null;
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len };
+}
+
 function inRegion(g, at, p) {
   const dx = p.x - at.x, dy = p.y - at.y;
   const x = dx * g.cos + dy * g.sin, y = -dx * g.sin + dy * g.cos;
@@ -77,7 +88,7 @@ export function zoomFoci(zoom, paths = []) {
       const key = bundleKey(path, i);
       if (!groups.has(key)) groups.set(key, { wl: path.wl, color: path.color || null, rays: [], beam: null });
       const group = groups.get(key);
-      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len });
+      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len, next: continuation(path, i) });
       group.beam ||= beamOnPathSegment(path, i);
     }
   }
@@ -109,6 +120,21 @@ export function zoomFoci(zoom, paths = []) {
       const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
       from = Math.min(from, s0); to = Math.max(to, s1);
     }
+    // A focus that sits where the bundle's rays end, on an optic the same
+    // light goes on through (a specimen plane, a window's face), is crossed
+    // all the same: the beam travels on along the rays' next segments, so
+    // the waist is drawn on both sides, cut at the face after that stretch.
+    // Light that stops there, or turns back, is left as it was.
+    let after = null;
+    if (Number.isFinite(to) && to <= ALONG_TOLERANCE
+      && group.rays.every(r => r.next && r.next.d.x * found.axis.x + r.next.d.y * found.axis.y > 0)) {
+      after = group.rays.map(r => r.next);
+      to = -Infinity;
+      for (const r of after) {
+        const s0 = (r.p.x - found.point.x) * found.axis.x + (r.p.y - found.point.y) * found.axis.y;
+        to = Math.max(to, s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y));
+      }
+    }
     // A cone's focus lies between the optics; a propagated waist may lie up
     // to a Rayleigh range beyond them, and its envelope is drawn on the
     // stretch the beam travels, cut at the faces as before.
@@ -122,9 +148,12 @@ export function zoomFoci(zoom, paths = []) {
       return ends;
     }, {});
     const endOf = r => ({ x: r.p.x + r.len * r.d.x, y: r.p.y + r.len * r.d.y });
+    // The face after the focus: where the bundle ends, or, crossing on, where
+    // the same outermost rays' next segments end.
+    const last = r => (after ? r.next : r);
     const ends = [
       faceLine(outermost.lo.r.p, outermost.hi.r.p, found.point, found.axis, from),
-      faceLine(endOf(outermost.lo.r), endOf(outermost.hi.r), found.point, found.axis, to),
+      faceLine(endOf(last(outermost.lo.r)), endOf(last(outermost.hi.r)), found.point, found.axis, to),
     ];
     foci.push({
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
