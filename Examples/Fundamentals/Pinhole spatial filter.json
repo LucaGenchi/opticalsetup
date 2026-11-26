@@ -51,7 +51,8 @@
     "temporalMode": "cw",
     "housingLength": 92,
     "housingHeight": 34,
-    "housingColor": "#3a3f46"
+    "housingColor": "#3a3f46",
+    "beamDisplay": "envelope"
    }
   },
   {

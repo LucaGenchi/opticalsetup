@@ -47,7 +47,9 @@ function benchStrokes(svg, mag) {
   });
 }
 
-function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
+// To 0.01 of the view's units, or to a drawable's own `precision` (a beam
+// envelope's edges, microns apart at a focus).
+function ptsAttr(pts, digits = 2) { return pts.map(p => `${p.x.toFixed(digits)},${p.y.toFixed(digits)}`).join(' '); }
 
 // Traced rays and beams, mapped point by point into the view. Each shape is
 // only a fill or only a stroke, so fill- and stroke-opacity draw what the
@@ -67,9 +69,9 @@ function drawablesSVG(drawables, region, map, nonScalingStroke) {
     if (!d.pts?.length || !overlaps(pointsBox(d.pts), region)) continue;
     const pts = d.pts.map(map);
     if (d.type === 'poly') {
-      s += `<polygon points="${ptsAttr(pts)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
+      s += `<polygon points="${ptsAttr(pts, d.precision)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
     } else {
-      s += `<polyline points="${ptsAttr(pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+      s += `<polyline points="${ptsAttr(pts, d.precision)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
     }
   }
   return s;
@@ -119,7 +121,8 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
     const span = Math.hypot(focus.point.x - zoom.x, focus.point.y - zoom.y) + reach;
     const outline = focusEnvelope(focus, Math.max(focus.from, -span), Math.min(focus.to, span)).map(map);
     if (!outline.length) continue;
-    svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
+    // A beam the bench draws as its envelope is in the view already.
+    if (!focus.drawnAsEnvelope) svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
     // size still has room for them.
     if (named) {
@@ -165,8 +168,9 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
-  // On unless turned off, so a zoom saved before the setting draws it too.
-  const focus = zoom.params.diffraction !== false ? focusLayer(zoom, g, paths, nonScalingStroke) : { svg: '', notes: [] };
+  // Always drawn: a focus in the region shows its waist (step G2 removed
+  // the switch; a zoom saved with it off draws it now).
+  const focus = focusLayer(zoom, g, paths, nonScalingStroke);
   content += focus.svg;
   // Pulse packets, already placed with zoomPulsePlacement(), sit on the rays
   // and under the parts, as on the bench. The canvas passes an empty slot

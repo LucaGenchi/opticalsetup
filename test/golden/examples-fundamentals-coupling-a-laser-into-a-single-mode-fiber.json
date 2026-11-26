@@ -2,26 +2,26 @@
  "elements": 9,
  "beams": 1,
  "drawables": {
-  "count": 114,
+  "count": 22,
   "byType": {
-   "poly": 104,
+   "poly": 12,
    "path": 10
   },
   "colors": {
-   "#ff4200": 114
+   "#ff4200": 22
   },
-  "points": 436,
+  "points": 1580,
   "sum": [
-   99615.8,
-   113880
+   322008.253,
+   405483.087
   ],
   "bbox": [
    52,
-   209,
+   208.9975,
    636,
    332.8889
   ],
-  "digest": "9863f81f"
+  "digest": "f2a90a61"
  },
  "drawnElements": {
   "textlabel:title": "253fcf76",
