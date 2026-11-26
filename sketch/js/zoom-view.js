@@ -125,7 +125,7 @@ function focusLayer(zoom, g, paths, nonScalingStroke) {
     if (!focus.drawnAsEnvelope) svg += `<polygon points="${ptsAttr(outline)}" fill="${focus.color}" fill-opacity="0.28" stroke="${focus.color}" stroke-width="0.8" stroke-opacity="0.9" stroke-linejoin="round"${nonScalingStroke ? ' vector-effect="non-scaling-stroke"' : ''} data-zoom-focus="true"/>`;
     // Two short lines rather than one long one, so a round view of modest
     // size still has room for them.
-    if (named && !focus.unreached) {
+    if (named) {
       notes.push({ text: `w₀ ${formatLength(focus.w0Mm)}` }, { text: `zR ${formatLength(focus.zRMm)}` });
       // The waist of a propagated beam (step G1), or the ideal Gaussian of
       // the traced cone where no beam parameter arrives: say which.
