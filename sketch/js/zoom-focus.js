@@ -35,6 +35,9 @@ import { zoomGeometry } from './zoom.js';
 // it: one at a segment's start (a point source's own emitter) or past its
 // end (a virtual focus behind an optic) is not a beam focus.
 const ALONG_TOLERANCE = 1e-6;
+// A ray that goes on through a plane keeps its direction to about 1 µrad
+// (1 − cos 1.4e-6 ≈ 1e-12).
+const STRAIGHT_TOLERANCE = 1e-12;
 
 // Rays of one beam's bundle share their source, their route through
 // splitting optics, their wavelength and the number of interactions behind
@@ -127,9 +130,17 @@ export function zoomFoci(zoom, paths = []) {
     // all the same: the beam travels on along the rays' next segments, so
     // the waist is drawn on both sides, cut at the face after that stretch.
     // Light that stops there, or turns back, is left as it was.
+    // Only a plane the light crosses straight at the waist itself: every ray
+    // ends on the waist (within a hundredth of w0, or the along tolerance)
+    // and its next segment keeps its direction. A mirror, a lens or any
+    // optic that turns the rays, and rays that end short of a waist further
+    // on, are not crossed (the waist predicted past them is not where the
+    // light goes).
+    const atWaist = Math.max(ALONG_TOLERANCE, found.w0Mm / 100);
+    const endsOnWaist = r => Math.hypot(r.p.x + r.len * r.d.x - found.point.x, r.p.y + r.len * r.d.y - found.point.y) <= atWaist;
+    const straightOn = r => r.next && r.next.d.x * r.d.x + r.next.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
     let after = null;
-    if (Number.isFinite(to) && to <= ALONG_TOLERANCE
-      && group.rays.every(r => r.next && r.next.d.x * found.axis.x + r.next.d.y * found.axis.y > 0)) {
+    if (Number.isFinite(to) && to <= ALONG_TOLERANCE && group.rays.every(r => endsOnWaist(r) && straightOn(r))) {
       after = group.rays.map(r => r.next);
       to = -Infinity;
       for (const r of after) {

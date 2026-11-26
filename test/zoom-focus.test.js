@@ -373,3 +373,35 @@ test('light that stops at the focus, an emitter and a virtual focus on a specime
   assert.ok(paths.some(path => path.pts.some(p => p.x > 100)), 'rays leave the lens');
   assert.equal(zoomFoci(zoom, paths).length, 0, 'a virtual focus on the plane');
 });
+
+test('a focus on a mirror or short of a second lens is not carried straight on (review)', () => {
+  // A mirror at the objective's focus turns the rays 46°–74°: the waist must
+  // not be drawn on straight ahead, where no light travels.
+  const mirror = createElement('mirror', 168, 0);
+  mirror.rot = -60;
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 5, wavelength: 532 });
+  const objective = createElement('objective', 150, 0);
+  Object.assign(objective.params, { efl: 10, workingDistance: 2, immersion: 'water', na: 1 });
+  const zoom = createElement('zoom', 168, 0);
+  Object.assign(zoom.params, { w: 0.5, mag: 300 });
+  for (const focus of zoomFoci(zoom, traceScene([laser, objective, mirror, zoom], []).paths)) {
+    const ahead = focusEnvelope(focus, Math.max(focus.from, -0.3), Math.min(focus.to, 0.3))
+      .filter(p => (p.x - 168) * focus.axis.x + p.y * focus.axis.y > 0.01);
+    assert.equal(ahead.length, 0, 'nothing drawn past the mirror along the incoming axis');
+  }
+  // A narrow beam through two lenses: the rays end on the second lens some
+  // 25 mm before the waist the first lens predicts; only the waist past the
+  // second lens, the one the probe reads, is drawn.
+  const narrow = createElement('cwlaser', 0, 0);
+  Object.assign(narrow.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 });
+  const first = createElement('lens', 200, 0);
+  first.params.f = 100;
+  const second = createElement('lens', 470, 0);
+  second.params.f = 500;
+  const wide = createElement('zoom', 497, 0);
+  Object.assign(wide.params, { w: 8, mag: 20 });
+  const foci = zoomFoci(wide, traceScene([narrow, first, second, wide], []).paths);
+  assert.equal(foci.length, 1, `one waist: ${foci.map(f => f.point.x.toFixed(3)).join(', ')}`);
+  assert.ok(Math.abs(foci[0].point.x - 498.423) < 0.01, `at ${foci[0].point.x}`);
+});
