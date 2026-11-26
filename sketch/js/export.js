@@ -91,7 +91,9 @@ function sceneBounds(elements = state.elements, drawables = null) {
   return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
 }
 
-function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
+// Points to 0.01 mm, or to a drawable's own `precision` (a beam envelope's
+// edges, microns apart at a focus).
+function ptsAttr(pts, digits = 2) { return pts.map(p => `${p.x.toFixed(digits)},${p.y.toFixed(digits)}`).join(' '); }
 
 function animatedElementsAt(seconds, playback) {
   const motionTimeSeconds = Math.max(0, Number(seconds) || 0);
@@ -182,9 +184,9 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
   body += immersionLayerSVG(elements, state.beams, { baseElements: state.elements });
 
   for (const d of traced.drawables) {
-    if (d.type === 'poly') body += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}"/>`;
+    if (d.type === 'poly') body += `<polygon points="${ptsAttr(d.pts, d.precision)}" fill="${d.color}" opacity="${d.opacity}"/>`;
     else if (d.type === 'dots') body += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
-    else body += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+    else body += `<polyline points="${ptsAttr(d.pts, d.precision)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
   }
 
   const pulseTimeNs = animation ? animation.seconds * Math.max(1, Number(playback.speedNsPerSecond) || 10) : null;

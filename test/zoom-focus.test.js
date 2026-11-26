@@ -70,8 +70,8 @@ test('a bundle with no beam parameter gets the Gaussian waist of its cone, label
   assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }), />cone estimate</);
 });
 
-test('the waist and its note are drawn by default, and each can be turned off', () => {
-  assert.equal(createElement('zoom').params.diffraction, true);
+test('the waist is always drawn, and its note can be turned off', () => {
+  assert.equal('diffraction' in createElement('zoom').params, false, 'no switch for the waist');
   assert.equal(createElement('zoom').params.focusNote, true);
   const scene = focusedScene();
   const svg = view(scene);
@@ -84,8 +84,9 @@ test('the waist and its note are drawn by default, and each can be turned off', 
   const unnamed = view(scene);
   assert.match(unnamed, /data-zoom-focus="true"/, 'note off: the waist is still drawn');
   assert.doesNotMatch(unnamed, /data-zoom-focus-label|w₀/, 'without its note');
+  // A zoom saved with the earlier switch off draws the waist now.
   scene.zoom.params.diffraction = false;
-  assert.doesNotMatch(view(scene), /data-zoom-focus/, 'off: the view is the bench as traced');
+  assert.match(view(scene), /data-zoom-focus="true"/, 'a saved switch is no longer read');
   // A zoom saved before the settings existed draws both.
   delete scene.zoom.params.diffraction;
   delete scene.zoom.params.focusNote;
@@ -281,6 +282,29 @@ test('an off-centre focus is drawn to the edge of the view on both sides', () =>
   assert.ok(Math.max(...xs) >= 200.1 - 1e-6, `and its right edge at 200.1: ${Math.max(...xs)}`);
 });
 
+test('G2: at high NA the cone estimate opens with the rays, not inside them', () => {
+  // A dry NA 0.8 objective filled by an 8 mm beam: the rays converge at
+  // NA 0.625 (39°), where sine and tangent differ by a quarter.
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 8, wavelength: 532 });
+  const objective = createElement('objective', 150, 0);
+  Object.assign(objective.params, { efl: 5, workingDistance: 0.6, immersion: 'air', na: 0.8, frontAperture: 8 });
+  const zoom = createElement('zoom', 166.6, 0);
+  Object.assign(zoom.params, { w: 0.5, mag: 300 });
+  const [focus] = zoomFoci(zoom, traceScene([laser, objective, zoom], []).paths);
+  assert.equal(focus.model, 'cone');
+  assert.ok(focus.na > 0.6 && focus.na < 0.65, `NA ${focus.na}`);
+  const z = -0.2;
+  const outline = focusEnvelope(focus, z, 0.2);
+  const halfWidthAt = x => Math.max(...outline.filter(p => Math.abs(p.x - x) < 1e-9).map(p => Math.abs(p.y - focus.point.y)));
+  const slope = Math.tan(Math.asin(focus.na));
+  const w = halfWidthAt(focus.point.x + z);
+  assert.ok(Math.abs(w - Math.hypot(focus.w0Mm, z * slope)) < 1e-9, `edge ${w} against the rays' ${Math.abs(z) * slope}`);
+  assert.ok(w > Math.abs(z) * focus.na * 1.2, 'wider than the sine slope would draw it');
+  // The note keeps the waist's own Rayleigh range.
+  assert.ok(Math.abs(focus.zRMm - gaussianFocus(532, focus.na).zRMm) < 1e-15);
+});
+
 // A high-NA water objective (EFL 10 mm, WD 2 mm, NA 1) at x = 150 focuses a
 // 16 mm wide 532 nm beam at x = 168, onto a sample's specimen plane there,
 // square to the beam: the tracer ends the incoming rays at the focus and
@@ -348,6 +372,38 @@ test('light that stops at the focus, an emitter and a virtual focus on a specime
   assert.ok(paths.some(path => path.pts.some((p, i) => i > 0 && Math.abs(p.x - 75) < 1e-9)), 'the beam crosses the plane');
   assert.ok(paths.some(path => path.pts.some(p => p.x > 100)), 'rays leave the lens');
   assert.equal(zoomFoci(zoom, paths).length, 0, 'a virtual focus on the plane');
+});
+
+test('a focus on a mirror or short of a second lens is not carried straight on (review)', () => {
+  // A mirror at the objective's focus turns the rays 46°–74°: the waist must
+  // not be drawn on straight ahead, where no light travels.
+  const mirror = createElement('mirror', 168, 0);
+  mirror.rot = -60;
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 5, wavelength: 532 });
+  const objective = createElement('objective', 150, 0);
+  Object.assign(objective.params, { efl: 10, workingDistance: 2, immersion: 'water', na: 1 });
+  const zoom = createElement('zoom', 168, 0);
+  Object.assign(zoom.params, { w: 0.5, mag: 300 });
+  for (const focus of zoomFoci(zoom, traceScene([laser, objective, mirror, zoom], []).paths)) {
+    const ahead = focusEnvelope(focus, Math.max(focus.from, -0.3), Math.min(focus.to, 0.3))
+      .filter(p => (p.x - 168) * focus.axis.x + p.y * focus.axis.y > 0.01);
+    assert.equal(ahead.length, 0, 'nothing drawn past the mirror along the incoming axis');
+  }
+  // A narrow beam through two lenses: the rays end on the second lens some
+  // 25 mm before the waist the first lens predicts; only the waist past the
+  // second lens, the one the probe reads, is drawn.
+  const narrow = createElement('cwlaser', 0, 0);
+  Object.assign(narrow.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 });
+  const first = createElement('lens', 200, 0);
+  first.params.f = 100;
+  const second = createElement('lens', 470, 0);
+  second.params.f = 500;
+  const wide = createElement('zoom', 497, 0);
+  Object.assign(wide.params, { w: 8, mag: 20 });
+  const foci = zoomFoci(wide, traceScene([narrow, first, second, wide], []).paths);
+  assert.equal(foci.length, 1, `one waist: ${foci.map(f => f.point.x.toFixed(3)).join(', ')}`);
+  assert.ok(Math.abs(foci[0].point.x - 498.423) < 0.01, `at ${foci[0].point.x}`);
 });
 
 test('a waist crossing a specimen plane is cut at the next face, a tilted mirror', () => {

@@ -10,8 +10,9 @@
 // spread, and the numerical aperture of the outermost rays) and gives the
 // ideal Gaussian beam focused in that cone: waist w0 = λ/(π·NA) and Rayleigh
 // range zR = π·w0²/λ, in air, at the light's centre wavelength. Its 1/e²
-// radius along the beam, w(z) = w0·sqrt(1 + (z/zR)²), meets the rays' cone
-// far from the focus, so the drawn envelope joins the traced beam.
+// radius along the beam, w(z) = w0·sqrt(1 + (z/zR)²), is drawn with the
+// slope of the rays' cone (focusEnvelope), so it joins the traced beam far
+// from the focus at any NA.
 //
 // That is the diffraction limit of the cone, not a wave-optics calculation:
 // aberrations, a medium's index, truncation by an aperture and M² > 1 are
@@ -24,6 +25,7 @@
 // focus says which of the two it shows (`model`: 'propagated' or 'cone').
 
 import { beamFromQ } from './gaussian-beam.js';
+import { envelopeEdges } from './beam-envelope.js';
 import { beamOnPathSegment } from './raytrace.js';
 import { bundleFocus } from './sectioning.js';
 import { wavelengthToColor } from './util.js';
@@ -33,9 +35,9 @@ import { zoomGeometry } from './zoom.js';
 // it: one at a segment's start (a point source's own emitter) or past its
 // end (a virtual focus behind an optic) is not a beam focus.
 const ALONG_TOLERANCE = 1e-6;
-// A ray goes straight on through a face where its direction turns by less
-// than this (radians).
-const STRAIGHT_TOLERANCE = 1e-9;
+// A ray that goes on through a plane keeps its direction to about 1 µrad
+// (1 − cos 1.4e-6 ≈ 1e-12).
+const STRAIGHT_TOLERANCE = 1e-12;
 
 // Rays of one beam's bundle share their source, their route through
 // splitting optics, their wavelength and the number of interactions behind
@@ -53,7 +55,7 @@ function continuation(path, i) {
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
   if (!(len > 0) || !(w > 0)) return null;
-  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: !!beamOnPathSegment(path, i + 1) };
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, i + 1)) };
 }
 
 function inRegion(g, at, p) {
@@ -124,18 +126,25 @@ export function zoomFoci(zoom, paths = []) {
       const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
       from = Math.min(from, s0); to = Math.max(to, s1);
     }
-    // A cone's focus that sits where the bundle's rays end, on an optic the
-    // same light goes straight on through (a specimen plane, a window's
-    // face), is crossed all the same: the beam travels on along the rays'
-    // next segments, so the waist is drawn on both sides, cut at the face
-    // after that stretch. Light that stops there, turns or bends is left as
-    // it was, and so is a propagated waist, and light that carries a beam
-    // parameter on past the face (its own segment draws that waist).
+    // A focus that sits where the bundle's rays end, on an optic the same
+    // light goes on through (a specimen plane, a window's face), is crossed
+    // all the same: the beam travels on along the rays' next segments, so
+    // the waist is drawn on both sides, cut at the face after that stretch.
+    // Light that stops there, or turns back, is left as it was.
+    // Only a plane the light crosses straight at the waist itself: every ray
+    // ends on the waist (within a hundredth of w0, or the along tolerance)
+    // and its next segment keeps its direction. A mirror, a lens or any
+    // optic that turns the rays, and rays that end short of a waist further
+    // on, are not crossed (the waist predicted past them is not where the
+    // light goes). Only a cone estimate is carried on: a propagated waist,
+    // or light that still carries a beam parameter past the plane (an ND
+    // filter at the waist), is drawn by its own segments and would be drawn
+    // twice.
+    const atWaist = Math.max(ALONG_TOLERANCE, found.w0Mm / 100);
+    const endsOnWaist = r => Math.hypot(r.p.x + r.len * r.d.x - found.point.x, r.p.y + r.len * r.d.y - found.point.y) <= atWaist;
+    const straightOn = r => r.next && !r.next.beam && r.next.d.x * r.d.x + r.next.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
     let after = null;
-    if (found.model !== 'propagated' && Number.isFinite(to) && Math.abs(to) <= ALONG_TOLERANCE
-      && group.rays.every(r => r.next && !r.next.beam
-        && r.next.d.x * r.d.x + r.next.d.y * r.d.y > 0
-        && Math.abs(r.next.d.x * r.d.y - r.next.d.y * r.d.x) <= STRAIGHT_TOLERANCE)) {
+    if (found.model !== 'propagated' && Number.isFinite(to) && to <= ALONG_TOLERANCE && group.rays.every(r => endsOnWaist(r) && straightOn(r))) {
       after = group.rays.map(r => r.next);
       to = -Infinity;
       for (const r of after) {
@@ -146,6 +155,8 @@ export function zoomFoci(zoom, paths = []) {
     // A cone's focus lies between the optics; a propagated waist may lie up
     // to a Rayleigh range beyond them, and its envelope is drawn on the
     // stretch the beam travels, cut at the faces as before.
+    // A propagated waist's envelope stops where an edge clips the beam.
+    if (found.model === 'propagated' && found.reachMm !== null) to = Math.min(to, found.reachMm - found.waistFromStartMm);
     if (![from, to].every(Number.isFinite) || !(from < to)) continue;
     if (found.model !== 'propagated' && !(from < 0 && to > 0)) continue;
     const across = p => (p.x - found.point.x) * -found.axis.y + (p.y - found.point.y) * found.axis.x;
@@ -167,6 +178,9 @@ export function zoomFoci(zoom, paths = []) {
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
       model: found.model || 'cone', estimate: found.estimate || null,
+      // The bench already draws this beam's envelope (step G2), and the
+      // view magnifies it: the waist is not drawn a second time.
+      drawnAsEnvelope: found.model === 'propagated' && Boolean(group.beam?.drawnAsEnvelope),
     });
   }
   return foci;
@@ -185,13 +199,22 @@ function propagatedFocus(group) {
   const along = shape.waistAheadMm;
   const length = Math.max(...group.rays.map(r => r.len));
   if (!(along > -shape.rayleighMm && along <= length + shape.rayleighMm)) return { ok: false };
-  // An edge that clips the beam before its waist or within the drawn
-  // stretch ends the beam parameter there (as the probe and detectors
-  // read it): the zoom then keeps the cone estimate.
-  if (beam.clipWithin?.(Math.max(along, length))) return null;
+  // An edge that clips the beam before its waist ends the beam parameter
+  // there (as the probe and detectors read it): the zoom then keeps the cone
+  // estimate. One that clips it past the waist leaves the waist, and the
+  // envelope is drawn up to the edge (`reachMm`), as the bench's band is.
+  const clipAt = beam.clipAt?.(Math.max(along, length)) ?? null;
+  // Arms of the same light that overlap before the waist recombine there:
+  // the readouts give no beam, and the zoom draws no waist, neither the
+  // beam's nor a cone's, even where an edge clips the light afterwards. One
+  // that begins past the waist ends its envelope.
+  const overlapAt = beam.overlapAt ?? null;
+  if (overlapAt !== null && overlapAt <= Math.max(0, along) && (clipAt === null || overlapAt <= clipAt)) return { ok: false };
+  if (clipAt !== null && clipAt <= Math.max(0, along)) return null;
+  const reach = [clipAt, overlapAt].filter(v => v !== null);
   return {
-    ok: true, model: 'propagated',
-    point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d },
+    ok: true, model: 'propagated', reachMm: reach.length ? Math.min(...reach) : null,
+    point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d }, waistFromStartMm: along,
     w0Mm: shape.waistUm / 1000, zRMm: shape.rayleighMm, na: Math.sin(Math.atan(shape.halfDivergenceMrad / 1000)),
     estimate: beam.estimate || null,
   };
@@ -233,23 +256,20 @@ function clipToSide(outline, { at, n }) {
 }
 
 // The 1/e² envelope of a focus on the bench, as a closed outline: both
-// edges from `from` to `to` along the beam, measured from the focus,
-// sampled densely near the waist (evenly in asinh(z/zR)) where the curve
-// bends, then cut along the optics' faces in `focus.ends`, when given.
+// edges from `from` to `to` along the beam, measured from the focus, as the
+// bench's beam envelope draws them (envelopeEdges), then cut along the
+// optics' faces in `focus.ends`, when given.
 export function focusEnvelope(focus, from, to, samples = 48) {
-  const { point, axis, w0Mm, zRMm } = focus;
-  if (!(from < to)) return [];
-  const nx = -axis.y, ny = axis.x;
-  const u0 = Math.asinh(from / zRMm), u1 = Math.asinh(to / zRMm);
-  const left = [], right = [];
-  for (let k = 0; k <= samples; k++) {
-    const z = zRMm * Math.sinh(u0 + (u1 - u0) * k / samples);
-    const w = w0Mm * Math.sqrt(1 + (z / zRMm) ** 2);
-    const cx = point.x + z * axis.x, cy = point.y + z * axis.y;
-    left.push({ x: cx + w * nx, y: cy + w * ny });
-    right.push({ x: cx - w * nx, y: cy - w * ny });
-  }
-  let outline = left.concat(right.reverse());
+  // A cone's waist w0 = λ/(π·NA) takes NA as the sine of the cone's half
+  // angle, while w(z) opens with slope w0/zR: drawn with the note's zR its
+  // edges would open at atan(NA), inside the rays (32° against 39° at
+  // NA 0.63). The outline is drawn with the slope of the outermost rays,
+  // tan(asin NA), so it ends on them; the note keeps zR = π·w0²/λ.
+  const drawn = focus.model === 'cone' && focus.na > 0 && focus.na < 1
+    ? { ...focus, zRMm: focus.w0Mm / Math.tan(Math.asin(focus.na)) } : focus;
+  const edges = envelopeEdges(drawn, from, to, samples);
+  if (!edges) return [];
+  let outline = edges.left.concat([...edges.right].reverse());
   for (const face of focus.ends || []) outline = clipToSide(outline, face);
   return outline.length >= 3 && outline.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ? outline : [];
 }

@@ -478,7 +478,9 @@ function gridLines(x0, y0, x1, y1, step, color, width) {
   return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" vector-effect="non-scaling-stroke"/>`;
 }
 
-function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
+// Points to 0.01 mm, or to a drawable's own `precision` (a beam envelope's
+// edges, microns apart at a focus).
+function ptsAttr(pts, digits = 2) { return pts.map(p => `${p.x.toFixed(digits)},${p.y.toFixed(digits)}`).join(' '); }
 
 // Crystal id -> the last mixing state it was announced in. A two-beam crystal
 // that stops producing anything is worth saying out loud once: the beams are
@@ -533,11 +535,11 @@ function renderBeams() {
       // browser composite every one of a specimen's thousands of glow strokes
       // as a layer of its own, on every pan and zoom.
       if (d.type === 'poly') {
-        s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
+        s += `<polygon points="${ptsAttr(d.pts, d.precision)}" fill="${d.color}" fill-opacity="${d.opacity}" stroke="none"/>`;
       } else if (d.type === 'dots') {
         s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" fill-opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
       } else {
-        s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
+        s += `<polyline points="${ptsAttr(d.pts, d.precision)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" stroke-opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
       }
     }
     beamLayer.innerHTML = s;
