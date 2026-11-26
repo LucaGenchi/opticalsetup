@@ -47,14 +47,15 @@ function bundleKey(path, segment) {
 }
 
 // A path's segment after segment i, as a ray from the point segment i ends
-// at, where the light goes on (finite, lit and of some length); else null.
+// at, where the light goes on (finite, lit and of some length), with
+// whether it carries a beam parameter; else null.
 function continuation(path, i) {
   const a = path.pts[i + 1], b = path.pts[i + 2];
   if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
   if (!(len > 0) || !(w > 0)) return null;
-  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len };
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, i + 1)) };
 }
 
 function inRegion(g, at, p) {
@@ -135,12 +136,15 @@ export function zoomFoci(zoom, paths = []) {
     // and its next segment keeps its direction. A mirror, a lens or any
     // optic that turns the rays, and rays that end short of a waist further
     // on, are not crossed (the waist predicted past them is not where the
-    // light goes).
+    // light goes). Only a cone estimate is carried on: a propagated waist,
+    // or light that still carries a beam parameter past the plane (an ND
+    // filter at the waist), is drawn by its own segments and would be drawn
+    // twice.
     const atWaist = Math.max(ALONG_TOLERANCE, found.w0Mm / 100);
     const endsOnWaist = r => Math.hypot(r.p.x + r.len * r.d.x - found.point.x, r.p.y + r.len * r.d.y - found.point.y) <= atWaist;
-    const straightOn = r => r.next && r.next.d.x * r.d.x + r.next.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
+    const straightOn = r => r.next && !r.next.beam && r.next.d.x * r.d.x + r.next.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
     let after = null;
-    if (Number.isFinite(to) && to <= ALONG_TOLERANCE && group.rays.every(r => endsOnWaist(r) && straightOn(r))) {
+    if (found.model !== 'propagated' && Number.isFinite(to) && to <= ALONG_TOLERANCE && group.rays.every(r => endsOnWaist(r) && straightOn(r))) {
       after = group.rays.map(r => r.next);
       to = -Infinity;
       for (const r of after) {
