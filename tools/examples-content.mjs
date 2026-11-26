@@ -2429,7 +2429,7 @@ export const exampleEntries = [
   {
     match: 'Epi fluorescence microscope',
     title: 'Epi-fluorescence microscope',
-    tagline: 'One objective both illuminates the sample and collects its fluorescence; a dichroic mirror and two filters keep the excitation out of the camera.',
+    tagline: 'One objective both illuminates the sample and collects its fluorescence; a dichroic and two filters keep the laser out, and a pinhole keeps only the light from the focus.',
     html: `
       <p>A fluorescent molecule absorbs light of one colour and, a few nanoseconds
       later, emits light of a longer wavelength. The emission is weak — typically
@@ -2451,8 +2451,16 @@ export const exampleEntries = [
       <p>The objective is used in the infinity configuration: the light from a
       point in its focal plane leaves it collimated, crosses the dichroic and the
       emission filter as a parallel beam — which is why flat plates can be put
-      there without disturbing the image — and a tube lens focuses it on the
-      camera.</p>
+      there without disturbing the image — and a tube lens focuses it to an image.</p>
+      <p>In a <em>widefield</em> microscope, the kind used to find cells, a lamp or
+      an LED lights the whole field at once and a camera records that image. Every
+      layer of a thick sample glows, and the layers above and below the focus add a
+      blurred haze to the picture. A <em>confocal</em> microscope focuses a laser to
+      a spot instead and puts a pinhole where the tube lens images that spot: light
+      from the focus passes the pinhole, light from above or below it arrives
+      spread out and is mostly stopped. The image is built up one point at a time
+      by scanning, and what is left is a thin optical section of the
+      sample${cite(1)}.</p>
       <p>The filter set is chosen for the dye. Enhanced GFP, used here, absorbs
       most strongly near 488&nbsp;nm and emits with a peak near 507&nbsp;nm${cite(3)},
       so its excitation and emission bands are only about 20&nbsp;nm apart and the
@@ -2463,36 +2471,57 @@ export const exampleEntries = [
       downwards by a long-pass <a href="../../wiki/dichroic/">dichroic</a> with its
       edge at 495&nbsp;nm. The <a href="../../wiki/objective/">objective</a> focuses
       it into a GFP sample on a <a href="../../wiki/stage/">piezo stage</a>, which
-      scans the sample sideways under the fixed focus.</p>
+      scans the sample sideways under the fixed focus. The 6&nbsp;mm beam fills
+      60% of the objective's 10&nbsp;mm back pupil, and the objective's inspector
+      reports the effective NA that leaves: 0.15 of 0.25.</p>
       <p>The sample emits GFP's band in all directions. The part that falls
       inside the objective's acceptance cone is collected and collimated, passes
       the dichroic, is trimmed by a 525/50 emission filter, and is focused by a
-      100&nbsp;mm tube lens onto the camera. The camera's reading is about a
-      thousandth of the laser power, and its spectrum lies entirely between 500
-      and 550&nbsp;nm.</p>
-      <p>Things to try. Select the camera and look at the wavelength it reports:
-      no 488&nbsp;nm. Then move the emission filter's centre to 620&nbsp;nm — clear
-      of GFP's band — and the camera goes dark, because there was never any
-      excitation leaking through for it to pass instead. Move the dichroic edge
-      below 488&nbsp;nm and the laser goes straight through it and never reaches
-      the sample. Lower the objective's NA and the collected signal falls with the
-      width of the cone.</p>`,
+      100&nbsp;mm tube lens onto a 0.5&nbsp;mm <a href="../../wiki/slit/">pinhole</a>.
+      A <a href="../../wiki/pmt/">photomultiplier</a> behind it reports a relative
+      ray weight of about 0.02&nbsp;a.u. — the tracer's relative weight, not a
+      calibrated power — which its gain of 10<sup>4</sup> turns into 237&nbsp;a.u.
+      at its output. Its spectrum lies between 500 and 535&nbsp;nm.</p>
+      <p>Things to try. Widen the pinhole to 2&nbsp;mm: the PMT's amplified output
+      rises from 237 to 316&nbsp;a.u. The extra light comes from the parts of the
+      2&nbsp;mm fluorescent layer above and below the focus. Then set the active
+      sample thickness to 0.5&nbsp;mm and the stage to Z: with the 0.5&nbsp;mm pinhole
+      the PMT lights up only while the thin layer crosses the focus. Move the
+      emission filter's centre to 620&nbsp;nm, clear of GFP's band, and the PMT goes
+      dark, because no excitation was leaking through for it to pass instead. Move
+      the dichroic edge below 488&nbsp;nm and the laser goes straight through it and
+      never reaches the sample. Lower the objective's NA to 0.10 and its back pupil
+      shrinks to 4&nbsp;mm, narrower than the 6&nbsp;mm beam: the objective's inspector
+      reports it overfilled, about 44% through, and the PMT's output falls to
+      161&nbsp;a.u. That drop is excitation lost at the pupil, not light the objective
+      fails to collect.</p>`,
     limitations: `<p>The fluorescence is qualitative. The sample converts a set
-      fraction of the excitation that reaches it into the dye's emission band and
-      radiates it isotropically in the plane of the drawing; there is no quantum yield,
-      extinction coefficient, concentration, saturation or bleaching, and the
-      thousandth that reaches the camera is a 2D collection fraction, not the solid
-      angle of a real objective.</p>
+      fraction per millimetre of the excitation that reaches it into the dye's
+      emission band and radiates it isotropically in the plane of the drawing, from
+      points along the beam's centre line; there is no quantum yield, extinction
+      coefficient, concentration, saturation or bleaching. The detector readings are
+      relative ray weights, and the share of the emission the objective collects is a
+      2D fraction, not the solid angle of a real objective: with the pinhole removed,
+      raising the NA from 0.25 to 0.65 multiplies it by about 2.6 here, against about 7.5
+      for a real one (the
+      fluorescence calculator gives the real fraction). These 2D numbers are coarse: each
+      point of the sample sends out 20 rays (the stage's "Emission rays"), and only a
+      couple of them fall inside the objective's cone, so that factor, the share the
+      pinhole passes and the shape of the optical section all change when that number
+      changes.</p>
       <p>The filters and the dichroic are ideal: full transmission inside the band,
       none outside, edges that do not move with angle. So the excitation rejection
       here is perfect, where a real filter set is specified by how many orders of
       magnitude it achieves, and the sample neither reflects nor scatters the laser
       back. Autofluorescence and background are absent.</p>
-      <p>There is no image. The 6&nbsp;mm laser beam underfills the objective's 10&nbsp;mm pupil and
-      is brought to a focus; nothing models diffraction, the point-spread function, resolution, or
-      the camera as a 2D sensor. The stage motion is a display animation of the
-      sample under the focus, and a uniform sample gives the same reading
-      everywhere.</p>`,
+      <p>There is no image. Nothing models diffraction, the point-spread function or
+      resolution, so the confocal's sharper image is not shown, only its rejection of
+      light from outside the focus. That optical section is a step here, and
+      millimetres thick at the drawing's scale: a layer is either seen through the
+      pinhole or not (with more emission rays it becomes a staircase). A real section
+      falls off smoothly, about a micrometre thick, and is set by the pinhole's size in
+      Airy units. Scanning the stage sideways moves a uniform sample under the focus,
+      so the reading stays the same; scanning it along Z changes it, as above.</p>`,
     citations: [
       { label: 'J. W. Lichtman, J.-A. Conchello, “Fluorescence microscopy,” Nature Methods 2, 910–919 (2005)', url: 'https://doi.org/10.1038/nmeth817' },
       { label: 'Nikon MicroscopyU — Introduction to Fluorescence Microscopy', url: 'https://www.microscopyu.com/techniques/fluorescence/introduction-to-fluorescence-microscopy' },
@@ -2501,7 +2530,7 @@ export const exampleEntries = [
     resources: [
       { label: 'RP Photonics Encyclopedia — Fluorescence Microscopy', url: 'https://www.rp-photonics.com/fluorescence_microscopy.html' },
     ],
-    related: ['objective', 'dichroic', 'filter', 'stage', 'camera', 'lens', 'cwlaser'],
+    related: ['objective', 'dichroic', 'filter', 'stage', 'slit', 'pmt', 'lens', 'cwlaser'],
   },
   {
     match: 'Pulsed Mach–Zehnder',

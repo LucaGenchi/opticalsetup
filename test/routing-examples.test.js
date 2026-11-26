@@ -79,22 +79,34 @@ test('the half-wave plate sets how much light is sent at all', async () => {
   close(signal((await run(SEND_RETURN, byId => { byId('hwp').params.a = 45; }))('receive')), 0);
 });
 
-test('only the fluorescence reaches the epi camera', async () => {
-  const camera = (await run(EPI))('camera');
-  assert.ok(camera.signal > 5e-4 && camera.signal < 0.05, `collected fraction ${camera.signal}`);
+test('only the fluorescence reaches the epi PMT, through the pinhole', async () => {
+  const pmt = (await run(EPI))('pmt');
+  assert.ok(pmt.signal > 5e-4 && pmt.signal < 0.05, `collected fraction ${pmt.signal}`);
   // The 525/50 filter's own band, to within its sampling: nothing at 488 nm.
-  assert.ok(camera.bandMin > 495 && camera.bandMax < 555, `${camera.bandMin}–${camera.bandMax} nm`);
-  assert.ok(camera.spotSpan < 3, 'the tube lens focuses the collected light on the sensor');
+  assert.ok(pmt.bandMin > 495 && pmt.bandMax < 555, `${pmt.bandMin}–${pmt.bandMax} nm`);
+  assert.ok(pmt.spotSpan <= 0.5, 'only light through the 0.5 mm pinhole reaches the PMT');
 });
 
-test('the epi camera goes dark when the filters stop matching the dye', async () => {
+test('the pinhole stops the fluorescence from above and below the focus', async () => {
+  // The 2 mm layer glows all along the beam; a 2 mm pinhole passes all of it,
+  // the 0.5 mm one only the part near the focus.
+  const narrow = signal((await run(EPI))('pmt'));
+  const wide = signal((await run(EPI, byId => { byId('pinhole').params.gap = 2; }))('pmt'));
+  close(narrow / wide, 0.75, 0.02);
+  // A thin layer moved 1 mm off the focus sends nothing through the 0.5 mm pinhole.
+  const thin = byId => { byId('stage').params.activeThickness = 0.5; };
+  assert.ok(signal((await run(EPI, thin))('pmt')) > 0);
+  close(signal((await run(EPI, byId => { thin(byId); byId('stage').y += 1; }))('pmt')), 0);
+});
+
+test('the epi PMT goes dark when the filters stop matching the dye', async () => {
   // An emission filter clear of the GFP band passes nothing: no 488 nm leak.
-  assert.equal((await run(EPI, byId => { byId('emission-filter').params.center = 620; }))('camera'), null);
+  close(signal((await run(EPI, byId => { byId('emission-filter').params.center = 620; }))('pmt')), 0);
   // A dichroic edge below the laser line transmits the excitation instead
   // of sending it to the sample.
-  assert.equal((await run(EPI, byId => { byId('dichroic').params.cutoff = 450; }))('camera'), null);
+  close(signal((await run(EPI, byId => { byId('dichroic').params.cutoff = 450; }))('pmt')), 0);
   // No sample in the focus, no signal.
-  assert.equal((await run(EPI, byId => { byId('stage').y += 60; }))('camera'), null);
+  close(signal((await run(EPI, byId => { byId('stage').y += 60; }))('pmt')), 0);
 });
 
 // Drive both arms of one child modulator push-pull by a total of `deg`.
