@@ -181,6 +181,12 @@ export function zoomFoci(zoom, paths = []) {
       // The bench already draws this beam's envelope (step G2), and the
       // view magnifies it: the waist is not drawn a second time.
       drawnAsEnvelope: found.model === 'propagated' && Boolean(group.beam?.drawnAsEnvelope),
+      // A propagated waist predicted past the optic that ends the bundle,
+      // where that optic turns the rays (a lens): the beam never reaches it.
+      // The envelope up to the optic is the beam's and stays drawn; the
+      // note does not name a waist the light does not form.
+      unreached: found.model === 'propagated' && to < -ALONG_TOLERANCE
+        && group.rays.some(r => r.next && r.next.d.x * r.d.x + r.next.d.y * r.d.y < 1 - STRAIGHT_TOLERANCE),
     });
   }
   return foci;
