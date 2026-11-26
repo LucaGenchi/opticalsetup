@@ -33,6 +33,9 @@ import { zoomGeometry } from './zoom.js';
 // it: one at a segment's start (a point source's own emitter) or past its
 // end (a virtual focus behind an optic) is not a beam focus.
 const ALONG_TOLERANCE = 1e-6;
+// A ray goes straight on through a face where its direction turns by less
+// than this (radians).
+const STRAIGHT_TOLERANCE = 1e-9;
 
 // Rays of one beam's bundle share their source, their route through
 // splitting optics, their wavelength and the number of interactions behind
@@ -42,14 +45,15 @@ function bundleKey(path, segment) {
 }
 
 // A path's segment after segment i, as a ray from the point segment i ends
-// at, where the light goes on (finite, lit and of some length); else null.
+// at, where the light goes on (finite, lit and of some length), with
+// whether it carries a beam parameter; else null.
 function continuation(path, i) {
   const a = path.pts[i + 1], b = path.pts[i + 2];
   if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
   if (!(len > 0) || !(w > 0)) return null;
-  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len };
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: !!beamOnPathSegment(path, i + 1) };
 }
 
 function inRegion(g, at, p) {
@@ -120,14 +124,18 @@ export function zoomFoci(zoom, paths = []) {
       const s1 = s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y);
       from = Math.min(from, s0); to = Math.max(to, s1);
     }
-    // A focus that sits where the bundle's rays end, on an optic the same
-    // light goes on through (a specimen plane, a window's face), is crossed
-    // all the same: the beam travels on along the rays' next segments, so
-    // the waist is drawn on both sides, cut at the face after that stretch.
-    // Light that stops there, or turns back, is left as it was.
+    // A cone's focus that sits where the bundle's rays end, on an optic the
+    // same light goes straight on through (a specimen plane, a window's
+    // face), is crossed all the same: the beam travels on along the rays'
+    // next segments, so the waist is drawn on both sides, cut at the face
+    // after that stretch. Light that stops there, turns or bends is left as
+    // it was, and so is a propagated waist, and light that carries a beam
+    // parameter on past the face (its own segment draws that waist).
     let after = null;
-    if (Number.isFinite(to) && to <= ALONG_TOLERANCE
-      && group.rays.every(r => r.next && r.next.d.x * found.axis.x + r.next.d.y * found.axis.y > 0)) {
+    if (found.model !== 'propagated' && Number.isFinite(to) && Math.abs(to) <= ALONG_TOLERANCE
+      && group.rays.every(r => r.next && !r.next.beam
+        && r.next.d.x * r.d.x + r.next.d.y * r.d.y > 0
+        && Math.abs(r.next.d.x * r.d.y - r.next.d.y * r.d.x) <= STRAIGHT_TOLERANCE)) {
       after = group.rays.map(r => r.next);
       to = -Infinity;
       for (const r of after) {

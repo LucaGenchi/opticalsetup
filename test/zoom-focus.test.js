@@ -349,3 +349,54 @@ test('light that stops at the focus, an emitter and a virtual focus on a specime
   assert.ok(paths.some(path => path.pts.some(p => p.x > 100)), 'rays leave the lens');
   assert.equal(zoomFoci(zoom, paths).length, 0, 'a virtual focus on the plane');
 });
+
+test('a waist crossing a specimen plane is cut at the next face, a tilted mirror', () => {
+  const mirror = createElement('mirror', 170, 0);
+  mirror.rot = 45;
+  const scene = specimenFocusScene([squareSample(168), mirror]);
+  const [focus] = zoomFoci(scene.zoom, scene.traced.paths);
+  // The outermost rays, 8 mm off axis 10 mm on, meet the face x + y = 170.
+  assert.ok(Math.abs(focus.to - 10) < 1e-6, `to ${focus.to}`);
+  const outline = focusEnvelope(focus, focus.from, focus.to);
+  assert.ok(outline.length >= 3);
+  assert.ok(Math.max(...outline.map(p => p.x + p.y)) <= 170 + 1e-9, 'cut along the mirror face');
+});
+
+test('a focus on a tilted mirror is not carried on along the reflection', () => {
+  // Every reflected ray still heads forward, but on another axis.
+  const led = createElement('ledsource', 0, 0);
+  Object.assign(led.params, { beamMode: 'beam', beamWidth: 3 });
+  const lens = createElement('lens', 100, 0);
+  const mirror = createElement('mirror', 200, 0);
+  mirror.rot = 50;
+  const zoom = createElement('zoom', 200, 0);
+  Object.assign(zoom.params, { w: 4, mag: 20 });
+  assert.equal(zoomFoci(zoom, traceScene([led, lens, mirror, zoom], []).paths).length, 0);
+});
+
+test('a propagated waist is not carried on past a face', () => {
+  // A 0.6 mm beam focused by an f = 100 mm lens: its waist lies about a
+  // millimetre past a specimen plane at x = 197, where its beam parameter
+  // ends. The incoming envelope stays cut at the plane.
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamWidth = 0.6;
+  const zoom = createElement('zoom', 198, 0);
+  Object.assign(zoom.params, { w: 6, mag: 20 });
+  const foci = zoomFoci(zoom, traceScene([laser, createElement('lens', 100, 0), squareSample(197), zoom], []).paths);
+  const propagated = foci.filter(f => f.model === 'propagated');
+  assert.equal(propagated.length, 1);
+  const [beam] = propagated;
+  assert.ok(beam.point.x > 197 && beam.to <= 197 - beam.point.x + 1e-6, `ends at the plane: ${beam.point.x + beam.to}`);
+  // An ND filter half a nanometre before the waist: the waist is drawn once
+  // on each side of it, never twice over the same stretch.
+  const scene = focusedScene();
+  const [waist] = zoomFoci(scene.zoom, scene.traced.paths);
+  const nd = createElement('filter', waist.point.x - 0.5e-6, 0);
+  nd.params.ftype = 'nd';
+  const zoomNd = createElement('zoom', 200, 0);
+  Object.assign(zoomNd.params, { w: 4, mag: 20 });
+  const split = zoomFoci(zoomNd, traceScene([createElement('cwlaser', 0, 0), createElement('lens', 100, 0), nd, zoomNd], []).paths);
+  assert.equal(split.length, 2);
+  const spans = split.map(f => [f.point.x + f.from, f.point.x + f.to]).sort((a, b) => a[0] - b[0]);
+  assert.ok(spans[0][1] <= spans[1][0] + 1e-6, `no overlap: ${JSON.stringify(spans)}`);
+});
