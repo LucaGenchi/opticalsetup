@@ -2593,11 +2593,12 @@ const formatBeamLength = mm => (mm < 0.9995 ? `${Number((mm * 1000).toPrecision(
 const gaussianBeamParams = type => [
   { key: 'beamHeading', label: 'Gaussian beam', type: 'section', open: false },
   // How the beam is drawn (decision 9, step G2): rays by default, or the
-  // band of its 1/e² radius w(z), or both. Nothing is drawn across the band
+  // band of its 1/e² radius w(z) (Luca dropped 'both': where the two differ,
+  // near a focus, the band already shows the waist). Nothing is drawn across the band
   // (Luca): it is narrowest at the waist, which the probe reads.
   {
     key: 'beamDisplay', label: 'Draw the beam as', type: 'select', def: 'rays',
-    options: [['rays', 'Rays'], ['envelope', 'Gaussian beam (1/e² radius)'], ['both', 'Rays and Gaussian beam']],
+    options: [['rays', 'Rays'], ['envelope', 'Gaussian beam (1/e² radius)']],
     show: p => p.beamMode === 'beam',
   },
   { key: 'beamM2', label: 'Beam quality M² (1 = ideal)', type: 'number', min: 1, max: 100, step: 0.1, def: 1, show: p => p.beamMode === 'beam' },
@@ -6423,8 +6424,10 @@ export const registry = {
       { key: 'regionDash', label: 'Dashed outlines (region and view)', type: 'checkbox', def: false },
       { key: 'connectors', label: 'Connector lines', type: 'checkbox', def: true },
       { key: 'connectorDash', label: 'Dashed connector lines', type: 'checkbox', def: false, show: p => p.connectors },
-      { key: 'diffraction', label: 'Diffraction-limited focus (Gaussian waist)', type: 'checkbox', def: true },
-      { key: 'focusNote', label: 'Waist and Rayleigh range note', type: 'checkbox', def: true, show: p => p.diffraction },
+      // A focus in the region is always drawn with its waist (Luca, step G2):
+      // the earlier on/off switch is gone, and a zoom saved with it off
+      // opens with the waist drawn. Only the note can be hidden.
+      { key: 'focusNote', label: 'Waist and Rayleigh range note', type: 'checkbox', def: true },
       { key: 'scaleBar', label: 'Scale bar', type: 'checkbox', def: true },
       { key: 'scaleBarDirection', label: 'Scale bar direction', type: 'select', def: 'horizontal', options: [['horizontal', 'Horizontal (along the width)'], ['vertical', 'Vertical (along the height)']], show: p => p.scaleBar },
       { key: 'scaleBarMm', label: 'Scale bar length (mm) · 0 = automatic', type: 'number', min: 0, max: zoomScaleBarMaxMm, step: 0.001, def: 0, show: p => p.scaleBar },

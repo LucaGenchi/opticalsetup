@@ -168,8 +168,9 @@ export function zoomSceneSVG(zoom, scene = {}) {
   let content = onBench(shown.filter(isBackground).map(draw).join(''));
   content += onBench(immersionLayerSVG(elements, beams, { baseElements }));
   content += drawablesSVG(drawables, region, zoomMapper(g, zoom), nonScalingStroke);
-  // On unless turned off, so a zoom saved before the setting draws it too.
-  const focus = zoom.params.diffraction !== false ? focusLayer(zoom, g, paths, nonScalingStroke) : { svg: '', notes: [] };
+  // Always drawn: a focus in the region shows its waist (step G2 removed
+  // the switch; a zoom saved with it off draws it now).
+  const focus = focusLayer(zoom, g, paths, nonScalingStroke);
   content += focus.svg;
   // Pulse packets, already placed with zoomPulsePlacement(), sit on the rays
   // and under the parts, as on the bench. The canvas passes an empty slot

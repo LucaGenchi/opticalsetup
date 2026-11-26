@@ -10,8 +10,9 @@
 // spread, and the numerical aperture of the outermost rays) and gives the
 // ideal Gaussian beam focused in that cone: waist w0 = λ/(π·NA) and Rayleigh
 // range zR = π·w0²/λ, in air, at the light's centre wavelength. Its 1/e²
-// radius along the beam, w(z) = w0·sqrt(1 + (z/zR)²), meets the rays' cone
-// far from the focus, so the drawn envelope joins the traced beam.
+// radius along the beam, w(z) = w0·sqrt(1 + (z/zR)²), is drawn with the
+// slope of the rays' cone (focusEnvelope), so it joins the traced beam far
+// from the focus at any NA.
 //
 // That is the diffraction limit of the cone, not a wave-optics calculation:
 // aberrations, a medium's index, truncation by an aperture and M² > 1 are
@@ -215,7 +216,14 @@ function clipToSide(outline, { at, n }) {
 // bench's beam envelope draws them (envelopeEdges), then cut along the
 // optics' faces in `focus.ends`, when given.
 export function focusEnvelope(focus, from, to, samples = 48) {
-  const edges = envelopeEdges(focus, from, to, samples);
+  // A cone's waist w0 = λ/(π·NA) takes NA as the sine of the cone's half
+  // angle, while w(z) opens with slope w0/zR: drawn with the note's zR its
+  // edges would open at atan(NA), inside the rays (32° against 39° at
+  // NA 0.63). The outline is drawn with the slope of the outermost rays,
+  // tan(asin NA), so it ends on them; the note keeps zR = π·w0²/λ.
+  const drawn = focus.model === 'cone' && focus.na > 0 && focus.na < 1
+    ? { ...focus, zRMm: focus.w0Mm / Math.tan(Math.asin(focus.na)) } : focus;
+  const edges = envelopeEdges(drawn, from, to, samples);
   if (!edges) return [];
   let outline = edges.left.concat([...edges.right].reverse());
   for (const face of focus.ends || []) outline = clipToSide(outline, face);

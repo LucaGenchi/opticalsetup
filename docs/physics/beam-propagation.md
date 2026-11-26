@@ -261,8 +261,8 @@ propagated value. Two cases the tests hold:
 
 Lasers are drawn as rays by default (decision 9). *Draw the beam as*, in the
 collapsed *Gaussian beam* section of a CW laser, a pulsed laser or a
-supercontinuum drawn with a size, offers *Gaussian beam (1/e² radius)* and
-*Rays and Gaussian beam*. The envelope is the beam the readouts report: on each
+supercontinuum drawn with a size, offers *Gaussian beam (1/e² radius)*. The
+envelope is the beam the readouts report: on each
 segment of a traced path that carries light and a beam parameter, the tracer
 takes the beam at the segment's start from `beamOnPathSegment` (the function
 the zoom's waist uses) and `sketch/js/beam-envelope.js` draws the band
@@ -303,8 +303,6 @@ The zoom's focus is drawn by the same function (`envelopeEdges`).
   part-way, the band stops where the edge comes within 1.5 w and is drawn
   as edges only, over the rays, which stay on the whole segment. A chopped
   beam keeps its chopped rays.
-- **Rays and Gaussian beam.** The band's edges are drawn dashed over the
-  rays, with the marks.
 - **Recombination.** Arms of one source at one wavelength that travel
   together (within 0.1 rad) and overlap across the beam (closer than
   1.5 (w₁ + w₂), with the local radii, over the stretch where both still

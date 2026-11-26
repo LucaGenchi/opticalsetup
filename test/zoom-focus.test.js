@@ -70,8 +70,8 @@ test('a bundle with no beam parameter gets the Gaussian waist of its cone, label
   assert.match(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }), />cone estimate</);
 });
 
-test('the waist and its note are drawn by default, and each can be turned off', () => {
-  assert.equal(createElement('zoom').params.diffraction, true);
+test('the waist is always drawn, and its note can be turned off', () => {
+  assert.equal('diffraction' in createElement('zoom').params, false, 'no switch for the waist');
   assert.equal(createElement('zoom').params.focusNote, true);
   const scene = focusedScene();
   const svg = view(scene);
@@ -84,8 +84,9 @@ test('the waist and its note are drawn by default, and each can be turned off', 
   const unnamed = view(scene);
   assert.match(unnamed, /data-zoom-focus="true"/, 'note off: the waist is still drawn');
   assert.doesNotMatch(unnamed, /data-zoom-focus-label|w₀/, 'without its note');
+  // A zoom saved with the earlier switch off draws the waist now.
   scene.zoom.params.diffraction = false;
-  assert.doesNotMatch(view(scene), /data-zoom-focus/, 'off: the view is the bench as traced');
+  assert.match(view(scene), /data-zoom-focus="true"/, 'a saved switch is no longer read');
   // A zoom saved before the settings existed draws both.
   delete scene.zoom.params.diffraction;
   delete scene.zoom.params.focusNote;
@@ -279,4 +280,27 @@ test('an off-centre focus is drawn to the edge of the view on both sides', () =>
   const xs = bench.map(p => p.x);
   assert.ok(Math.min(...xs) <= 196.1 + 1e-6, `reaches the region's left edge at 196.1: ${Math.min(...xs)}`);
   assert.ok(Math.max(...xs) >= 200.1 - 1e-6, `and its right edge at 200.1: ${Math.max(...xs)}`);
+});
+
+test('G2: at high NA the cone estimate opens with the rays, not inside them', () => {
+  // A dry NA 0.8 objective filled by an 8 mm beam: the rays converge at
+  // NA 0.625 (39°), where sine and tangent differ by a quarter.
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 8, wavelength: 532 });
+  const objective = createElement('objective', 150, 0);
+  Object.assign(objective.params, { efl: 5, workingDistance: 0.6, immersion: 'air', na: 0.8, frontAperture: 8 });
+  const zoom = createElement('zoom', 166.6, 0);
+  Object.assign(zoom.params, { w: 0.5, mag: 300 });
+  const [focus] = zoomFoci(zoom, traceScene([laser, objective, zoom], []).paths);
+  assert.equal(focus.model, 'cone');
+  assert.ok(focus.na > 0.6 && focus.na < 0.65, `NA ${focus.na}`);
+  const z = -0.2;
+  const outline = focusEnvelope(focus, z, 0.2);
+  const halfWidthAt = x => Math.max(...outline.filter(p => Math.abs(p.x - x) < 1e-9).map(p => Math.abs(p.y - focus.point.y)));
+  const slope = Math.tan(Math.asin(focus.na));
+  const w = halfWidthAt(focus.point.x + z);
+  assert.ok(Math.abs(w - Math.hypot(focus.w0Mm, z * slope)) < 1e-9, `edge ${w} against the rays' ${Math.abs(z) * slope}`);
+  assert.ok(w > Math.abs(z) * focus.na * 1.2, 'wider than the sine slope would draw it');
+  // The note keeps the waist's own Rayleigh range.
+  assert.ok(Math.abs(focus.zRMm - gaussianFocus(532, focus.na).zRMm) < 1e-15);
 });

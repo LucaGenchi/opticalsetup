@@ -136,7 +136,7 @@ test('G2: the choice is offered only for a source drawn with a size, and no mark
   for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
     const params = registry[type].params;
     const display = params.find(p => p.key === 'beamDisplay');
-    assert.deepEqual(display.options.map(([value]) => value), ['rays', 'envelope', 'both'], type);
+    assert.deepEqual(display.options.map(([value]) => value), ['rays', 'envelope'], type);
     // In the collapsed Gaussian beam section.
     assert.ok(params.indexOf(display) > params.findIndex(p => p.key === 'beamHeading'), type);
     assert.equal(display.show({ beamMode: 'line' }), false);
@@ -148,18 +148,19 @@ test('G2: the choice is offered only for a source drawn with a size, and no mark
 test('G2: in collimated space the band lies on the outermost rays', () => {
   // A 4 mm beam at 633 nm: z_R = 19.9 m, so over 300 mm it stays 2 mm wide.
   const scene = display => [laser({ beamWidth: 4, beamDisplay: display }), make('detector', 400, 0)];
-  const both = traceScene(scene('both'), []).drawables;
-  const outlines = both.filter(d => d.type === 'path' && !d.dash && d.pts.length === 2 && d.pts[0].x !== d.pts[1].x);
-  const edges = both.filter(d => d.type === 'path' && d.dash === '5 3');
-  assert.equal(edges.length, 2, 'both edges, dashed over the rays');
-  const rayEdge = Math.max(...outlines.flatMap(d => ys(d.pts)));
-  close(rayEdge, 2, 1e-9, 'outermost ray');
-  close(Math.max(...edges.flatMap(d => ys(d.pts))), 2, 0.001, 'band edge');
-  close(Math.min(...edges.flatMap(d => ys(d.pts))), -2, 0.001, 'band edge');
-  // The envelope alone replaces the rays' fill with one band.
+  const rays = traceScene(scene('rays'), []).drawables;
+  const outlines = rays.filter(d => d.type === 'path' && !d.dash && d.pts.length === 2 && d.pts[0].x !== d.pts[1].x);
+  close(Math.max(...outlines.flatMap(d => ys(d.pts))), 2, 1e-9, 'outermost ray');
+  // The envelope replaces the rays' fill with one band, edged where the
+  // outermost rays were.
   const envelope = traceScene(scene('envelope'), []).drawables;
   assert.deepEqual(types(envelope), { poly: 1, path: 2 }, 'the band and its two edges');
+  const edges = envelope.filter(d => d.type === 'path');
+  close(Math.max(...edges.flatMap(d => ys(d.pts))), 2, 0.001, 'band edge');
+  close(Math.min(...edges.flatMap(d => ys(d.pts))), -2, 0.001, 'band edge');
   close(Math.max(...ys(bands(envelope)[0].pts)), 2, 0.001);
+  // A setting this version does not offer (the earlier 'both') opens as rays.
+  assert.equal(beamDisplayOf({ type: 'cwlaser', params: { beamMode: 'beam', beamDisplay: 'both' } }), 'rays');
 });
 
 test('G2: near a focus the band narrows to the waist the probe reads, where the probe puts it', () => {
