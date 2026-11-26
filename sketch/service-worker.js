@@ -22,6 +22,7 @@ const PRECACHE_PATHS = [
   "./icons/apple-touch-icon.png",
   "./js/acousto-optic.js",
   "./js/asphere.js",
+  "./js/beam-envelope.js",
   "./js/beam-propagation.js",
   "./js/bessel.js",
   "./js/gaussian-beam.js",

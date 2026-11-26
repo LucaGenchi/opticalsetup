@@ -141,9 +141,9 @@ export const wikiEntries = [
         <h3>Gaussian beam</h3>
         <p>A laser drawn with a size also starts a Gaussian beam: a 1/e² radius
         <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
-        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
-        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
-        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        with the waist at its output. The collapsed <em>Gaussian beam</em> section adds the
+        beam quality M² (1 for an ideal beam; a larger value spreads faster, as a multimode or
+        diode laser does) and how the beam is drawn (below). A laser drawn as a simple line starts no
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
@@ -165,7 +165,21 @@ export const wikiEntries = [
         comes within 1.5&nbsp;<span class="w">w</span> of the beam's centre (it clips the beam,
         which is then no longer Gaussian), where the far-field half-angle exceeds
         0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
-        again.</p>`,
+        again.</p>
+        <h3>Drawing the Gaussian beam</h3>
+        <p><em>Draw the beam as</em>, in the <em>Gaussian beam</em> section, chooses how this
+        source's light is drawn: as its rays (the default) or as its Gaussian beam. The
+        Gaussian beam is a band of half-width <span class="w">w</span>(<span class="w">z</span>),
+        the 1/e² radius, around the central ray, in the beam's colour; the probe gives the place
+        and size of its waist. Where the beam is collimated the band lies on the outermost rays. Near a focus the rays cross at
+        a point while the band narrows to the waist, and a narrow beam's band shows where it
+        really focuses, which its rays do not (see above). The band is the beam the readouts
+        report, and it ends on each mirror or lens as the rays do. Where the beam stops (past a
+        diffuser, an edge that clips it, a wavelength conversion, or where arms meet again)
+        the rays are drawn instead, so no light disappears from the drawing; across a stretch
+        where an edge clips the beam part-way, the band's edges are drawn dashed over the
+        rays. Light a fibre relaunches is drawn as
+        the source that sent it in. Exported figures draw the same.</p>`,
       formulas: [
         { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.' },
         { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
@@ -261,9 +275,9 @@ export const wikiEntries = [
         <h3>Gaussian beam</h3>
         <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
         <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
-        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
-        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
-        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        with the waist at its output. The collapsed <em>Gaussian beam</em> section adds the
+        beam quality M² (1 for an ideal beam; a larger value spreads faster, as a multimode or
+        diode laser does) and how the beam is drawn (below). A laser drawn as a simple line starts no
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
@@ -286,6 +300,20 @@ export const wikiEntries = [
         which is then no longer Gaussian), where the far-field half-angle exceeds
         0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
         again.</p>
+        <h3>Drawing the Gaussian beam</h3>
+        <p><em>Draw the beam as</em>, in the <em>Gaussian beam</em> section, chooses how this
+        source's light is drawn: as its rays (the default) or as its Gaussian beam. The
+        Gaussian beam is a band of half-width <span class="w">w</span>(<span class="w">z</span>),
+        the 1/e² radius, around the central ray, in the beam's colour; the probe gives the place
+        and size of its waist. Where the beam is collimated the band lies on the outermost rays. Near a focus the rays cross at
+        a point while the band narrows to the waist, and a narrow beam's band shows where it
+        really focuses, which its rays do not (see above). The band is the beam the readouts
+        report, and it ends on each mirror or lens as the rays do. Where the beam stops (past a
+        diffuser, an edge that clips it, a wavelength conversion, or where arms meet again)
+        the rays are drawn instead, so no light disappears from the drawing; across a stretch
+        where an edge clips the beam part-way, the band's edges are drawn dashed over the
+        rays. Light a fibre relaunches is drawn as
+        the source that sent it in. Exported figures draw the same.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -523,6 +551,11 @@ export const wikiEntries = [
         leaves, centred at 500&nbsp;nm, starts 0.83&nbsp;mm wide. The readouts give the beam
         at one wavelength, the band's centre or the centre of the part that is there, and say
         so. The drawn rays keep the Beam width at every colour.</p>
+        <p><em>Draw the beam as</em>, in the same section, draws the Gaussian beam as a band
+        of half-width <span class="w">w</span>(<span class="w">z</span>), the 1/e² radius, as the
+        CW Laser describes. Before anything separates the band, one band is drawn for the
+        band's centre; each part a filter, a dichroic or a prism separates gets a band of its
+        own, in its colour and with its own waist.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
@@ -6662,7 +6695,7 @@ export const wikiEntries = [
     summary: "Draws a region of the setup again, enlarged, elsewhere on the canvas, with an optional scale bar, so small features such as a displaced focus become visible.",
     realWorld: { html: `<p>Figures of optical setups often carry an enlarged inset of a small region: the focus of an objective inside a specimen, the overlap of two beams in a crystal, the walk of a scanned spot. The inset is joined to the region it enlarges by an outline and connector lines, and a scale bar tells the reader what the enlarged distances are.</p>` },
     inOpticalSetup: {
-      html: `<p>Place a zoom and drag its region onto the part of the setup to enlarge: the outline of the region is what you grab, so the components inside it stay selectable. The view shows that region at the chosen magnification and can be dragged anywhere on its own; dragging the region aims it while the view stays where it is, and nudging with the arrow keys moves both. The blue handles resize the region about its centre. The magnification is set by dragging a purple corner of the view, which grows or shrinks it while the opposite corner stays put, or with the purple knob. Choose a circle, an ellipse or a rectangle; the view has the same shape. A rectangle or an ellipse can be turned with the round handle to lie along a tilted beam: both shapes turn, the view stays where it is on the bench, and the enlarged bench keeps its orientation, so a tilted beam is still tilted in the view. The outlines of the region and of the view can be drawn dashed together, the connector lines on their own, and the connector lines can be turned off.</p><p>Shapes grow with the magnification, but lines keep their weight, so a traced ray stays a fine line and the view shows where rays really cross. Beam envelopes are areas and grow with everything else. Pulse packets pass through the view as they cross the region: a schematic packet keeps its size, as a mark does, while a physical packet's length, c times its duration, grows with the magnification. Text labels, arrows, probes and other zooms are not enlarged: they belong to the figure rather than to the bench, and a label placed after the zoom can be drawn on its view. The scale bar measures bench millimetres, the coordinates the tracer computes in; left at 0 its length is chosen automatically, and a length that would not fit is shortened, with the label naming the length drawn. The bar is horizontal, along the region's width, or vertical, along its height, with its label beside it reading upwards; on a turned rectangle or ellipse it follows the turned sides, and on a circle it stays level or plumb.</p><p>Traced rays meet at a geometric point, which no real beam reaches. With <em>Diffraction-limited focus</em>, on by default, every beam that focuses inside the region is drawn with its waist: its 1/e² radius w(z) = w₀·√(1 + (z/z<sub>R</sub>)²), and a note at the top of the view naming w₀ and z<sub>R</sub>, which has its own switch. Where the light carries a propagated Gaussian beam (a CW or pulsed laser or a supercontinuum drawn with a size, a single-mode fiber; see the CW Laser), the waist is that beam's, and the note says <em>beam parameter</em>; a beam whose waist lies outside the bundle's stretch gets none there. Elsewhere it is the waist an ideal Gaussian beam would have in the same cone, w₀ = λ/(π·NA) with z<sub>R</sub> = π·w₀²/λ, and the note says <em>cone estimate</em>. The focus is found as a volume specimen finds it: the plane where the beam's sampling rays spread least, with the numerical aperture of its outermost rays and the light's centre wavelength. Far from the focus the envelope meets the rays' cone, so it joins the traced beam. A beam's waist is usually microns wide, so it shows at high magnification, or for a slow beam; the note names it whatever the magnification, when the view is large enough to hold it. Rays leaving an emitter and a virtual focus behind a diverging optic get none.</p><p>The example scans a galvo slowly in front of a lens. The zoom sits on the focal plane, where the focus walks sideways as the mirror turns, and the scale bar shows how far.</p>`,
+      html: `<p>Place a zoom and drag its region onto the part of the setup to enlarge: the outline of the region is what you grab, so the components inside it stay selectable. The view shows that region at the chosen magnification and can be dragged anywhere on its own; dragging the region aims it while the view stays where it is, and nudging with the arrow keys moves both. The blue handles resize the region about its centre. The magnification is set by dragging a purple corner of the view, which grows or shrinks it while the opposite corner stays put, or with the purple knob. Choose a circle, an ellipse or a rectangle; the view has the same shape. A rectangle or an ellipse can be turned with the round handle to lie along a tilted beam: both shapes turn, the view stays where it is on the bench, and the enlarged bench keeps its orientation, so a tilted beam is still tilted in the view. The outlines of the region and of the view can be drawn dashed together, the connector lines on their own, and the connector lines can be turned off.</p><p>Shapes grow with the magnification, but lines keep their weight, so a traced ray stays a fine line and the view shows where rays really cross. Beam envelopes are areas and grow with everything else. Pulse packets pass through the view as they cross the region: a schematic packet keeps its size, as a mark does, while a physical packet's length, c times its duration, grows with the magnification. Text labels, arrows, probes and other zooms are not enlarged: they belong to the figure rather than to the bench, and a label placed after the zoom can be drawn on its view. The scale bar measures bench millimetres, the coordinates the tracer computes in; left at 0 its length is chosen automatically, and a length that would not fit is shortened, with the label naming the length drawn. The bar is horizontal, along the region's width, or vertical, along its height, with its label beside it reading upwards; on a turned rectangle or ellipse it follows the turned sides, and on a circle it stays level or plumb.</p><p>Traced rays meet at a geometric point, which no real beam reaches. Every beam that focuses inside the region is drawn with its waist, and a note at the top of the view names w₀ and z<sub>R</sub>; the note has its own switch. Where the light carries a propagated Gaussian beam (a CW or pulsed laser or a supercontinuum drawn with a size, a single-mode fiber; see the CW Laser), the waist is that beam's, drawn as its 1/e² radius w(z) = w₀·√(1 + (z/z<sub>R</sub>)²), and the note says <em>beam parameter</em>; a beam whose waist lies outside the bundle's stretch gets none there. Elsewhere it is the waist an ideal Gaussian beam would have in the same cone, w₀ = λ/(π·NA) with z<sub>R</sub> = π·w₀²/λ, and the note says <em>cone estimate</em>. There the drawn outline is schematic: it narrows to w₀ but opens with the slope of the outermost rays, so it lies on the traced cone at any numerical aperture, while the note gives the Gaussian estimate (at high NA the outline is narrower near the focus than a Gaussian with that z<sub>R</sub> would be). The focus is found as a volume specimen finds it: the plane where the beam's sampling rays spread least, with the numerical aperture of its outermost rays and the light's centre wavelength. Far from the focus the envelope joins the traced beam. Where the bench already draws the beam as a Gaussian band, the band is the waist, and the zoom does not draw it again. A beam's waist is usually microns wide, so it shows at high magnification, or for a slow beam; the note names it whatever the magnification, when the view is large enough to hold it. Rays leaving an emitter and a virtual focus behind a diverging optic get none.</p><p>The example scans a galvo slowly in front of a lens. The zoom sits on the focal plane, where the focus walks sideways as the mirror turns, and the scale bar shows how far.</p>`,
       limitations: `<p>The view shows the traced geometry and nothing more. Rays are ideal lines: an ideal focus stays a point however far it is enlarged. The diffraction-limited focus is the ideal Gaussian (M² = 1) waist of the rays' cone in air, not a wave-optics calculation: aberrations, a medium's index, clipping by an aperture and a beam's real M² are not computed, the drawn bundle's outermost rays are taken as its 1/e² edge, and a broadband beam is taken at its centre wavelength. A component's drawing is enlarged as drawn, which for many parts is schematic rather than to scale. The view shows the bench's own pulse packets: where the time scale draws a train as steady light, so does the view, and a packet crosses a small region only briefly. The zoom is diagram-only and never absorbs or redirects rays.</p>`,
     }, related: ['highlight', 'figureframe', 'textlabel'],
   },

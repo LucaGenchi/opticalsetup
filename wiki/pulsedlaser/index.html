@@ -237,9 +237,9 @@
         <h3>Gaussian beam</h3>
         <p>Like the CW Laser, a pulsed laser drawn with a size also starts a Gaussian beam: a 1/e² radius
         <span class="w">w</span> of half its Beam width (the Beam width is the 1/e² diameter),
-        with the waist at its output. The only other setting, in the collapsed <em>Gaussian
-        beam</em> section, is the beam quality M² (1 for an ideal beam; a larger value spreads
-        faster, as a multimode or diode laser does). A laser drawn as a simple line starts no
+        with the waist at its output. The collapsed <em>Gaussian beam</em> section adds the
+        beam quality M² (1 for an ideal beam; a larger value spreads faster, as a multimode or
+        diode laser does) and how the beam is drawn (below). A laser drawn as a simple line starts no
         Gaussian beam. The tracer follows the beam parameter <span class="w">q</span> through
         every optic with a paraxial model: two companion rays, one displaced and one tilted by
         a hair, follow the central ray through the same surfaces, and their offsets give each
@@ -262,6 +262,20 @@
         which is then no longer Gaussian), where the far-field half-angle exceeds
         0.2&nbsp;rad, at a wavelength conversion, and where branches of the same light overlap
         again.</p>
+        <h3>Drawing the Gaussian beam</h3>
+        <p><em>Draw the beam as</em>, in the <em>Gaussian beam</em> section, chooses how this
+        source's light is drawn: as its rays (the default) or as its Gaussian beam. The
+        Gaussian beam is a band of half-width <span class="w">w</span>(<span class="w">z</span>),
+        the 1/e² radius, around the central ray, in the beam's colour; the probe gives the place
+        and size of its waist. Where the beam is collimated the band lies on the outermost rays. Near a focus the rays cross at
+        a point while the band narrows to the waist, and a narrow beam's band shows where it
+        really focuses, which its rays do not (see above). The band is the beam the readouts
+        report, and it ends on each mirror or lens as the rays do. Where the beam stops (past a
+        diffuser, an edge that clips it, a wavelength conversion, or where arms meet again)
+        the rays are drawn instead, so no light disappears from the drawing; across a stretch
+        where an edge clips the beam part-way, the band's edges are drawn dashed over the
+        rays. Light a fibre relaunches is drawn as
+        the source that sent it in. Exported figures draw the same.</p>
         <h3>Interference</h3>
         <p>With <strong>Beam with size</strong> and <strong>Interference</strong> enabled,
         split copies of this source interfere through ideal beamsplitters, fully reflective
