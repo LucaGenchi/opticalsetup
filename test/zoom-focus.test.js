@@ -3,9 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement } from '../sketch/js/elements.js';
+import { readFileSync } from 'node:fs';
+import { createElement, registry } from '../sketch/js/elements.js';
+import '../sketch/js/detector-instruments.js';
 import { traceScene } from '../sketch/js/raytrace.js';
-import { state } from '../sketch/js/state.js';
+import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { gaussianFocus } from '../sketch/js/sectioning.js';
 import { focusEnvelope, zoomFoci } from '../sketch/js/zoom-focus.js';
@@ -480,4 +482,30 @@ test('a wide zoom names no waist that a second lens prevents (review)', () => {
   const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
   assert.equal((svg.match(/>w₀ /g) || []).length, 1, 'one waist named');
   assert.match(svg, />w₀ 95\.6 µm</);
+});
+
+test('a waist past a block is not named; one on a fiber face is (review)', () => {
+  const narrow = createElement('cwlaser', 0, 0);
+  Object.assign(narrow.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 });
+  const first = createElement('lens', 200, 0);
+  first.params.f = 100;
+  const block = createElement('blocker', 475, 0);
+  Object.assign(block.params, { w: 10, h: 20 });
+  const zoom = createElement('zoom', 495, 0);
+  Object.assign(zoom.params, { shape: 'rect', w: 80, h: 20, mag: 2 });
+  const elements = [narrow, first, block, zoom];
+  const traced = traceScene(elements, []);
+  const foci = zoomFoci(zoom, traced.paths);
+  assert.equal(foci.length, 1);
+  assert.ok(foci[0].unreached && Math.abs(foci[0].point.x + foci[0].to - 470) < 0.01, 'the envelope ends on the block');
+  assert.doesNotMatch(zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements }), /w₀ /);
+  // The bundled fiber-coupling example: its waist lies 1.6 µm past the fiber
+  // face (0.07 z_R) and is still named.
+  const fiber = parseSketch(readFileSync(new URL('../Examples/Fundamentals/Coupling a laser into a single-mode fiber.json', import.meta.url), 'utf8'), registry);
+  const fiberTrace = traceScene(fiber.elements, fiber.beams);
+  const fiberZoom = fiber.elements.find(el => el.type === 'zoom');
+  const [coupled] = zoomFoci(fiberZoom, fiberTrace.paths);
+  assert.equal(coupled.model, 'propagated');
+  assert.ok(coupled.to < 0 && !coupled.unreached, `to ${coupled.to}`);
+  assert.match(zoomSceneSVG(fiberZoom, { drawables: fiberTrace.drawables, paths: fiberTrace.paths, elements: fiber.elements }), />w₀ /);
 });

@@ -38,6 +38,9 @@ const ALONG_TOLERANCE = 1e-6;
 // A ray that goes on through a plane keeps its direction to about 1 µrad
 // (1 − cos 1.4e-6 ≈ 1e-12).
 const STRAIGHT_TOLERANCE = 1e-12;
+// A waist more than this many Rayleigh ranges past the end of the light is
+// not reached (w = 1.005 w0 at 0.1 z_R).
+const UNREACHED_ZR = 0.1;
 
 // Rays of one beam's bundle share their source, their route through
 // splitting optics, their wavelength and the number of interactions behind
@@ -181,12 +184,14 @@ export function zoomFoci(zoom, paths = []) {
       // The bench already draws this beam's envelope (step G2), and the
       // view magnifies it: the waist is not drawn a second time.
       drawnAsEnvelope: found.model === 'propagated' && Boolean(group.beam?.drawnAsEnvelope),
-      // A propagated waist predicted past the optic that ends the bundle,
-      // where that optic turns the rays (a lens): the beam never reaches it.
-      // The envelope up to the optic is the beam's and stays drawn; the
-      // note does not name a waist the light does not form.
-      unreached: found.model === 'propagated' && to < -ALONG_TOLERANCE
-        && group.rays.some(r => r.next && r.next.d.x * r.d.x + r.next.d.y * r.d.y < 1 - STRAIGHT_TOLERANCE),
+      // A propagated waist the light does not reach: the bundle ends (on a
+      // lens, a block, anything) more than a tenth of a Rayleigh range short
+      // of it, where the beam is still 0.5 % wider than the waist. The
+      // envelope up to the optic is the beam's and stays drawn; the note
+      // does not name the waist. A waist on a fiber face or a pinhole (a few
+      // microns past it, a hundredth of z_R) is named; light that goes on
+      // straight draws the waist with its own segment.
+      unreached: found.model === 'propagated' && to < -UNREACHED_ZR * found.zRMm,
     });
   }
   return foci;
