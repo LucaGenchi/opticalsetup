@@ -387,8 +387,10 @@ test('a propagated waist is not carried on past a face', () => {
   assert.equal(propagated.length, 1);
   const [beam] = propagated;
   assert.ok(beam.point.x > 197 && beam.to <= 197 - beam.point.x + 1e-6, `ends at the plane: ${beam.point.x + beam.to}`);
-  // An ND filter half a nanometre before the waist: the waist is drawn once
-  // on each side of it, never twice over the same stretch.
+  // An ND filter half a nanometre before the waist: the waist past it is
+  // not also drawn by the bundle before it (as on main, the incoming
+  // envelope is cut on the waist's side of the filter, which leaves it
+  // only a line; that clipping is not changed here).
   const scene = focusedScene();
   const [waist] = zoomFoci(scene.zoom, scene.traced.paths);
   const nd = createElement('filter', waist.point.x - 0.5e-6, 0);
