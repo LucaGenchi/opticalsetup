@@ -51,28 +51,71 @@ function bundleKey(path, segment) {
   return [path.originId || '', path.sourceId || '', path.branch || '', path.wl, segment].join('|');
 }
 
-// A path's segment after segment i, as a ray from the point segment i ends
-// at, where the light goes on (finite, lit and of some length), with
-// whether it carries a beam parameter; else null.
-function continuation(path, i) {
-  const a = path.pts[i + 1], b = path.pts[i + 2];
+// Segment k of a path as a ray from its start, where the light travels it
+// (finite, lit and of some length), with whether it carries a beam
+// parameter; else null.
+function segmentRay(path, k) {
+  const a = path.pts?.[k], b = path.pts?.[k + 1];
   if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
-  const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
+  const w = path.segmentIntensities?.[k] ?? path.intensity;
   if (!(len > 0) || !(w > 0)) return null;
-  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, i + 1)) };
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, k)) };
 }
 
-// A path's segment before segment i, as the direction the light arrived in
-// at the point segment i starts from, where it was lit and of some length,
-// with whether it carried a beam parameter; else null.
-function arrival(path, i) {
-  const a = path.pts[i - 1], b = path.pts[i];
-  if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
-  const len = Math.hypot(b.x - a.x, b.y - a.y);
-  const w = path.segmentIntensities?.[i - 1] ?? path.intensity;
-  if (!(len > 0) || !(w > 0)) return null;
-  return { d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, beam: Boolean(beamOnPathSegment(path, i - 1)) };
+// A path's segment after segment i, on the same path; else null.
+function continuation(path, i) {
+  return segmentRay(path, i + 1);
+}
+
+// The tracer starts a new path for each tagged branch an interaction makes
+// (a polarizer's transmitted light, a beamsplitter's two arms), at the point
+// where the parent path ends, with the parent's `sig` and the branch's tag
+// after a slash. The links between them, found from that: the branches that
+// start where a path ends, and the path a branch starts from.
+const SAME_POINT = 1e-9;
+function branchLinks(paths) {
+  const bySig = new Map();
+  for (const path of paths) {
+    if (!path || typeof path.sig !== 'string' || !path.pts?.length) continue;
+    if (!bySig.has(path.sig)) bySig.set(path.sig, []);
+    bySig.get(path.sig).push(path);
+  }
+  const children = new Map();
+  for (const [sig, list] of bySig) {
+    const cut = sig.lastIndexOf('/');
+    if (cut <= 0) continue;
+    const parent = sig.slice(0, cut);
+    if (!bySig.has(parent)) continue;
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(...list);
+  }
+  const near = (p, q) => p && q && Math.hypot(p.x - q.x, p.y - q.y) <= SAME_POINT;
+  return {
+    childrenOf: path => (children.get(path.sig) || []).filter(child => child !== path && near(child.pts[0], path.pts.at(-1))),
+    parentOf: path => {
+      const cut = typeof path.sig === 'string' ? path.sig.lastIndexOf('/') : -1;
+      if (cut <= 0) return null;
+      return (bySig.get(path.sig.slice(0, cut)) || []).find(parent => parent !== path && near(parent.pts.at(-1), path.pts[0])) || null;
+    },
+  };
+}
+
+// Where the light of segment i goes on past its end: the path's next
+// segment, or, at its last, the first segments of the branches that start
+// there. Empty where all of it stops.
+function onward(path, i, links) {
+  if (i < path.pts.length - 2) return [continuation(path, i)].filter(Boolean);
+  return links.childrenOf(path).map(child => segmentRay(child, 0)).filter(Boolean);
+}
+
+// The segment the light arrived on at the start of segment i: the path's
+// segment before, or, at its first, the last segment of the path it branched
+// from; else null.
+function arrival(path, i, links) {
+  if (i > 0) return segmentRay(path, i - 1);
+  const parent = links.parentOf(path);
+  return parent ? segmentRay(parent, parent.pts.length - 2) : null;
 }
 
 function inRegion(g, at, p) {
@@ -100,6 +143,7 @@ export function zoomFoci(zoom, paths = []) {
   const g = zoomGeometry(zoom.params, zoom.rot);
   const reach = Math.hypot(g.rx, g.ry);
   const groups = new Map();
+  const links = branchLinks(paths);
   for (const path of paths) {
     if (!path || path.speckle || path.evanFade || !(path.wl > 0)) continue;
     const pts = path.pts || [];
@@ -113,7 +157,7 @@ export function zoomFoci(zoom, paths = []) {
       const key = bundleKey(path, i);
       if (!groups.has(key)) groups.set(key, { wl: path.wl, color: path.color || null, rays: [], beam: null });
       const group = groups.get(key);
-      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len, next: continuation(path, i), prev: arrival(path, i) });
+      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len, next: continuation(path, i), onward: onward(path, i, links), prev: arrival(path, i, links) });
       if (!group.beam && (group.beam = beamOnPathSegment(path, i))) group.beamLen = len;
     }
   }
@@ -213,15 +257,19 @@ export function zoomFoci(zoom, paths = []) {
 // where it does not (no waist is drawn there, neither the beam's nor a
 // cone's). Each waist belongs to one bundle, the one whose stretch holds it,
 // measured on the path that carries the beam parameter, from where its
-// segment starts (included) to where it ends (excluded):
+// segment starts (included) to where it ends (excluded). The light past a
+// face is the path's next segment, or the branches the tracer starts there
+// (branchLinks):
 // - beside a face the light crosses straight carrying the beam parameter
 //   (a filter), the waist is the neighbouring bundle's, which names it:
 //   this bundle keeps its focus within a Rayleigh range of the face, as
 //   before, but unnamed (`named: false`); its envelope is cut at that face
 //   on the waist's side, which leaves it no more than a line;
-// - beside a face that turns any of the rays (a lens, a mirror), the waist
-//   is not where this light goes: behind the start it is virtual, past the
-//   end the beam forms another waist, or none, and never this one;
+// - beside a face that turns any of the rays (a lens, a mirror, a
+//   beamsplitter's reflected arm), the waist is not where this light goes:
+//   behind the start it is virtual, beyond the end the beam forms another
+//   waist, or none, and never this one; a waist on the face itself is the
+//   incident beam's, and named;
 // - past a face where the beam parameter ends, the light stopping there (a
 //   fiber's end face, a pinhole's plate, a beam block) or going on straight
 //   without one (a specimen plane), the waist is named only within
@@ -241,9 +289,13 @@ function propagatedFocus(group) {
     if (!carriedIn || !(along > -shape.rayleighMm)) return { ok: false };
     named = false;
   } else if (!(along < length - ALONG_TOLERANCE)) {
-    const goesOn = group.rays.filter(r => r.next);
-    if (goesOn.some(r => !straight(r, r.next))) return { ok: false };
-    if (goesOn.some(r => r.next.beam)) {
+    const goesOn = group.rays.flatMap(r => r.onward.map(next => ({ r, next })));
+    const onFace = along <= length + ALONG_TOLERANCE;
+    if (goesOn.some(({ r, next }) => !straight(r, next))) {
+      // The incident beam reaches its waist on the face itself: named here,
+      // whatever the optic does to it afterwards.
+      if (!onFace) return { ok: false };
+    } else if (goesOn.some(({ next }) => next.beam)) {
       if (!(along <= length + shape.rayleighMm)) return { ok: false };
       named = false;
     } else if (!(along <= length + STOP_REACH * shape.rayleighMm)) return { ok: false };
