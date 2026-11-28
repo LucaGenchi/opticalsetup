@@ -27,7 +27,9 @@
 // fitIndex() evaluates any of them. The canvas, the dispersion calculator
 // and the lens designer evaluate the forms they list with their own code;
 // the records added in A3b (calcite, YVO₄, TGG) are not listed by
-// any of them yet: they become selectable in P2, P3, P4 and P6.
+// any of them yet: they become selectable in P2 (TGG's Verdet constant, in
+// the Faraday rotator and the physical isolator, sketch/js/faraday.js), P3,
+// P4 and P6.
 // `range` is the fit's domain in nm; `indexReference` is what the indices
 // are relative to ('air', 'vacuum', or 'unstated' where the source as
 // consulted does not say).
@@ -297,7 +299,7 @@ const RECORDS = [
       dataset: 'vojna2019', reference: 'slezak2016',
       sample: 'single crystal, sample NG6 (Northrop-Grumman, 6 mm)',
       conditions: 'Room temperature. Vojna et al. tabulate F and G for TGG from Slezák et al., Table 2, sample NG6; those values follow from that table at 295 K with T_w = +5.9 K as printed there, although the text of Slezák et al. describes T_w as negative, an inconsistency that matters for any later temperature dependence.',
-      signConvention: 'Negative, as Slezák et al. state for TGG. Vojna et al.: the Verdet constant is negative if the medium rotates the polarization clockwise when the beam propagates parallel to the magnetic field; the viewing direction is not stated, and step A2 fixes the app\'s.',
+      signConvention: 'Negative, as Slezák et al. state for TGG. Vojna et al.: the Verdet constant is negative if the medium rotates the polarization clockwise when the beam propagates parallel to the magnetic field; the viewing direction is not stated. The app (step P2, sketch/js/faraday.js) reads a positive V as a turn right-handed about the field: anticlockwise, seen looking towards the source, for light travelling along the field.',
       spreadNote: 'Slezák et al. measured six TGG samples: at room temperature |V| ranged from 122.4 to 155.5 rad/(T·m) at 632 nm and from 36.6 to 44.2 rad/(T·m) at 1064 nm. This record is sample NG6, near the low end (131.1 and 37.5 rad/(T·m)): the other samples read from 6.6 % below to 18.6 % above it at 632 nm, and from 2.4 % below to 17.9 % above it at 1064 nm.',
     },
   },

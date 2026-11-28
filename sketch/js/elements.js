@@ -25,7 +25,7 @@ import {
   rulerHitTest, rulerLocalBounds, rulerModeParams, rulerPoints, rulerSVG, rulerValueText,
 } from './ruler.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { beamAtPoint, compressorGddReading, detectorReading, metalensReading, mixReading, objectImageReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
+import { beamAtPoint, compressorGddReading, detectorReading, faradayReading, metalensReading, mixReading, objectImageReading, objectivePupilFill, opaReading, opoReading, phasePlateIllumination, probeAt, probeBeamsAt, probePowerAt, specimenFocusReading, specimenRamanReading, specimenSrsNote, specimenTimingReading, supercontinuumReading, twoBeamPartner, MIN_OVERLAP } from './raytrace.js';
 import { NONLINEAR_ORDER } from './sectioning.js';
 import { opaSettings, opaGainAt, MAX_OPA_STAGES, MAX_GATE_BANDWIDTH_RATIO, MIN_PHASE_KEPT_GAIN } from './opa.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, mixOverlap, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
@@ -40,6 +40,7 @@ import {
 } from './spectrum.js';
 import { coherencePathMm } from './spectral-coherence.js';
 import { sourceBeamParameter, noBeamReason } from './beam-propagation.js';
+import { FARADAY_MATERIAL_OPTIONS, isolatorFieldLength, isolatorFigures, rotationForCrossingDeg, verdetAt } from './faraday.js';
 import { beamFromQ } from './gaussian-beam.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -2648,6 +2649,98 @@ const pulsedInterferenceParams = type => [
 // other way meets the same physical axis, which in its own frame lies at −θ.
 const AXIS_CROSSING_NOTE = 'Measured from the drawing plane towards you, for light crossing left to right before the element is rotated; light crossing the other way sees this axis at −θ.';
 
+// Step P2's readouts: the rotation a Faraday rotator gives, and an
+// isolator's figures, at each wavelength of the light that crossed it in
+// the last trace (raytrace.js faradayReading), one line per light.
+const LIT_POWER_W = 1e-12;
+const signedDeg = deg => `${deg > 0.05 ? '+' : deg < -0.05 ? '−' : ''}${Math.abs(deg).toFixed(1)}°`;
+const nmLabel = nm => `${Number(nm.toPrecision(4))} nm`;
+// One entry per wavelength as the readout prints it (and per direction,
+// when `byDirection`): light that comes back reshaped a little by the
+// element itself is the same light. Forward light is preferred.
+function litCrossings(el, byDirection = true) {
+  const lit = faradayReading(el.id).filter(c => c.power > LIT_POWER_W)
+    .sort((a, b) => Number(b.forward) - Number(a.forward));
+  const seen = new Map();
+  for (const c of lit) {
+    const key = byDirection ? `${nmLabel(c.wl)}|${c.forward}` : nmLabel(c.wl);
+    if (!seen.has(key)) seen.set(key, c);
+  }
+  return [...seen.values()].sort((a, b) => a.wl - b.wl || Number(b.forward) - Number(a.forward));
+}
+function faradayReadoutText(p, el) {
+  const crossings = el ? litCrossings(el) : [];
+  if (!crossings.length) return 'No light crosses it yet: the rotation is given for each wavelength that does.';
+  const along = p.fieldDir === 'against' ? -1 : 1;
+  const lines = crossings.map(c => {
+    const withField = (c.forward ? 1 : -1) * along > 0;
+    const turn = rotationForCrossingDeg(p, c.wl, c.forward);
+    if (turn.issue) return `${nmLabel(c.wl)}: not computed, ${turn.issue}. The light keeps the polarization it arrived with, and readings past it say so.`;
+    const ends = c.bw > 0 ? [c.wl - c.bw / 2, c.wl + c.bw / 2].map(wl => rotationForCrossingDeg(p, wl, c.forward)) : null;
+    const spread = ends && !ends.some(e => e.issue)
+      ? ` (from ${ends.map(e => signedDeg(e.deg)).join(' to ')} across ${nmLabel(c.wl - c.bw / 2)}–${nmLabel(c.wl + c.bw / 2)})`
+      : '';
+    return `${nmLabel(c.wl)}, travelling ${withField ? 'along' : 'against'} the field: ${signedDeg(turn.deg)}${spread}; V = ${turn.verdet.toFixed(2).replace('-', '−')} rad/(T·m)`;
+  });
+  return `${lines.join('\n')}\nThe change in the polarization angle of each light, in its own direction of travel. Light going the other way turns the opposite way in its own frame, the same turn about the field, so a return pass doubles the rotation.`;
+}
+function isolatorReadoutText(p, el) {
+  const bl = isolatorFieldLength(p);
+  const design = verdetAt(p, p.designWl);
+  if (bl === null) return `No rotation can be designed: ${design.issue || 'the Verdet constant at the design wavelength is zero'}.`;
+  const head = `45° at ${nmLabel(Number(p.designWl))} needs B·L = ${bl.toPrecision(3)} T·m (|V| = ${Math.abs(design.verdet).toFixed(2)} rad/(T·m) there).`;
+  const byWl = el ? litCrossings(el, false) : [];
+  if (!byWl.length) return `${head}\nNo light crosses it yet: the isolation is given for each wavelength that does.`;
+  const figuresAt = wl => isolatorFigures(p, wl);
+  const dB = f => (Number.isFinite(f.isolationDb) ? `${f.isolationDb.toFixed(1)} dB` : 'complete');
+  const lines = byWl.map(c => {
+    const f = figuresAt(c.wl);
+    if (f.issue) return `${nmLabel(c.wl)}: not computed, ${f.issue}. The light passes as through an ideal one-way gate, and readings past it say so.`;
+    let line = `${nmLabel(c.wl)}: rotation ${signedDeg(f.rotationDeg)}, forward transmission ${(f.forward * 100).toFixed(1)} %, isolation ${dB(f)}`;
+    if (c.bw > 0) {
+      const ends = [c.wl - c.bw / 2, c.wl + c.bw / 2].map(figuresAt);
+      if (!ends.some(e => e.issue)) line += `; at ${nmLabel(c.wl - c.bw / 2)} and ${nmLabel(c.wl + c.bw / 2)}, the edges of its band, ${ends.map(dB).join(' and ')}`;
+    }
+    return line;
+  });
+  return `${head}\n${lines.join('\n')}\nForward: light polarized along the input polarizer. Isolation: −10·log10 of what returns through it of light polarized along the output polarizer, as a reflection of the forward beam is.`;
+}
+
+// What to say once, as a pop-up, when a rotator's or a physical isolator's
+// material has no Verdet data for light that crosses it (Luca: TGG put in
+// light at 1550 nm should say so at once, not only in the readouts). Returns
+// { key, message }: `key` names the situation (material, and whether the
+// light or the isolator's design is outside the data), so the canvas says it
+// again only when that changes, not at every wavelength step of a drag; null
+// when there is nothing to say. One message per element, whatever lights
+// cross it: the readouts name the wavelengths.
+export function faradayDataNotice(el) {
+  const p = el?.params;
+  const physical = el?.type === 'isolator' && p?.isolatorModel === 'physical';
+  if (!p || (el.type !== 'faraday' && !physical) || p.material === 'custom') return null;
+  // "Terbium gallium garnet, TGG" -> "Terbium gallium garnet (TGG)".
+  const name = (FARADAY_MATERIAL_OPTIONS.find(([id]) => id === p.material)?.[1] || FARADAY_MATERIAL_OPTIONS[0][1]).replace(/, (.+)$/, ' ($1)');
+  const rangeAt = nm => verdetAt(p, nm).range || null;
+  const say = (range, consequence, advice) => `${name} has Verdet data only for ${range[0]}–${range[1]} nm, so ${consequence}. ${advice}`;
+  const custom = 'For other wavelengths, choose “Custom Verdet constant” as the material.';
+  if (physical) {
+    const range = rangeAt(Number(p.designWl));
+    if (range) return { key: `${p.material}|design`, message: say(range, `the optical isolator cannot be designed at ${nmLabel(Number(p.designWl))}`, `Choose a design wavelength in that range, or “Custom Verdet constant” as the material.`) };
+  }
+  // Every lit crossing, over the whole span of wavelengths the tracer
+  // weighed for it (a pulse's tails reach past its half-maximum width): the
+  // data cover one range, so its two ends decide.
+  let range = null;
+  for (const c of faradayReading(el.id).filter(x => x.power > LIT_POWER_W)) {
+    range = range || rangeAt(c.lo > 0 ? c.lo : c.wl) || rangeAt(c.hi > 0 ? c.hi : c.wl);
+  }
+  if (!range) return null;
+  const does = el.type === 'faraday'
+    ? 'the Faraday rotator does not turn the light that crosses it outside that range'
+    : 'the optical isolator passes the light that crosses it outside that range as an ideal one-way gate';
+  return { key: `${p.material}|${el.type}|light`, message: say(range, does, custom) };
+}
+
 const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
 
 // Repetition rate and emission offset are the pulse-train timing both pulsed
@@ -4637,17 +4730,76 @@ export const registry = {
 
   isolator: {
     label: 'Optical isolator', category: 'Polarization', size: { w: 50, h: 26 },
-    aliases: ['Faraday isolator', 'optical diode', 'back reflection protection'],
+    aliases: ['Faraday isolator', 'optical diode', 'back reflection protection', 'isolation', 'TGG isolator'],
     size_: el => ({ w: 50, h: (el.params.aperture || 22) + 4 }),
-    params: [{ key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 8, max: 100, step: 2, def: 22 }],
+    params: [
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 8, max: 100, step: 2, def: 22 },
+      // Step P2: the one-way gate stays the default; the physical model is
+      // the device itself, an input polarizer, a 45° Faraday rotator and an
+      // output polarizer (sketch/js/faraday.js).
+      {
+        key: 'isolatorModel', label: 'Model', type: 'select', def: 'ideal',
+        options: [['ideal', 'Ideal one-way gate'], ['physical', 'Polarizers and a Faraday rotator']],
+      },
+      { key: 'material', label: 'Rotator material', type: 'select', def: 'tgg', options: FARADAY_MATERIAL_OPTIONS, show: p => p.isolatorModel === 'physical' },
+      { key: 'verdetCustom', label: 'Verdet constant (rad/(T·m), the same at every wavelength)', type: 'number', min: -2000, max: 2000, step: 1, def: -40, show: p => p.isolatorModel === 'physical' && p.material === 'custom' },
+      { key: 'designWl', label: 'Design wavelength (nm): 45° of rotation here', type: 'number', min: 200, max: 3000, step: 1, def: 1064, show: p => p.isolatorModel === 'physical' },
+      { key: 'inputAxis', label: 'Input polarizer axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, note: AXIS_CROSSING_NOTE, show: p => p.isolatorModel === 'physical' },
+      { key: 'extinctionDb', label: 'Polarizer extinction ratio (dB)', type: 'number', min: 10, max: 50, step: 1, def: 40, show: p => p.isolatorModel === 'physical' },
+      { key: 'isolation', label: 'Isolation', type: 'readout', wide: true, show: p => p.isolatorModel === 'physical', readout: (p, el) => isolatorReadoutText(p, el) },
+    ],
     svg(el) {
       const h = (el.params.aperture || 22) / 2;
-      return `<rect x="-23" y="${-h}" width="46" height="${2 * h}" rx="${Math.min(11, h)}" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/>` +
+      // The physical model draws its two polarizers at the faces.
+      const polarizers = el.params.isolatorModel === 'physical'
+        ? `<line x1="-19" y1="${-h + 3}" x2="-19" y2="${h - 3}" stroke="#e5e7eb" stroke-width="1.6"/><line x1="19" y1="${-h + 3}" x2="19" y2="${h - 3}" stroke="#e5e7eb" stroke-width="1.6"/>`
+        : '';
+      return `<rect x="-23" y="${-h}" width="46" height="${2 * h}" rx="${Math.min(11, h)}" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/>` + polarizers +
         `<path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
     },
     surfaces: el => {
       const h = (el.params.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'isolator' }];
+      const p = el.params;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'isolator',
+        data: p.isolatorModel === 'physical' ? {
+          model: 'physical', material: p.material, verdetCustom: p.verdetCustom, designWl: p.designWl,
+          inputAxis: p.inputAxis, extinctionDb: p.extinctionDb,
+        } : { model: 'ideal' },
+      }];
+    },
+  },
+
+  // Step P2: a magneto-optic rod in an axial field. It turns the
+  // polarization by θ = V·B·L, in a sense fixed by the field rather than by
+  // the direction the light travels (sketch/js/faraday.js).
+  faraday: {
+    label: 'Faraday rotator', category: 'Polarization', size: { w: 32, h: 22 },
+    aliases: ['Faraday rotator', 'magneto-optic rotator', 'magneto optic', 'Faraday effect', 'Verdet constant', 'TGG', 'terbium gallium garnet', 'non-reciprocal rotator', 'Faraday mirror'],
+    size_: el => ({ w: Math.max(12, el.params.lengthMm || 20) + 12, h: (el.params.aperture || 10) + 12 }),
+    params: [
+      { key: 'material', label: 'Material', type: 'select', def: 'tgg', options: FARADAY_MATERIAL_OPTIONS },
+      { key: 'verdetCustom', label: 'Verdet constant (rad/(T·m), the same at every wavelength)', type: 'number', min: -2000, max: 2000, step: 1, def: -40, show: p => p.material === 'custom' },
+      { key: 'fieldT', label: 'Magnetic field B (T)', type: 'number', min: 0, max: 20, step: 0.05, def: 1 },
+      { key: 'fieldDir', label: 'Field direction', type: 'select', def: 'along', options: [['along', 'Along the arrow'], ['against', 'Against the arrow']] },
+      { key: 'lengthMm', label: 'Length L (mm)', type: 'number', min: 1, max: 200, step: 1, def: 20 },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 2, max: 60, step: 1, def: 10 },
+      { key: 'rotation', label: 'Rotation θ = V·B·L', type: 'readout', wide: true, readout: (p, el) => faradayReadoutText(p, el) },
+    ],
+    svg(el) {
+      const L = Math.max(12, el.params.lengthMm || 20) / 2, h = (el.params.aperture || 10) / 2;
+      const ring = x => `<rect x="${x - 2.5}" y="${-h - 5}" width="5" height="${2 * h + 10}" rx="1.5" fill="#475569" stroke="#334155" stroke-width="1"/>`;
+      const sign = el.params.fieldDir === 'against' ? -1 : 1;
+      const tip = sign * (L - 6), tail = -tip;
+      return `<rect x="${-L}" y="${-h}" width="${2 * L}" height="${2 * h}" fill="#d9f99d" stroke="#4d7c0f" stroke-width="1.3"/>` +
+        ring(-L + 2.5) + ring(L - 2.5) +
+        `<path d="M ${tail},0 L ${tip},0 M ${tip},0 L ${tip - sign * 3.5},-2.6 M ${tip},0 L ${tip - sign * 3.5},2.6" stroke="#3f6212" stroke-width="1.4" fill="none" stroke-linecap="round"/>` +
+        `<text x="0" y="${-h - 9}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#3f6212" font-style="italic" ${isFlipped(el) ? `transform="rotate(180 0 ${-h - 9})"` : ''}>B</text>`;
+    },
+    surfaces(el) {
+      const h = (el.params.aperture || 10) / 2;
+      const p = el.params;
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'faraday', data: { material: p.material, verdetCustom: p.verdetCustom, fieldT: p.fieldT, fieldDir: p.fieldDir, lengthMm: p.lengthMm } }];
     },
   },
 
@@ -6872,6 +7024,7 @@ const DIRECT = {
   qwp: { resize: { y: 'length' }, tune: { key: 'a', short: 'axis' } },
   pbs: { resize: { uniform: 'size' } },
   isolator: { resize: { y: 'aperture' } },
+  faraday: { resize: { y: 'aperture' }, tune: { key: 'fieldT', short: 'B' } },
   grating: { resize: { y: 'length' }, tune: { key: 'lines', short: 'lines' } },
   slit: { resize: { y: 'length' }, tune: { key: 'gap', short: 'gap' } },
   prism: { resize: { uniform: 'psize' }, tune: { key: 'apex', short: 'apex' } },
@@ -6996,6 +7149,7 @@ const ELEMENT_HELP = {
   qwp: 'Applies quarter-wave retardance, producing linear, elliptical, or circular polarization from the input state.',
   pbs: 'Separates orthogonal polarization states into two paths.',
   isolator: 'Passes light in one direction and blocks reverse propagation.',
+  faraday: 'Turns the polarization by V·B·L in a sense set by its magnetic field, so a return pass doubles the turn.',
   slit: 'Blocks rays outside the configured aperture gap.',
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',

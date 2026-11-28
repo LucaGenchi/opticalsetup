@@ -26,6 +26,7 @@ import {
   fresnelTransmissionMueller, composeMueller, applyMueller, complex, reciprocalMueller,
 } from '../sketch/js/mueller.js';
 import { MATERIAL_RECORDS, MODEL_GLASS, fitIndex, modelGlass, verdetConstant } from '../sketch/js/materials/catalogue.js';
+import { isolatorFigures, rotationForCrossingDeg } from '../sketch/js/faraday.js';
 import { computeCompressor } from '../calculators/dispersion-compensation/compressor-calculator.js';
 import { materialDispersion, materialAbbe } from '../calculators/dispersion/materials.js';
 import { DISPERSION_DEFAULTS, computeDispersion } from '../calculators/dispersion/dispersion-calculator.js';
@@ -271,6 +272,29 @@ const APP = {
     }
     throw new Error(kind);
   },
+  // Step P2. The Faraday mirror is traced: a p-polarized line laser through
+  // a polarizing beamsplitter, a retarder, a Faraday rotator (a custom
+  // Verdet constant giving the turn per pass) and a mirror; the return port
+  // collects what comes back s-polarized.
+  faraday: ({ kind, material, verdetCustom, fieldT, lengthMm, wavelengthNm, along, retardanceDeg, axisDeg, faradayDeg, designWl, extinctionDb, inputAxis }) => {
+    if (kind === 'rotation') {
+      return { rotationDeg: rotationForCrossingDeg({ material, verdetCustom, fieldT, lengthMm, fieldDir: 'along' }, wavelengthNm, along).deg };
+    }
+    if (kind === 'isolator') {
+      const f = isolatorFigures({ material, designWl, extinctionDb, inputAxis }, wavelengthNm);
+      return { rotationDeg: f.rotationDeg, forward: f.forward, backward: f.backward };
+    }
+    const make = (type, x, y, params = {}, rot = 0) => Object.assign(createElement(type, x, y), { rot, id: `${type}-${x}-${y}` });
+    const laser = make('cwlaser', -50, 0);
+    Object.assign(laser.params, { beamMode: 'line', wavelength: 1064, pol: 0, avgPowerW: 1 });
+    const plate = make('eom', 200, 0);
+    Object.assign(plate.params, { modulate: true, driveMode: 'static', a: axisDeg, retardance: retardanceDeg });
+    const rotator = make('faraday', 300, 0);
+    Object.assign(rotator.params, { material: 'custom', verdetCustom: faradayDeg * Math.PI / 180 / 0.02, fieldT: 1, lengthMm: 20 });
+    const port = make('detector', 100, 125, {}, 90);
+    traceScene([laser, make('pbs', 100, 0), plate, rotator, make('mirror', 400, 0), port]);
+    return { returnFraction: detectorReading(port.id)?.signal ?? 0 };
+  },
   'crystal-catalogue': ({ kind, record, ray, wavelengthNm }) => {
     const r = MATERIAL_RECORDS.get(record);
     if (kind === 'verdet') return { verdetRadPerTm: verdetConstant(r, wavelengthNm) };
@@ -502,7 +526,7 @@ const APP = {
   },
 };
 
-for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging', 'glass-catalogue', 'beam-propagation']) {
+for (const name of ['sellmeier', 'pulse', 'argon-capillary', 'nlse', 'paraxial', 'opa', 'broadband-interference', 'material-dispersion', 'wavelength-conversion', 'fluorescence', 'ray-path-phase', 'fresnel', 'mueller', 'reflection', 'crystal-catalogue', 'dispersion-compensation', 'lens-design', 'lens-coherent', 'fiber-coupling', 'point-scanning', 'thick-lens', 'imaging', 'glass-catalogue', 'beam-propagation', 'faraday']) {
   const model = expected(name);
   for (const c of model.cases) {
     test(`${model.id}: ${c.name}`, () => {

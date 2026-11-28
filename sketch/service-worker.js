@@ -47,6 +47,7 @@ const PRECACHE_PATHS = [
   "./js/examples-data.js",
   "./js/export.js",
   "./js/gif.js",
+  "./js/faraday.js",
   "./js/fiber.js",
   "./js/fluorescence.js",
   "./js/fluorophore-library.js",
@@ -116,6 +117,7 @@ const PRECACHE_PATHS = [
   "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+  "../Examples/Beam%20Routing/Faraday%20mirror%20%E2%80%94%20a%20double%20pass%20that%20undoes%20an%20unknown%20retarder.json",
   "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
   "../Examples/Beam%20Routing/Wavelength%20combining%20and%20separation%20%E2%80%94%20dichroic%20mirrors.json",
   "../Examples/Interferometers/IQ%20optical%20modulator%20%E2%80%94%20nested%20Mach%E2%80%93Zehnder.json",
@@ -136,6 +138,7 @@ const PRECACHE_PATHS = [
   "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
   "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
   "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
+  "../Examples/Ultrashort%20Pulses/Optical%20isolator%20%E2%80%94%20isolation%20across%20a%20pulse%20spectrum.json",
   "../Examples/Ultrashort%20Pulses/Prism%20compressor%20%E2%80%94%20undoing%20the%20chirp%20of%20a%20glass%20rod.json",
   "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
 ];

@@ -118,6 +118,12 @@ export const examples = [
   },
   {
     "group": "Beam Routing",
+    "name": "Faraday mirror — a double pass that undoes an unknown retarder",
+    "path": "../Examples/Beam%20Routing/Faraday%20mirror%20%E2%80%94%20a%20double%20pass%20that%20undoes%20an%20unknown%20retarder.json",
+    "slug": "faraday-mirror-a-double-pass-that-undoes-an-unknown-retarder"
+  },
+  {
+    "group": "Beam Routing",
     "name": "Polarization send–return separation — PBS and quarter wave plate",
     "path": "../Examples/Beam%20Routing/Polarization%20send%E2%80%93return%20separation%20%E2%80%94%20PBS%20and%20quarter-wave%20plate.json",
     "slug": "polarization-send-return-separation-pbs-and-quarter-wave-plate"
@@ -235,6 +241,12 @@ export const examples = [
     "name": "OPCPA — stretch, amplify, recompress",
     "path": "../Examples/Ultrashort%20Pulses/OPCPA%20%E2%80%94%20stretch%2C%20amplify%2C%20recompress.json",
     "slug": "opcpa-stretch-amplify-recompress"
+  },
+  {
+    "group": "Ultrashort Pulses",
+    "name": "Optical isolator — isolation across a pulse spectrum",
+    "path": "../Examples/Ultrashort%20Pulses/Optical%20isolator%20%E2%80%94%20isolation%20across%20a%20pulse%20spectrum.json",
+    "slug": "optical-isolator-isolation-across-a-pulse-spectrum"
   },
   {
     "group": "Ultrashort Pulses",
