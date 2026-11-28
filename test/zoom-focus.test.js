@@ -466,16 +466,23 @@ test('a propagated waist is not carried on past a face', () => {
 // Rayleigh range (12.4 mm) is short against f, so its waist forms at 495.285,
 // far past the rays' crossing at 300, with w0 101 µm and zR 50.5 mm. A wide
 // view (80 × 20 mm) around it, and what lies at or past the waist.
-function wideWaist(extra = []) {
+function narrowLaser(params = {}) {
   const laser = createElement('cwlaser', 0, 0);
-  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 });
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 }, params);
+  return laser;
+}
+function wideWaist(extra = [], lasers = [narrowLaser()]) {
   const lens = createElement('lens', 200, 0);
   const zoom = createElement('zoom', 495, 0);
   Object.assign(zoom.params, { shape: 'rect', w: 80, h: 20, mag: 2 });
-  const elements = [laser, lens, ...extra, zoom];
+  const elements = [...lasers, lens, ...extra, zoom];
   const traced = traceScene(elements, []);
   const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
-  return { foci: zoomFoci(zoom, traced.paths), labels: [...svg.matchAll(/>(w₀ [^<]*)</g)].map(m => m[1]) };
+  return {
+    foci: zoomFoci(zoom, traced.paths),
+    labels: [...svg.matchAll(/>(w₀ [^<]*)</g)].map(m => m[1]),
+    ranges: [...svg.matchAll(/>(zR [^<]*)</g)].map(m => m[1]),
+  };
 }
 const placed = (type, x, params = {}) => Object.assign(createElement(type, x, 0), { params: { ...createElement(type, x, 0).params, ...params } });
 
@@ -557,6 +564,31 @@ test('a branch the tracer starts at an optic carries the beam on: a polarizer, a
   const half = wideWaist([placed('bs', 491, { ratio: 0.5 })]);
   assert.deepEqual(half.labels, ['w₀ 101 µm', 'w₀ 101 µm']);
   assert.deepEqual(half.foci.map(f => [Number(f.point.x.toFixed(3)), Number(f.point.y.toFixed(3)) + 0]).sort((a, b) => a[1] - b[1]), [[491, -4.285], [495.285, 0]]);
+});
+
+test('a branch is followed from the path that started it, not from another source on the same line (review 2)', () => {
+  // Two coaxial lasers and a 0° polarizer 0.085 zR before the waists: the
+  // 633 nm beam polarized at 90° stops there, the 637 nm one at 0° goes on.
+  const polarizer = () => placed('polarizer', 491, { pangle: 0 });
+  const blocked = narrowLaser({ wavelength: 633, pol: 90 });
+  assert.deepEqual(wideWaist([polarizer()], [blocked]).ranges, ['zR 50.5 mm']);
+  // The transmitted 637 nm beam does not carry the blocked one on: each
+  // keeps its own note.
+  const both = wideWaist([polarizer()], [narrowLaser({ wavelength: 633, pol: 90 }), narrowLaser({ wavelength: 637, pol: 0 })]);
+  assert.deepEqual(both.ranges, ['zR 50.5 mm', 'zR 50.2 mm']);
+});
+
+test('a waist on a mirror or a beamsplitter face is named once (review 2)', () => {
+  const at = wideWaist().foci[0].point.x;
+  const mirror = Object.assign(placed('mirror', at), { rot: 45 });
+  assert.deepEqual(wideWaist([mirror]).labels, ['w₀ 101 µm']);
+  for (const ratio of [0, 0.5, 1]) {
+    const { labels, foci } = wideWaist([placed('bs', at, { ratio })]);
+    assert.deepEqual(labels, ['w₀ 101 µm'], `beamsplitter at ${ratio}`);
+    assert.equal(foci.filter(f => f.named).length, 1);
+  }
+  // Arms that form waists further on still each name their own (above,
+  // a splitter 0.085 zR before the waist names one on each arm).
 });
 
 test('a waist the beam reaches on a lens face is named; one beyond the face is not (review)', () => {

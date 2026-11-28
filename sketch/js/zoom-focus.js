@@ -26,7 +26,7 @@
 
 import { beamFromQ } from './gaussian-beam.js';
 import { envelopeEdges } from './beam-envelope.js';
-import { beamOnPathSegment } from './raytrace.js';
+import { beamOnPathSegment, branchParent } from './raytrace.js';
 import { bundleFocus } from './sectioning.js';
 import { wavelengthToColor } from './util.js';
 import { zoomGeometry } from './zoom.js';
@@ -69,44 +69,30 @@ function continuation(path, i) {
 }
 
 // The tracer starts a new path for each tagged branch an interaction makes
-// (a polarizer's transmitted light, a beamsplitter's two arms), at the point
-// where the parent path ends, with the parent's `sig` and the branch's tag
-// after a slash. The links between them, found from that: the branches that
-// start where a path ends, and the path a branch starts from.
-const SAME_POINT = 1e-9;
+// (a polarizer's transmitted light, a beamsplitter's two arms), where the
+// parent path ends, and records which path it started from (branchParent).
+// The links between them: the branches each path starts, and its parent.
 function branchLinks(paths) {
-  const bySig = new Map();
-  for (const path of paths) {
-    if (!path || typeof path.sig !== 'string' || !path.pts?.length) continue;
-    if (!bySig.has(path.sig)) bySig.set(path.sig, []);
-    bySig.get(path.sig).push(path);
-  }
   const children = new Map();
-  for (const [sig, list] of bySig) {
-    const cut = sig.lastIndexOf('/');
-    if (cut <= 0) continue;
-    const parent = sig.slice(0, cut);
-    if (!bySig.has(parent)) continue;
+  for (const path of paths) {
+    const parent = path && branchParent(path);
+    if (!parent) continue;
     if (!children.has(parent)) children.set(parent, []);
-    children.get(parent).push(...list);
+    children.get(parent).push(path);
   }
-  const near = (p, q) => p && q && Math.hypot(p.x - q.x, p.y - q.y) <= SAME_POINT;
-  return {
-    childrenOf: path => (children.get(path.sig) || []).filter(child => child !== path && near(child.pts[0], path.pts.at(-1))),
-    parentOf: path => {
-      const cut = typeof path.sig === 'string' ? path.sig.lastIndexOf('/') : -1;
-      if (cut <= 0) return null;
-      return (bySig.get(path.sig.slice(0, cut)) || []).find(parent => parent !== path && near(parent.pts.at(-1), path.pts[0])) || null;
-    },
-  };
+  return { childrenOf: path => children.get(path) || [], parentOf: path => branchParent(path) };
 }
 
 // Where the light of segment i goes on past its end: the path's next
 // segment, or, at its last, the first segments of the branches that start
-// there. Empty where all of it stops.
+// there, each with the outgoing beam it belongs to (`via`: '' for the same
+// path, else the branch). Empty where all of it stops.
 function onward(path, i, links) {
-  if (i < path.pts.length - 2) return [continuation(path, i)].filter(Boolean);
-  return links.childrenOf(path).map(child => segmentRay(child, 0)).filter(Boolean);
+  if (i < path.pts.length - 2) return [continuation(path, i)].filter(Boolean).map(next => ({ ...next, via: '' }));
+  return links.childrenOf(path).map(child => {
+    const next = segmentRay(child, 0);
+    return next && { ...next, via: child.branch || child.sig || '?' };
+  }).filter(Boolean);
 }
 
 // The segment the light arrived on at the start of segment i: the path's
@@ -269,7 +255,9 @@ export function zoomFoci(zoom, paths = []) {
 //   beamsplitter's reflected arm), the waist is not where this light goes:
 //   behind the start it is virtual, beyond the end the beam forms another
 //   waist, or none, and never this one; a waist on the face itself is the
-//   incident beam's, and named;
+//   incident beam's, named by the bundle that arrives there, unless a beam
+//   leaving the face straight with the beam parameter holds it (a
+//   beamsplitter's transmitted arm), and never by a turned one leaving;
 // - past a face where the beam parameter ends, the light stopping there (a
 //   fiber's end face, a pinhole's plate, a beam block) or going on straight
 //   without one (a specimen plane), the waist is named only within
@@ -284,6 +272,11 @@ function propagatedFocus(group) {
   const length = group.beamLen;
   const straight = (r, other) => other.d.x * r.d.x + other.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
   let named = true;
+  // A waist on the face this bundle starts from, where the rays arrived
+  // turned (a mirror, a lens, a beamsplitter's reflected arm), is the
+  // incident beam's, named by the bundle that arrived (below).
+  const arrivedTurned = group.rays.some(r => r.prev && !straight(r, r.prev));
+  if (Math.abs(along) <= ALONG_TOLERANCE && arrivedTurned) named = false;
   if (along < -ALONG_TOLERANCE) {
     const carriedIn = group.rays.every(r => r.prev && straight(r, r.prev)) && group.rays.some(r => r.prev.beam);
     if (!carriedIn || !(along > -shape.rayleighMm)) return { ok: false };
@@ -292,9 +285,19 @@ function propagatedFocus(group) {
     const goesOn = group.rays.flatMap(r => r.onward.map(next => ({ r, next })));
     const onFace = along <= length + ALONG_TOLERANCE;
     if (goesOn.some(({ r, next }) => !straight(r, next))) {
-      // The incident beam reaches its waist on the face itself: named here,
-      // whatever the optic does to it afterwards.
       if (!onFace) return { ok: false };
+      // The incident beam reaches its waist on the face itself. An outgoing
+      // beam that goes on straight with the beam parameter (a beamsplitter's
+      // transmitted arm) holds the same waist and names it; otherwise it is
+      // named here, and the turned beams leaving the face do not name it.
+      const arms = new Map();
+      for (const { r, next } of goesOn) {
+        const arm = arms.get(next.via) || { straight: true, beam: false };
+        arm.straight &&= straight(r, next);
+        arm.beam ||= next.beam;
+        arms.set(next.via, arm);
+      }
+      if ([...arms.values()].some(arm => arm.straight && arm.beam)) named = false;
     } else if (goesOn.some(({ next }) => next.beam)) {
       if (!(along <= length + shape.rayleighMm)) return { ok: false };
       named = false;
