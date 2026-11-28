@@ -8,7 +8,7 @@ import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
-  specimenTimingText, isRotatable,
+  specimenTimingText, isRotatable, faradayDataNotice,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -506,6 +506,26 @@ function announceMixingState(elements) {
   }
 }
 
+// Element id -> the situation a Faraday element's missing Verdet data was
+// last announced for: said once when it arises (TGG put in light it has no
+// data for, or that light sent into it), again only when it changes.
+const announcedFaradayData = new Map();
+
+// Messages that arise in the same redraw are joined into one pop-up, so the
+// second does not replace the first before it can be read.
+function announceFaradayData(elements) {
+  const messages = [];
+  for (const el of elements) {
+    if (el.type !== 'faraday' && el.type !== 'isolator') continue;
+    const notice = faradayDataNotice(el);
+    const key = notice?.key || '';
+    if (announcedFaradayData.get(el.id) === key) continue;
+    announcedFaradayData.set(el.id, key);
+    if (notice && !messages.includes(notice.message)) messages.push(notice.message);
+  }
+  if (messages.length) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: messages.join(' ') } }));
+}
+
 function renderBeams() {
   const scene = traceCache.get(animatedOpticalElements(), state.beams);
   const drawables = scene.drawables;
@@ -559,6 +579,7 @@ function renderBeams() {
   }
   displayedBeamScene = scene;
   announceMixingState(state.elements);
+  announceFaradayData(state.elements);
   renderPulseLayer();
   syncPulseAnimation();
   notifyPulseState();

@@ -1,0 +1,139 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": -50,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Faraday mirror: a double pass that undoes an unknown retarder**",
+    "fontSize": 24,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "note",
+   "type": "textlabel",
+   "x": -50,
+   "y": 90,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "The λ/4 plate stands in for an unknown birefringence, such as a fibre's. Out and back through a 45° Faraday rotator,\nthe light returns at 90° to how it left, whatever the plate does: the PBS sends all of it to the power meter.",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "cwlaser",
+   "x": -25,
+   "y": 250,
+   "rot": 0,
+   "label": "1064 nm, horizontal, 10 mW",
+   "showLabel": true,
+   "params": {
+    "wavelength": 1064,
+    "avgPowerW": 0.01,
+    "beamMode": "beam",
+    "beamWidth": 2,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "pbs",
+   "type": "pbs",
+   "x": 125,
+   "y": 250,
+   "rot": 0,
+   "label": "PBS",
+   "showLabel": true,
+   "params": {
+    "size": 25.4
+   }
+  },
+  {
+   "id": "plate",
+   "type": "qwp",
+   "x": 250,
+   "y": 250,
+   "rot": 0,
+   "label": "λ/4 at 20°: the unknown retarder",
+   "showLabel": true,
+   "params": {
+    "a": 20,
+    "length": 25.4
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "rotator",
+   "type": "faraday",
+   "x": 410,
+   "y": 250,
+   "rot": 0,
+   "label": "Faraday rotator, 45° per pass",
+   "showLabel": true,
+   "params": {
+    "material": "tgg",
+    "fieldT": 1,
+    "fieldDir": "along",
+    "lengthMm": 20.94,
+    "aperture": 10
+   }
+  },
+  {
+   "id": "mirror",
+   "type": "mirror",
+   "x": 520,
+   "y": 250,
+   "rot": 0,
+   "label": "Mirror",
+   "showLabel": true,
+   "params": {
+    "length": 30,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "meter",
+   "type": "powermeter",
+   "x": 125,
+   "y": 380,
+   "rot": 90,
+   "label": "Return port",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "screen",
+   "type": "display",
+   "x": 240,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "meter",
+    "displayScale": 0.8,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": []
+}

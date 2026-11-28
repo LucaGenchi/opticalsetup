@@ -2629,35 +2629,139 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The isolator is modelled as what it does rather than how it does it: a
-        directional gate. Rays travelling along the element's forward direction pass through
-        untouched; rays with any backward component are removed from the trace entirely.
+        <p>The isolator has two models, chosen with <em>Model</em>. The default, <strong>Ideal
+        one-way gate</strong>, is what it does rather than how it does it: rays travelling
+        along the element's forward direction (its arrow) pass untouched, in power and in
+        polarization, and rays with any backward component are removed from the trace.
         Rotating the element sets which way is forward, so an isolator turned 180° blocks
-        the beam it previously passed — the simplest way to see the element working.</p>
-        <p>Its use here is the same as on a bench. Put one right after a laser, aim a mirror
-        or a partially reflecting surface downstream, and the return beam that would
-        otherwise travel back into the source stops at the isolator instead. Because the
-        sketch traces reflections as real rays, that back-propagating beam is genuinely
-        there to be blocked rather than merely implied.</p>
-        <p>Note that despite living in the Polarization category, this element does not
-        touch polarization at all. A beam's Stokes state is identical before and after it.
-        That is a deliberate simplification, and it differs from a real isolator in a way
-        worth knowing about — see below.</p>`,
-      limitations: `<p>The Faraday mechanism is not modelled. There is no rotator and there
-        are no internal polarizers, so the element does not polarize its output the way a
-        real isolator does: light leaves in whatever state it arrived, whereas a real device
-        emits light polarized along its output polarizer regardless of the input. If your
-        setup depends on that, place an explicit <a href="../polarizer/">polarizer</a> after
-        the isolator to represent it. Isolation is also perfect and instantaneous rather than
-        the 30–40&nbsp;dB a real device achieves, forward transmission is lossless rather
-        than costing 1–2&nbsp;dB, and there is no wavelength, temperature, or field
-        dependence — a real isolator works properly only near the wavelength it was built
-        for. Nothing outside the clear aperture is affected.</p>`,
+        the beam it previously passed.</p>
+        <p><strong>Polarizers and a Faraday rotator</strong> builds the device described
+        above: an input polarizer at the angle you set, a <a href="../faraday/">Faraday
+        rotator</a> of the chosen material, and an output polarizer 45° from the input one.
+        The field is chosen so that light travelling forward is turned by exactly 45° at the
+        <em>design wavelength</em>; at any other wavelength the turn follows the material's
+        Verdet constant, θ(λ) = 45°·V(λ)/V(λ<sub>d</sub>). With a rotation error
+        δ = θ − 45°, light polarized along the input polarizer passes forward as
+        cos²δ, and light returning along the output polarizer leaks back as sin²δ. Each
+        polarizer also passes a fraction 1/ER of the light polarized across it, set by its
+        <em>extinction ratio</em> in dB, which limits the isolation where δ is small: at the
+        design wavelength the isolation equals the extinction ratio. The output is polarized
+        along the output polarizer, to the polarizers' extinction (light arriving exactly
+        across the input polarizer leaves weak and across the output one), and unpolarized
+        light keeps half going forward.</p>
+        <p>The physical model weighs each wavelength of a broadband beam on its own, so a
+        short pulse leaks back mostly at the wings of its spectrum, where δ is largest,
+        and the returning spectrum has a hole at the design wavelength; the light at the
+        centre and at the wings also leaves in different states, and the beam carries their
+        average, partly polarized, which gives the power a polarizer passes after it but not
+        the spectrum it leaves (the readings say so). The inspector gives
+        the field-length product the design needs and, for each wavelength present, the
+        rotation, the forward transmission and the isolation, also at the edges of a
+        broadband beam's band.</p>
+        <p>Put one right after a laser, aim a mirror or a partially reflecting surface
+        downstream, and the return beam that would otherwise travel back into the source is
+        blocked, or, with the physical model, attenuated by what the isolator really
+        achieves at that wavelength. For a broadband beam the forward pass leaves its
+        wavelengths in states that differ very slightly, which the app carries as one
+        average, and the return pass through the same isolator then says its result is not
+        computed; to see the leak across a spectrum, send the light in from the output side,
+        polarized along the output polarizer, as a reflection of the forward beam is (the
+        example <em>Optical isolator: isolation across a pulse spectrum</em> does this).</p>`,
+      limitations: `<p>The ideal gate has no wavelength, temperature or field dependence,
+        perfect isolation and no forward loss, and leaves the polarization as it arrived;
+        place a <a href="../polarizer/">polarizer</a> after it if your setup needs the
+        polarized output of a real device, or choose the physical model.</p>
+        <p>The physical model takes the Verdet constant of its material at room temperature
+        (TGG between 500 and 1100&nbsp;nm, from one measured sample); outside that range, and
+        for any wavelength the design cannot reach, the light passes as through the ideal
+        gate and the readings past it carry a caveat. A custom Verdet constant is the same at
+        every wavelength. Absorption, Fresnel losses, the polarizers' own wavelength
+        dependence, thermal effects at high power, the field's non-uniformity along the rod
+        and the path delay of the rod are not modelled. Pulses from a switching modulator that
+        all meet one of its states cross as light in that state. Light in both states keeps
+        them, each with its power and polarization averaged over the spectrum; where they
+        cross differently across the band, the spectrum past the isolator is not computed and
+        the readings say so.</p>`,
     },
-    related: ['polarizer', 'qwp', 'pbs', 'cwlaser'],
+    related: ['faraday', 'polarizer', 'qwp', 'pbs', 'cwlaser'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
       { label: 'RP Photonics Encyclopedia — Faraday Effect', url: 'https://www.rp-photonics.com/faraday_effect.html' },
+    ],
+  },
+  {
+    type: 'faraday',
+    summary: "A magneto-optic rod in an axial field that turns polarization by V·B·L, in a sense set by the field, so a return pass doubles the turn.",
+    title: 'Faraday rotator',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>A Faraday rotator turns the plane of polarization of light that crosses it. It is
+        a rod of a magneto-optic material, often terbium gallium garnet (TGG) in the visible
+        and near infrared, inside a strong magnet whose field runs along the beam. The angle
+        is the Verdet constant of the material times the field times the length of the
+        rod${cite(1)}, and it changes with wavelength: for TGG it falls roughly as the inverse
+        square of the wavelength across the near infrared, from about 131&nbsp;rad/(T·m) at
+        632&nbsp;nm to 37.5&nbsp;rad/(T·m) at 1064&nbsp;nm in one measured sample${cite(2)}.</p>
+        <p>What sets it apart from a <a href="../hwp/">waveplate</a> is that it is not
+        reciprocal. The polarization turns in a sense fixed by the magnetic field, not by the
+        direction the light travels: light sent back through the rod is turned the same way
+        about the field again, so a double pass doubles the rotation instead of undoing it.
+        Every other element in this category is reciprocal, and no combination of them can
+        do this. It is what makes an <a href="../isolator/">optical isolator</a> possible,
+        and the Faraday mirror: a 45° rotator in front of a mirror returns light polarized at
+        90° to how it arrived, even after it has crossed an unknown birefringent element on
+        the way in and out${cite(3)}.</p>`,
+      formulas: [
+        { tex: '\\theta = V(\\lambda)\\,B\\,L', caption: 'Faraday rotation: the Verdet constant (rad/(T·m)), the field along the beam (T) and the length (m).' },
+        { tex: '|V(\\lambda)| = \\frac{F\\,\\lambda_0^{2}}{\\lambda^{2}-\\lambda_0^{2}} + G', caption: 'The single-transition model of the Verdet constant used for TGG, with F = 820.3 rad/(T·m), G = −6.2 rad/(T·m) and λ₀ = 239.3 nm at room temperature; the Verdet constant of TGG is negative.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Choose the <em>Material</em> (TGG, or a custom Verdet constant), the field
+        <em>B</em>, its direction (along or against the element's arrow) and the length
+        <em>L</em>. The element turns the polarization of the light that crosses it by
+        θ = V·B·L, and the inspector gives the turn at each wavelength present, for each
+        direction of travel. A positive V turns the polarization anticlockwise, seen looking
+        towards the source, for light travelling along the field, and clockwise for light
+        travelling against it; in the app's polarization angle (measured from the drawing
+        plane towards you) light along the field has its angle raised by V·B·L. TGG's V is
+        negative. Light crossing the rod against the field therefore sees its angle change
+        the opposite way in its own direction of travel, the same turn about the field, and a
+        return pass doubles the rotation.</p>
+        <p>To first order the turn does not depend on the angle at which light crosses the
+        rod: the path through it grows as 1/cos while the field along the ray falls as cos.
+        A beam's power is unchanged.</p>
+        <p>To build a Faraday mirror, put a polarizing beamsplitter, any waveplate, a 45°
+        rotator and a mirror in a line: whatever the waveplate's angle, the light that comes
+        back leaves through the beamsplitter's other port. The example
+        <em>Faraday mirror</em> shows it. The <a href="../isolator/">optical isolator</a> has
+        a model built from polarizers and this rotator.</p>`,
+      limitations: `<p>The rod is drawn to its length but acts as a thin element at its
+        centre: its index, its path delay and dispersion, absorption, surface reflections and
+        heating at high power are not modelled, nor is a field that varies along the rod.
+        TGG's Verdet constant is that of one sample at room temperature between 500 and
+        1100&nbsp;nm; other samples read up to about 19&nbsp;% higher${cite(2)}. Outside that
+        range the element computes no rotation: the light keeps the polarization it arrived
+        with, and the readings past it say so. A custom Verdet constant is the same at every
+        wavelength. Each wavelength of a broadband beam turns by its own amount, and the beam
+        carries on as their average, partly polarized where they differ: that gives the power
+        a polarizer passes after it but not the spectrum it leaves, and the readings past it
+        say so. A second Faraday rotator or isolator anywhere after it, even past a polarizer,
+        would need each wavelength's own state and share, which the average has lost: its
+        result is declared not computed. Part of a band outside the material's data keeps its state, and the readings
+        name that part.</p>`,
+    },
+    related: ['isolator', 'hwp', 'qwp', 'pbs', 'polarizer'],
+    citations: [
+      { label: 'D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Applied Sciences 9, 3160 (2019) — open access (CC BY 4.0)', url: 'https://doi.org/10.3390/app9153160' },
+      { label: 'O. Slezák, R. Yasuhara, A. Lucianetti and T. Mocek, “Temperature-wavelength dependence of terbium gallium garnet ceramics Verdet constant,” Optical Materials Express 6, 3683–3691 (2016) — open access', url: 'https://doi.org/10.1364/OME.6.003683' },
+      { label: 'M. Martinelli, “A universal compensator for polarization changes induced by birefringence on a retracing beam,” Optics Communications 72, 341–344 (1989)', url: 'https://doi.org/10.1016/0030-4018(89)90436-7' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Faraday Effect', url: 'https://www.rp-photonics.com/faraday_effect.html' },
+      { label: 'RP Photonics Encyclopedia — Faraday Rotators', url: 'https://www.rp-photonics.com/faraday_rotators.html' },
     ],
   },
   {

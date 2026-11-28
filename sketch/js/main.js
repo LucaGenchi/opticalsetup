@@ -402,6 +402,16 @@ const demoScenes = {
     mkDemo('probe', 310, 200, 0, { prop: 'pol' }, { label: 'now circular', showLabel: true, labelPos: 't' }),
     mkDemo('polarimeter', 430, 200, 0, {}, { label: 'Stokes readout', showLabel: true }),
   ],
+  // A Faraday rotator turns the state like a half-wave plate would, so the
+  // same pairing shows it: 20.94 mm of TGG at 1 T turns 1064 nm light by −45°.
+  faraday: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0, wavelength: 1064 }),
+    mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),
+    mkDemo('faraday', 210, 200, 0, { lengthMm: 20.94, fieldT: 1 }),
+    mkDemo('probe', 290, 200, 0, { prop: 'pol' }, { label: 'turned −45°', showLabel: true, labelPos: 't' }),
+    mkDemo('polarizer', 360, 200, 0, { pangle: 135 }, { label: 'analyzer at 135°', showLabel: true, labelPos: 'b' }),
+    mkDemo('detector', 470, 200, 0, {}, { label: 'full power through', showLabel: true }),
+  ],
   pbs: () => [
     mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
     mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),

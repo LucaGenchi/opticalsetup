@@ -1810,6 +1810,81 @@ export const exampleEntries = [
     related: ['prism', 'glassrod', 'pulsedlaser', 'autocorrelator', 'pulsecompressor'],
   },
   {
+    match: 'Optical isolator — isolation across a pulse spectrum',
+    title: 'Optical isolator across a pulse spectrum',
+    tagline: 'An isolator turns light by exactly 45° at one wavelength only: a short pulse, tens of nanometres wide, leaks back at the wings of its spectrum.',
+    html: `
+      <p>An optical isolator lets light through one way and blocks it the other.
+      It is an input polarizer, a Faraday rotator that turns the polarization by
+      45°, and an output polarizer at 45° to the first. Going forward the light
+      arrives aligned with the output polarizer; coming back it is turned a
+      further 45° in the same sense and reaches the input polarizer crossed,
+      because the Faraday rotation is fixed by the magnet's field, not by the
+      direction the light travels${cite(1)}.</p>
+      <p>The rotation is the Verdet constant of the rotator's material times the
+      field times the length, and the Verdet constant depends on wavelength: in
+      terbium gallium garnet (TGG) it falls roughly as the inverse square of the
+      wavelength${cite(2)}. An isolator is therefore built for one wavelength.
+      Away from it the turn is wrong by an angle δ, the forward transmission
+      falls as cos²δ and the backward leakage rises as sin²δ. A narrow laser line
+      barely notices; a femtosecond pulse, whose spectrum is tens of nanometres
+      wide, does.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A Ti:sapphire laser sends 1&nbsp;W of 15&nbsp;fs pulses at 800&nbsp;nm, a
+      spectrum about 63&nbsp;nm wide, into an
+      <a href="../../wiki/isolator/">optical isolator</a> from its output side,
+      polarized along its output polarizer: the state in which a reflection of
+      the forward beam comes back. The isolator is set to its physical model:
+      TGG, designed for 800&nbsp;nm, with polarizers of 40&nbsp;dB extinction. A
+      <a href="../../wiki/spectrometer/">spectrometer</a> behind it shows what
+      gets through.</p>
+      <p>The isolator's inspector gives its figures: a field-length product of
+      0.0106&nbsp;T·m makes the turn 45° at 800&nbsp;nm, where the isolation is the
+      polarizers' 40.0&nbsp;dB; at 768.6 and 831.4&nbsp;nm, half the pulse's
+      bandwidth either side, it is only 22.0 and 23.2&nbsp;dB. The spectrometer
+      reads 3.95&nbsp;mW, and its spectrum is two humps, at 761 and 836&nbsp;nm,
+      with a hole at 800&nbsp;nm: what gets through is the light whose
+      wavelength the isolator was not built for.</p>
+      <p>Things to try. Each starts from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change</th><th>Spectrometer</th></tr></thead>
+        <tbody>
+          <tr><td>Isolator model to the ideal one-way gate</td><td>nothing</td></tr>
+          <tr><td>Design wavelength to 780&nbsp;nm: the hole moves there</td><td>5.32&nbsp;mW</td></tr>
+          <tr><td>Polarizer extinction to 30&nbsp;dB</td><td>4.85&nbsp;mW</td></tr>
+          <tr><td>Laser pulse to 100&nbsp;fs, about 9&nbsp;nm wide</td><td>185&nbsp;µW</td></tr>
+          <tr><td>Laser pulse to 1000&nbsp;fs, under 1&nbsp;nm wide</td><td>101&nbsp;µW</td></tr>
+        </tbody>
+      </table></div>
+      <p>The last line is the isolator at its best: 1&nbsp;W × 10⁻⁴, the
+      40&nbsp;dB of its polarizers. The 15&nbsp;fs pulse gets through 39 times
+      more.</p>`,
+    limitations: `<p>The pulse is sent into the isolator backwards rather than
+      reflected after a forward pass. A beam that has crossed the isolator
+      forward leaves in a state that differs very slightly from one wavelength to
+      another; the app carries a beam's polarization as one state, the average
+      over its spectrum, and past a second pass through a Faraday element it
+      says the result is not computed. Light arriving along the output
+      polarizer is what a reflection of the forward beam is, so the leak is the
+      same, computed exactly. The light that gets through also leaves in a state
+      that varies across its spectrum (along the input polarizer at the wings,
+      across it at the centre, where only the polarizers' leak passes), which the
+      spectrometer's card says; its duration is not computed.</p>
+      <p>The isolator's rotator uses the Verdet constant of one TGG sample at room
+      temperature, measured between 500 and 1100&nbsp;nm; other samples read up to
+      about 19&nbsp;% higher, which moves the figures away from the design
+      wavelength. The polarizers are ideal apart from their extinction, which is
+      the same at every wavelength, and absorption, thermal effects at high power
+      and the rotator's dispersion of the pulse are not modelled.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
+      { label: 'D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Applied Sciences 9, 3160 (2019) — open access (CC BY 4.0)', url: 'https://doi.org/10.3390/app9153160' },
+    ],
+    resources: [],
+    related: ['isolator', 'faraday', 'pulsedlaser', 'spectrometer', 'bs', 'mirror'],
+  },
+  {
     match: 'Optical parametric oscillator — ring cavity, element by element',
     title: 'Optical parametric oscillator',
     tagline: 'A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.',
@@ -2341,6 +2416,65 @@ export const exampleEntries = [
       { label: 'RP Photonics Encyclopedia — Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
     ],
     related: ['pbs', 'qwp', 'hwp', 'mirror', 'lens', 'detector', 'beamdump'],
+  },
+  {
+    match: 'Faraday mirror — a double pass that undoes an unknown retarder',
+    title: 'Faraday mirror',
+    tagline: 'A 45° Faraday rotator in front of a mirror returns light at 90° to how it left, whatever an unknown birefringent element did to it on the way out and back.',
+    html: `
+      <p>Light sent down a fibre and reflected back at the far end comes back in
+      a polarization nobody chose: the fibre's birefringence changes with
+      temperature, stress and bending, so the state that returns drifts. A
+      Faraday mirror removes the drift. It is a Faraday rotator that turns the
+      polarization by 45° on each pass, followed by a mirror${cite(1)}.</p>
+      <p>The trick is that the Faraday effect is not reciprocal. A waveplate
+      crossed backwards undoes what it did on the way out, so a reciprocal
+      element followed by a mirror and the same element again returns light
+      in a state that depends on that element. A Faraday rotator turns the
+      polarization in a sense fixed by its magnetic field, so the return pass
+      adds a second 45° instead of taking the first away. The 90° in total
+      turns the light orthogonal, and the birefringent element, crossed again
+      on the way back, cannot undo that: whatever it is, the light comes back
+      at 90° to how it entered${cite(1)}. Interferometric fibre sensors and
+      fibre lasers use it to make the round trip insensitive to the fibre's
+      state.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A horizontally polarized 1064&nbsp;nm laser of 10&nbsp;mW passes a
+      <a href="../../wiki/pbs/">polarizing beamsplitter</a>, a
+      <a href="../../wiki/qwp/">quarter-wave plate</a> at 20° standing in for an
+      unknown birefringence, a <a href="../../wiki/faraday/">Faraday rotator</a>
+      of TGG and a mirror. The rotator is 20.94&nbsp;mm long in a 1&nbsp;T field, a
+      turn of 45° per pass at 1064&nbsp;nm; its inspector gives the turn in each
+      direction. The light comes back horizontal-turned-vertical, and the PBS
+      reflects all of it to the power meter, which reads 10.0&nbsp;mW.</p>
+      <p>Things to try. Each starts from the setup as it opens:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>One change</th><th>Power meter</th></tr></thead>
+        <tbody>
+          <tr><td>Turn the quarter-wave plate to any angle, 65° say</td><td>10.0&nbsp;mW</td></tr>
+          <tr><td>Field of the rotator to 0&nbsp;T: the plate alone, crossed twice, acts as a half-wave plate at 20°</td><td>4.13&nbsp;mW</td></tr>
+          <tr><td>Field to 0&nbsp;T and the plate to 45°: the ordinary send–return trick, which works only at this angle</td><td>10.0&nbsp;mW</td></tr>
+          <tr><td>Rotator length to 10.47&nbsp;mm, 22.5° per pass</td><td>7.07&nbsp;mW</td></tr>
+        </tbody>
+      </table></div>
+      <p>The setup is the <a href="../polarization-send-return-separation-pbs-and-quarter-wave-plate/">polarization send–return separation</a>
+      with the quarter-wave plate's job taken over by the rotator: there the
+      plate must sit at exactly 45°, here it may sit anywhere.</p>`,
+    limitations: `<p>The fibre is represented by a quarter-wave plate: the
+      fiber element passes polarization unchanged, so a waveplate at an arbitrary
+      angle stands in for the birefringence of a real fibre. The rotator is a thin
+      element with a Verdet constant measured at room temperature (TGG, one sample);
+      its index, path delay and absorption, and the mirror's own phase between s and
+      p, are not modelled, and the PBS has perfect extinction. The light that
+      returns through the PBS towards the laser simply ends there.</p>`,
+    citations: [
+      { label: 'M. Martinelli, “A universal compensator for polarization changes induced by birefringence on a retracing beam,” Optics Communications 72, 341–344 (1989)', url: 'https://doi.org/10.1016/0030-4018(89)90436-7' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Faraday Rotators', url: 'https://www.rp-photonics.com/faraday_rotators.html' },
+    ],
+    related: ['faraday', 'pbs', 'qwp', 'mirror', 'powermeter', 'isolator'],
   },
   {
     match: 'IQ optical modulator — nested Mach–Zehnder',

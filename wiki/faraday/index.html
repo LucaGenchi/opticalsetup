@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faraday rotator — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="A magneto-optic rod in an axial field that turns polarization by V·B·L, in a sense set by the field, so a return pass doubles the turn. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/faraday/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Faraday rotator — OpticalSetup Encyclopedia">
+<meta property="og:description" content="A magneto-optic rod in an axial field that turns polarization by V·B·L, in a sense set by the field, so a return pass doubles the turn.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/faraday/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="../../sketch/icons/icon.svg">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../calculators/">Calculators</a>
+      <a class="plain" href="../../community/">Community</a>
+      <button type="button" id="btnAbout" class="plain" aria-haspopup="dialog" title="License, copyright and citation">About</button>
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <dialog id="aboutDialog" class="site-dialog" aria-labelledby="aboutTitle">
+    <div class="site-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="site-dialog-close" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text" id="aboutVersion" hidden></p>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers OpticalSetup reports come from models with stated limits; read
+      each component's page in the <a href="../../wiki/">wiki</a> before relying on one.</p>
+    <p class="about-text">If you use OpticalSetup in your research, teaching or publications,
+      please cite the software:</p>
+    <p class="about-text about-citation">Bertoncini, A., &amp; Genchi, L. (2026).
+      <cite>OpticalSetup - the optical workbench software</cite> [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.23191537" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.23191537</a></p>
+    <p class="about-links">
+      <a href="../../#cite">BibTeX and version DOIs</a>
+      <a href="../../license.html">License and notices</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
+  <script type="module" src="../../wiki/assets/site-header.js"></script>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/zoom/" class="">Zoom</a></li><li><a href="../../wiki/ruler/" class="">Ruler</a></li><li><a href="../../wiki/goniometer/" class="">Goniometer</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/ledsource/" class="">LED</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/dmirror/" class="">D-shaped mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/conicmirror/" class="">Conic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <div class="cat-sub">Ideal lenses</div><ul><li><a href="../../wiki/lens/" class="">Thin convex lens</a></li><li><a href="../../wiki/lensc/" class="">Thin concave lens</a></li><li><a href="../../wiki/telescope/" class="">Conjugated thin lens pair</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li></ul><div class="cat-sub">Real lenses</div><ul><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group</a></li><li><a href="../../wiki/asphericlens/" class="">Aspheric lens</a></li></ul><div class="cat-sub">Metalenses</div><ul><li><a href="../../wiki/metalens/" class="">Metalens</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul><li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul><li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul><li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li><li><a href="../../wiki/faraday/" class="current">Faraday rotator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul><li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li><li><a href="../../wiki/opo/" class="">OPO</a></li><li><a href="../../wiki/opa/" class="">OPA</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#polarization">Polarization</a> / Faraday rotator</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-22 -22 44 44" aria-hidden="true"><rect x="-10" y="-5" width="20" height="10" fill="#d9f99d" stroke="#4d7c0f" stroke-width="1.3"/><rect x="-10" y="-10" width="5" height="20" rx="1.5" fill="#475569" stroke="#334155" stroke-width="1"/><rect x="5" y="-10" width="5" height="20" rx="1.5" fill="#475569" stroke="#334155" stroke-width="1"/><path d="M -4,0 L 4,0 M 4,0 L 0.5,-2.6 M 4,0 L 0.5,2.6" stroke="#3f6212" stroke-width="1.4" fill="none" stroke-linecap="round"/><text x="0" y="-14" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#3f6212" font-style="italic" >B</text></svg></div>
+        <div>
+          <h1>Faraday rotator</h1>
+        </div>
+      </div>
+      <p class="tagline">A magneto-optic rod in an axial field that turns polarization by V·B·L, in a sense set by the field, so a return pass doubles the turn.</p>
+      <a class="place-cta" href="../../sketch/?demo=faraday">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=faraday&amp;embed=1"
+          title="Faraday rotator — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A Faraday rotator turns the plane of polarization of light that crosses it. It is
+        a rod of a magneto-optic material, often terbium gallium garnet (TGG) in the visible
+        and near infrared, inside a strong magnet whose field runs along the beam. The angle
+        is the Verdet constant of the material times the field times the length of the
+        rod<sup class="cite">[<a href="#ref-1">1</a>]</sup>, and it changes with wavelength: for TGG it falls roughly as the inverse
+        square of the wavelength across the near infrared, from about 131&nbsp;rad/(T·m) at
+        632&nbsp;nm to 37.5&nbsp;rad/(T·m) at 1064&nbsp;nm in one measured sample<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p>What sets it apart from a <a href="../hwp/">waveplate</a> is that it is not
+        reciprocal. The polarization turns in a sense fixed by the magnetic field, not by the
+        direction the light travels: light sent back through the rod is turned the same way
+        about the field again, so a double pass doubles the rotation instead of undoing it.
+        Every other element in this category is reciprocal, and no combination of them can
+        do this. It is what makes an <a href="../isolator/">optical isolator</a> possible,
+        and the Faraday mirror: a 45° rotator in front of a mirror returns light polarized at
+        90° to how it arrived, even after it has crossed an unknown birefringent element on
+        the way in and out<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>θ</mi><mo>=</mo><mi>V</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mtext> </mtext><mi>B</mi><mtext> </mtext><mi>L</mi></mrow><annotation encoding="application/x-tex">\theta = V(\lambda)\,B\,L</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0502em;">B</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">L</span></span></span></span></span></div>
+      <div class="caption">Faraday rotation: the Verdet constant (rad/(T·m)), the field along the beam (T) and the length (m).</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">∣</mi><mi>V</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mi mathvariant="normal">∣</mi><mo>=</mo><mfrac><mrow><mi>F</mi><mtext> </mtext><msubsup><mi>λ</mi><mn>0</mn><mn>2</mn></msubsup></mrow><mrow><msup><mi>λ</mi><mn>2</mn></msup><mo>−</mo><msubsup><mi>λ</mi><mn>0</mn><mn>2</mn></msubsup></mrow></mfrac><mo>+</mo><mi>G</mi></mrow><annotation encoding="application/x-tex">|V(\lambda)| = \frac{F\,\lambda_0^{2}}{\lambda^{2}-\lambda_0^{2}} + G</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">∣</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span><span class="mord">∣</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4434em;vertical-align:-0.9523em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4911em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7401em;"><span style="top:-2.989em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4337em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2663em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">F</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-2.4519em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2481em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9523em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal">G</span></span></span></span></span></div>
+      <div class="caption">The single-transition model of the Verdet constant used for TGG, with F = 820.3 rad/(T·m), G = −6.2 rad/(T·m) and λ₀ = 239.3 nm at room temperature; the Verdet constant of TGG is negative.</div>
+    </div>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>Choose the <em>Material</em> (TGG, or a custom Verdet constant), the field
+        <em>B</em>, its direction (along or against the element's arrow) and the length
+        <em>L</em>. The element turns the polarization of the light that crosses it by
+        θ = V·B·L, and the inspector gives the turn at each wavelength present, for each
+        direction of travel. A positive V turns the polarization anticlockwise, seen looking
+        towards the source, for light travelling along the field, and clockwise for light
+        travelling against it; in the app's polarization angle (measured from the drawing
+        plane towards you) light along the field has its angle raised by V·B·L. TGG's V is
+        negative. Light crossing the rod against the field therefore sees its angle change
+        the opposite way in its own direction of travel, the same turn about the field, and a
+        return pass doubles the rotation.</p>
+        <p>To first order the turn does not depend on the angle at which light crosses the
+        rod: the path through it grows as 1/cos while the field along the ray falls as cos.
+        A beam's power is unchanged.</p>
+        <p>To build a Faraday mirror, put a polarizing beamsplitter, any waveplate, a 45°
+        rotator and a mirror in a line: whatever the waveplate's angle, the light that comes
+        back leaves through the beamsplitter's other port. The example
+        <em>Faraday mirror</em> shows it. The <a href="../isolator/">optical isolator</a> has
+        a model built from polarizers and this rotator.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The rod is drawn to its length but acts as a thin element at its
+        centre: its index, its path delay and dispersion, absorption, surface reflections and
+        heating at high power are not modelled, nor is a field that varies along the rod.
+        TGG's Verdet constant is that of one sample at room temperature between 500 and
+        1100&nbsp;nm; other samples read up to about 19&nbsp;% higher<sup class="cite">[<a href="#ref-2">2</a>]</sup>. Outside that
+        range the element computes no rotation: the light keeps the polarization it arrived
+        with, and the readings past it say so. A custom Verdet constant is the same at every
+        wavelength. Each wavelength of a broadband beam turns by its own amount, and the beam
+        carries on as their average, partly polarized where they differ: that gives the power
+        a polarizer passes after it but not the spectrum it leaves, and the readings past it
+        say so. A second Faraday rotator or isolator anywhere after it, even past a polarizer,
+        would need each wavelength's own state and share, which the average has lost: its
+        result is declared not computed. Part of a band outside the material's data keeps its state, and the readings
+        name that part.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/isolator/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-23" y="-11" width="46" height="22" rx="11" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/><path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>Optical isolator</a><a href="../../wiki/hwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg>λ/2 waveplate</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/pbs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg>Polarizing BS</a><a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://doi.org/10.3390/app9153160" target="_blank" rel="noopener">D. Vojna, O. Slezák, A. Lucianetti and T. Mocek, “Verdet constant of magneto-active materials developed for high-power Faraday devices,” Applied Sciences 9, 3160 (2019) — open access (CC BY 4.0)</a></li><li id="ref-2"><a href="https://doi.org/10.1364/OME.6.003683" target="_blank" rel="noopener">O. Slezák, R. Yasuhara, A. Lucianetti and T. Mocek, “Temperature-wavelength dependence of terbium gallium garnet ceramics Verdet constant,” Optical Materials Express 6, 3683–3691 (2016) — open access</a></li><li id="ref-3"><a href="https://doi.org/10.1016/0030-4018(89)90436-7" target="_blank" rel="noopener">M. Martinelli, “A universal compensator for polarization changes induced by birefringence on a retracing beam,” Optics Communications 72, 341–344 (1989)</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/faraday_effect.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Faraday Effect</a></li><li><a href="https://www.rp-photonics.com/faraday_rotators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Faraday Rotators</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Every "In OpticalSetup" section above says exactly what the model computes and where it stops. Selected quantitative models are checked against independent reference implementations; see <a href="https://github.com/LucaGenchi/opticalsetup/blob/main/docs/validation.md" target="_blank" rel="noopener">the validation table</a>.</footer>
+</body>
+</html>

@@ -70,7 +70,7 @@ test('common lab names and acronyms find the component they mean, first', () => 
     oap: 'oap', nd: 'filter', 'nd filter': 'filter', 'neutral density': 'filter', 'power meter': 'powermeter',
     iris: 'slit', pinhole: 'slit', hene: 'cwlaser', bbo: 'crystal', pd: 'detector', ccd: 'camera',
     dicroic: 'dichroic', objectiv: 'objective', microscope: 'objective', 'corner cube': 'retroreflector',
-    faraday: 'isolator', beamsplitter: 'bs', fabry: 'etalon', galvo: 'galvo', led: 'ledsource',
+    faraday: 'faraday', 'faraday isolator': 'isolator', beamsplitter: 'bs', fabry: 'etalon', galvo: 'galvo', led: 'ledsource',
   };
   for (const [query, type] of Object.entries(expected)) assert.equal(top(query)[0], type, `"${query}" → ${top(query).slice(0, 3)}`);
 });
