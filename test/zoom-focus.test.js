@@ -520,9 +520,10 @@ test('a beam block before the waist ends the beam: the waist is named only withi
 });
 
 test('an optic the beam goes straight through names the waist once, on either side of it', () => {
-  // A longpass filter passes 633 nm unchanged: the waist is drawn by the
+  // A longpass filter passes 633 nm unchanged: the waist is named by the
   // stretch that holds it, before the filter or after it, never by both.
-  // Its envelope is still drawn on both stretches, meeting at the filter.
+  // The other stretch still reports it, unnamed, as before (its envelope is
+  // cut at the filter on the waist's side, so it draws no more than a line).
   for (const x of [494, 496]) {
     const { foci, labels } = wideWaist([placed('filter', x, { ftype: 'longpass' })]);
     assert.deepEqual(labels, ['w₀ 101 µm'], `filter at ${x}`);
@@ -530,7 +531,7 @@ test('an optic the beam goes straight through names the waist once, on either si
     assert.deepEqual(foci.map(f => f.named).sort(), [false, true]);
     for (const f of foci) assert.ok(Math.abs(f.point.x - 495.285) < 1e-3);
     const spans = foci.map(f => [f.point.x + f.from, f.point.x + f.to]).sort((a, b) => a[0] - b[0]);
-    assert.ok(Math.abs(spans[0][1] - x) < 1e-6 && Math.abs(spans[1][0] - x) < 1e-6, `halves meet at ${x}: ${JSON.stringify(spans)}`);
+    assert.ok(Math.abs(spans[0][1] - x) < 1e-6 && Math.abs(spans[1][0] - x) < 1e-6, `the stretches meet at ${x}: ${JSON.stringify(spans)}`);
   }
   // A diagram-only window meets no ray, and changes nothing.
   assert.deepEqual(wideWaist([Object.assign(placed('window', 494), { rot: 90 })]).labels, ['w₀ 101 µm']);

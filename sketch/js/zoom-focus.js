@@ -94,8 +94,8 @@ function nearRegion(at, reach, a, b) {
 // with its bench `point`, beam `axis` (unit), waist `w0Mm`, Rayleigh range
 // `zRMm`, numerical aperture `na`, the stretch of the axis the beam travels
 // (`from` < 0 < `to`, from the focus), wavelength `wl` and drawing `color`,
-// and whether the view names it (`named`: false for a stretch beside the
-// one that holds its waist, see propagatedFocus).
+// and whether the view names it (`named`: false beside the stretch that
+// holds the waist, see propagatedFocus).
 export function zoomFoci(zoom, paths = []) {
   const g = zoomGeometry(zoom.params, zoom.rot);
   const reach = Math.hypot(g.rx, g.ry);
@@ -197,8 +197,8 @@ export function zoomFoci(zoom, paths = []) {
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
       model: found.model || 'cone', estimate: found.estimate || null,
-      // A propagated waist that another bundle's stretch holds is drawn on
-      // this one's stretch too, but named once, by that bundle.
+      // A propagated waist that another bundle's stretch holds is named
+      // once, by that bundle.
       named: found.named !== false,
       // The bench already draws this beam's envelope (step G2), and the
       // view magnifies it: the waist is not drawn a second time.
@@ -216,8 +216,9 @@ export function zoomFoci(zoom, paths = []) {
 // segment starts (included) to where it ends (excluded):
 // - beside a face the light crosses straight carrying the beam parameter
 //   (a filter), the waist is the neighbouring bundle's, which names it:
-//   this bundle draws its own stretch of the envelope (`named: false`), up
-//   to a Rayleigh range from the face, as before;
+//   this bundle keeps its focus within a Rayleigh range of the face, as
+//   before, but unnamed (`named: false`); its envelope is cut at that face
+//   on the waist's side, which leaves it no more than a line;
 // - beside a face that turns any of the rays (a lens, a mirror), the waist
 //   is not where this light goes: behind the start it is virtual, past the
 //   end the beam forms another waist, or none, and never this one;
