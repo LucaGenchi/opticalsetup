@@ -518,6 +518,10 @@ let beamVertexSurfacesOf = new WeakMap();
 // The segments of each path on which the beam's envelope was drawn, for a
 // zoom that would otherwise draw the same waist again.
 let envelopeSegmentsOf = new WeakMap();
+// The path each branch was started from: an interaction that splits or
+// passes the light on as a tagged branch (a polarizer, a beamsplitter)
+// starts a new path where its parent ends.
+let branchParentOf = new WeakMap();
 // Each propagated path's straight stretches, with where the beam stops being
 // Gaussian along them (classifyBeamStretches).
 let stretchesOf = new WeakMap();
@@ -8370,6 +8374,12 @@ export const beamTrackOfPath = path => beamTrackOf.get(path) || null;
 // The beam parameter along segment `segment` of a traced path (the zoom's
 // waist): q at the segment's start vertex `p`, travelling along `d`, with
 // what turns q into a beam; null where the path has none.
+// The traced path a branch was started from, from the last trace; null for
+// a path a source emitted.
+export function branchParent(path) {
+  return (path && branchParentOf.get(path)) || null;
+}
+
 export function beamOnPathSegment(path, segment) {
   const track = beamTrackOf.get(path);
   const at = track && trackStateAt(track, segment);
@@ -9462,6 +9472,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           const held = r.beamIssueSeed || r.beamSeedNow || r.beamSeed;
           childRay.beamIssueSeed = held && c.wl > 0 && c.wl !== held.wavelengthNm ? { ...held, wavelengthNm: c.wl } : held;
         }
+        branchParentOf.set(childRay, r);
         stack.push(childRay);
       }
       break;
@@ -9959,6 +9970,7 @@ export function traceScene(elements, beams = [], options = {}) {
   beamVertexOwnersOf = new WeakMap();
   beamVertexSurfacesOf = new WeakMap();
   envelopeSegmentsOf = new WeakMap();
+  branchParentOf = new WeakMap();
   stretchesOf = new WeakMap();
   emissionOfPath = new WeakMap();
   emissionCount = 0;

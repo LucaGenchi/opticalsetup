@@ -3,9 +3,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement } from '../sketch/js/elements.js';
+import { readFile } from 'node:fs/promises';
+
+import { createElement, registry } from '../sketch/js/elements.js';
+import '../sketch/js/detector-instruments.js';
 import { traceScene } from '../sketch/js/raytrace.js';
-import { state } from '../sketch/js/state.js';
+import { parseSketch, state } from '../sketch/js/state.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { gaussianFocus } from '../sketch/js/sectioning.js';
 import { focusEnvelope, zoomFoci } from '../sketch/js/zoom-focus.js';
@@ -453,6 +456,176 @@ test('a propagated waist is not carried on past a face', () => {
   Object.assign(zoomNd.params, { w: 4, mag: 20 });
   const split = zoomFoci(zoomNd, traceScene([createElement('cwlaser', 0, 0), createElement('lens', 100, 0), nd, zoomNd], []).paths);
   assert.equal(split.length, 2);
+  // Named once, by the stretch past the filter that holds it.
+  assert.deepEqual(split.map(f => f.named).sort(), [false, true]);
   const spans = split.map(f => [f.point.x + f.from, f.point.x + f.to]).sort((a, b) => a[0] - b[0]);
   assert.ok(spans[0][1] <= spans[1][0] + 1e-6, `no overlap: ${JSON.stringify(spans)}`);
+});
+
+// A 0.1 mm wide 633 nm beam through an f = 100 mm lens at x = 200: its
+// Rayleigh range (12.4 mm) is short against f, so its waist forms at 495.285,
+// far past the rays' crossing at 300, with w0 101 µm and zR 50.5 mm. A wide
+// view (80 × 20 mm) around it, and what lies at or past the waist.
+function narrowLaser(params = {}) {
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 0.1, wavelength: 633 }, params);
+  return laser;
+}
+function wideWaist(extra = [], lasers = [narrowLaser()]) {
+  const lens = createElement('lens', 200, 0);
+  const zoom = createElement('zoom', 495, 0);
+  Object.assign(zoom.params, { shape: 'rect', w: 80, h: 20, mag: 2 });
+  const elements = [...lasers, lens, ...extra, zoom];
+  const traced = traceScene(elements, []);
+  const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements });
+  return {
+    foci: zoomFoci(zoom, traced.paths),
+    labels: [...svg.matchAll(/>(w₀ [^<]*)</g)].map(m => m[1]),
+    ranges: [...svg.matchAll(/>(zR [^<]*)</g)].map(m => m[1]),
+  };
+}
+const placed = (type, x, params = {}) => Object.assign(createElement(type, x, 0), { params: { ...createElement(type, x, 0).params, ...params } });
+
+test('the beam alone names its waist once', () => {
+  const { foci, labels } = wideWaist();
+  assert.deepEqual(labels, ['w₀ 101 µm']);
+  assert.ok(Math.abs(foci[0].point.x - 495.285) < 1e-3, `at ${foci[0].point.x}`);
+  assert.ok(Math.abs(foci[0].zRMm - 50.48) < 0.01, `zR ${foci[0].zRMm}`);
+});
+
+test('a lens before the waist is reached names only the waist it forms', () => {
+  // A weak lens 25 mm before the waist: the beam's waist moves to 498.423.
+  const weak = wideWaist([placed('lens', 470, { f: 500 })]);
+  assert.deepEqual(weak.labels, ['w₀ 95.6 µm']);
+  assert.ok(Math.abs(weak.foci[0].point.x - 498.423) < 1e-3, `at ${weak.foci[0].point.x}`);
+  // A lens 4.3 mm (0.085 zR) before it, closer than a beam block may stand
+  // and still name the waist (below): the waist is 513.312's, never 495's.
+  const near = wideWaist([placed('lens', 491, { f: 100 })]);
+  assert.deepEqual(near.labels, ['w₀ 87 µm']);
+  assert.ok(Math.abs(near.foci[0].point.x - 513.312) < 1e-3, `at ${near.foci[0].point.x}`);
+});
+
+test('a lens past the waist names the waist it forms, and no virtual one behind it', () => {
+  // A diverging lens 4.7 mm past the waist: the beam leaving it seems to
+  // come from a waist behind the lens, which it never passes through.
+  assert.deepEqual(wideWaist([placed('lens', 500, { f: -500 })]).labels, ['w₀ 101 µm']);
+  assert.deepEqual(wideWaist([placed('lens', 505, { f: -200 })]).labels, ['w₀ 101 µm']);
+  // A converging one there focuses the beam again, to a second real waist.
+  const { foci, labels } = wideWaist([placed('lens', 500, { f: 300 })]);
+  assert.deepEqual(labels, ['w₀ 101 µm', 'w₀ 101 µm']);
+  assert.deepEqual(foci.map(f => Number(f.point.x.toFixed(3))), [495.285, 503.864]);
+});
+
+test('a beam block before the waist ends the beam: the waist is named only within a tenth of zR of it', () => {
+  // The block's face at 470, half a Rayleigh range short: no waist.
+  assert.deepEqual(wideWaist([placed('blocker', 475, { w: 10, h: 20 })]).labels, []);
+  // Its face 4.3 mm (0.085 zR) short: the beam meets it 0.4 % wider than
+  // w0, and the waist is named.
+  assert.deepEqual(wideWaist([placed('blocker', 492, { w: 2, h: 20 })]).labels, ['w₀ 101 µm']);
+  // 6.1 mm (0.12 zR) short: not.
+  assert.deepEqual(wideWaist([placed('blocker', 490.2, { w: 2, h: 20 })]).labels, []);
+});
+
+test('an optic the beam goes straight through names the waist once, on either side of it', () => {
+  // A longpass filter passes 633 nm unchanged: the waist is named by the
+  // stretch that holds it, before the filter or after it, never by both.
+  // The other stretch still reports it, unnamed, as before (its envelope is
+  // cut at the filter on the waist's side, so it draws no more than a line).
+  for (const x of [494, 496]) {
+    const { foci, labels } = wideWaist([placed('filter', x, { ftype: 'longpass' })]);
+    assert.deepEqual(labels, ['w₀ 101 µm'], `filter at ${x}`);
+    assert.equal(foci.length, 2);
+    assert.deepEqual(foci.map(f => f.named).sort(), [false, true]);
+    for (const f of foci) assert.ok(Math.abs(f.point.x - 495.285) < 1e-3);
+    const spans = foci.map(f => [f.point.x + f.from, f.point.x + f.to]).sort((a, b) => a[0] - b[0]);
+    assert.ok(Math.abs(spans[0][1] - x) < 1e-6 && Math.abs(spans[1][0] - x) < 1e-6, `the stretches meet at ${x}: ${JSON.stringify(spans)}`);
+  }
+  // A diagram-only window meets no ray, and changes nothing.
+  assert.deepEqual(wideWaist([Object.assign(placed('window', 494), { rot: 90 })]).labels, ['w₀ 101 µm']);
+});
+
+test('a branch the tracer starts at an optic carries the beam on: a polarizer, a beamsplitter (review)', () => {
+  // A polarizer 0.085 zR before the waist: its transmitted light is a new
+  // path, which holds the waist and names it, once.
+  const polarizer = wideWaist([placed('polarizer', 491)]);
+  assert.deepEqual(polarizer.labels, ['w₀ 101 µm']);
+  assert.deepEqual(polarizer.foci.map(f => f.named).sort(), [false, true]);
+  // A beamsplitter there: all transmitted, the waist is named once on the
+  // transmitted arm; all reflected, once on the reflected arm, at
+  // (491, −4.285), and not past the splitter where no light goes.
+  const through = wideWaist([placed('bs', 491, { ratio: 1 })]);
+  assert.deepEqual(through.labels, ['w₀ 101 µm']);
+  assert.ok(through.foci.filter(f => f.named).every(f => Math.abs(f.point.x - 495.285) < 1e-3 && Math.abs(f.point.y) < 1e-6));
+  const reflected = wideWaist([placed('bs', 491, { ratio: 0 })]);
+  assert.deepEqual(reflected.labels, ['w₀ 101 µm']);
+  assert.equal(reflected.foci.length, 1);
+  assert.ok(Math.abs(reflected.foci[0].point.x - 491) < 1e-3 && Math.abs(reflected.foci[0].point.y + 4.285) < 1e-3, `at ${JSON.stringify(reflected.foci[0].point)}`);
+  // Half and half: the two arms each form a waist of their own, both named.
+  const half = wideWaist([placed('bs', 491, { ratio: 0.5 })]);
+  assert.deepEqual(half.labels, ['w₀ 101 µm', 'w₀ 101 µm']);
+  assert.deepEqual(half.foci.map(f => [Number(f.point.x.toFixed(3)), Number(f.point.y.toFixed(3)) + 0]).sort((a, b) => a[1] - b[1]), [[491, -4.285], [495.285, 0]]);
+});
+
+test('a branch is followed from the path that started it, not from another source on the same line (review 2)', () => {
+  // Two coaxial lasers and a 0° polarizer 0.085 zR before the waists: the
+  // 633 nm beam polarized at 90° stops there, the 637 nm one at 0° goes on.
+  const polarizer = () => placed('polarizer', 491, { pangle: 0 });
+  const blocked = narrowLaser({ wavelength: 633, pol: 90 });
+  assert.deepEqual(wideWaist([polarizer()], [blocked]).ranges, ['zR 50.5 mm']);
+  // The transmitted 637 nm beam does not carry the blocked one on: each
+  // keeps its own note.
+  const both = wideWaist([polarizer()], [narrowLaser({ wavelength: 633, pol: 90 }), narrowLaser({ wavelength: 637, pol: 0 })]);
+  assert.deepEqual(both.ranges, ['zR 50.5 mm', 'zR 50.2 mm']);
+});
+
+test('a waist on a mirror or a beamsplitter face is named once (review 2)', () => {
+  const at = wideWaist().foci[0].point.x;
+  const mirror = Object.assign(placed('mirror', at), { rot: 45 });
+  assert.deepEqual(wideWaist([mirror]).labels, ['w₀ 101 µm']);
+  for (const ratio of [0, 0.5, 1]) {
+    const { labels, foci } = wideWaist([placed('bs', at, { ratio })]);
+    assert.deepEqual(labels, ['w₀ 101 µm'], `beamsplitter at ${ratio}`);
+    assert.equal(foci.filter(f => f.named).length, 1);
+  }
+  // Arms that form waists further on still each name their own (above,
+  // a splitter 0.085 zR before the waist names one on each arm).
+});
+
+test('a waist a lens forms on its own face is named (review 3)', () => {
+  // A diverging lens at 470 matched to the incident curvature there: the
+  // beam leaving it has its waist on the lens face (w0 113 µm, zR 63.1 mm),
+  // which the incident beam, still converging, does not reach.
+  const { labels, ranges } = wideWaist([placed('lens', 470, { f: -126.062959803 })]);
+  assert.deepEqual(labels, ['w₀ 113 µm']);
+  assert.deepEqual(ranges, ['zR 63.1 mm']);
+});
+
+test('a waist the beam reaches on a lens face is named; one beyond the face is not (review)', () => {
+  // The waist's own position, from the beam alone.
+  const at = wideWaist().foci[0].point.x;
+  // A diverging lens exactly there: the incident beam reaches w0 on its face.
+  assert.deepEqual(wideWaist([placed('lens', at, { f: -500 })]).labels, ['w₀ 101 µm']);
+  // 0.1 µm after the waist it is still named, by the stretch that holds it;
+  // 0.1 µm before, the beam never reaches it.
+  assert.deepEqual(wideWaist([placed('lens', at + 1e-4, { f: -500 })]).labels, ['w₀ 101 µm']);
+  assert.deepEqual(wideWaist([placed('lens', at - 1e-4, { f: -500 })]).labels, []);
+  // A converging lens there: the incident waist, and the new one it forms.
+  assert.deepEqual(wideWaist([placed('lens', at, { f: 300 })]).labels, ['w₀ 101 µm', 'w₀ 99.5 µm']);
+});
+
+test('a waist just past the face where the light stops keeps its note: a fiber, a pinhole', async () => {
+  const labelsOf = async name => {
+    const text = await readFile(new URL(`../Examples/Fundamentals/${name}.json`, import.meta.url), 'utf8');
+    const scene = parseSketch(text, registry);
+    const traced = traceScene(scene.elements, scene.beams);
+    const zoom = scene.elements.find(el => el.type === 'zoom');
+    const svg = zoomSceneSVG(zoom, { drawables: traced.drawables, paths: traced.paths, elements: scene.elements });
+    return [...svg.matchAll(/>(w₀ [^<]*)</g)].map(m => m[1]);
+  };
+  // 1.6 µm (0.07 zR) past the fiber's end face.
+  assert.deepEqual(await labelsOf('Coupling a laser into a single-mode fiber'), ['w₀ 2.21 µm']);
+  // The beam's waist in the gap, and the light at 6° focused 1.9 µm
+  // (0.015 zR) past the plate it ends on.
+  const pinhole = await labelsOf('Pinhole spatial filter');
+  assert.equal(pinhole.length, 2, pinhole.join(', '));
 });

@@ -26,7 +26,7 @@
 
 import { beamFromQ } from './gaussian-beam.js';
 import { envelopeEdges } from './beam-envelope.js';
-import { beamOnPathSegment } from './raytrace.js';
+import { beamOnPathSegment, branchParent } from './raytrace.js';
 import { bundleFocus } from './sectioning.js';
 import { wavelengthToColor } from './util.js';
 import { zoomGeometry } from './zoom.js';
@@ -38,6 +38,11 @@ const ALONG_TOLERANCE = 1e-6;
 // A ray that goes on through a plane keeps its direction to about 1 µrad
 // (1 − cos 1.4e-6 ≈ 1e-12).
 const STRAIGHT_TOLERANCE = 1e-12;
+// How far past the face where its beam parameter ends a propagated waist is
+// still named: a tenth of its Rayleigh range, where the beam is wider than
+// w0 by half a percent (sqrt(1 + 0.1²) = 1.005), so the face meets the
+// waist (a fiber's end face, a pinhole's plate, a specimen plane).
+const STOP_REACH = 0.1;
 
 // Rays of one beam's bundle share their source, their route through
 // splitting optics, their wavelength and the number of interactions behind
@@ -46,16 +51,62 @@ function bundleKey(path, segment) {
   return [path.originId || '', path.sourceId || '', path.branch || '', path.wl, segment].join('|');
 }
 
-// A path's segment after segment i, as a ray from the point segment i ends
-// at, where the light goes on (finite, lit and of some length), with
-// whether it carries a beam parameter; else null.
-function continuation(path, i) {
-  const a = path.pts[i + 1], b = path.pts[i + 2];
+// Segment k of a path as a ray from its start, where the light travels it
+// (finite, lit and of some length), with whether it carries a beam
+// parameter; else null.
+function segmentRay(path, k) {
+  const a = path.pts?.[k], b = path.pts?.[k + 1];
   if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) return null;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
-  const w = path.segmentIntensities?.[i + 1] ?? path.intensity;
+  const w = path.segmentIntensities?.[k] ?? path.intensity;
   if (!(len > 0) || !(w > 0)) return null;
-  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, i + 1)) };
+  return { p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, len, beam: Boolean(beamOnPathSegment(path, k)) };
+}
+
+// A path's segment after segment i, on the same path; else null.
+function continuation(path, i) {
+  return segmentRay(path, i + 1);
+}
+
+// The tracer starts a new path for each tagged branch an interaction makes
+// (a polarizer's transmitted light, a beamsplitter's two arms), where the
+// parent path ends, and records which path it started from (branchParent).
+// The links between them: the branches each path starts, and its parent.
+function branchLinks(paths) {
+  const children = new Map();
+  for (const path of paths) {
+    const parent = path && branchParent(path);
+    if (!parent) continue;
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(path);
+  }
+  return { childrenOf: path => children.get(path) || [], parentOf: path => branchParent(path) };
+}
+
+// Where the light of segment i goes on past its end: the path's next
+// segment, or, at its last, the first segments of the branches that start
+// there, each with the outgoing beam it belongs to (`via`: '' for the same
+// path, else the branch). Empty where all of it stops.
+function onward(path, i, links) {
+  if (i < path.pts.length - 2) return [continuation(path, i)].filter(Boolean).map(next => ({ ...next, via: '' }));
+  return links.childrenOf(path).map(child => {
+    const next = segmentRay(child, 0);
+    return next && { ...next, via: child.branch || child.sig || '?' };
+  }).filter(Boolean);
+}
+
+// The segment the light arrived on at the start of segment i: the path's
+// segment before, or, at its first, the last segment of the path it branched
+// from, with whether its beam reaches its own waist where it ends, on the
+// face (`waistOnFace`); else null.
+function arrival(path, i, links) {
+  const from = i > 0 ? path : links.parentOf(path);
+  const k = i > 0 ? i - 1 : from ? from.pts.length - 2 : -1;
+  const seg = from && segmentRay(from, k);
+  if (!seg) return null;
+  const beam = seg.beam && beamOnPathSegment(from, k);
+  const shape = beam && beamFromQ(beam.q, { wavelengthNm: beam.wavelengthNm, m2: beam.m2, index: beam.index });
+  return { ...seg, waistOnFace: Boolean(shape) && Math.abs(shape.waistAheadMm - seg.len) <= ALONG_TOLERANCE };
 }
 
 function inRegion(g, at, p) {
@@ -76,11 +127,14 @@ function nearRegion(at, reach, a, b) {
 // Every beam focus inside the zoom's region, from the traced paths: each
 // with its bench `point`, beam `axis` (unit), waist `w0Mm`, Rayleigh range
 // `zRMm`, numerical aperture `na`, the stretch of the axis the beam travels
-// (`from` < 0 < `to`, from the focus), wavelength `wl` and drawing `color`.
+// (`from` < 0 < `to`, from the focus), wavelength `wl` and drawing `color`,
+// and whether the view names it (`named`: false beside the stretch that
+// holds the waist, see propagatedFocus).
 export function zoomFoci(zoom, paths = []) {
   const g = zoomGeometry(zoom.params, zoom.rot);
   const reach = Math.hypot(g.rx, g.ry);
   const groups = new Map();
+  const links = branchLinks(paths);
   for (const path of paths) {
     if (!path || path.speckle || path.evanFade || !(path.wl > 0)) continue;
     const pts = path.pts || [];
@@ -94,8 +148,8 @@ export function zoomFoci(zoom, paths = []) {
       const key = bundleKey(path, i);
       if (!groups.has(key)) groups.set(key, { wl: path.wl, color: path.color || null, rays: [], beam: null });
       const group = groups.get(key);
-      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len, next: continuation(path, i) });
-      group.beam ||= beamOnPathSegment(path, i);
+      group.rays.push({ p: a, d: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, w, len, next: continuation(path, i), onward: onward(path, i, links), prev: arrival(path, i, links) });
+      if (!group.beam && (group.beam = beamOnPathSegment(path, i))) group.beamLen = len;
     }
   }
   const foci = [];
@@ -152,9 +206,9 @@ export function zoomFoci(zoom, paths = []) {
         to = Math.max(to, s0 + r.len * (r.d.x * found.axis.x + r.d.y * found.axis.y));
       }
     }
-    // A cone's focus lies between the optics; a propagated waist may lie up
-    // to a Rayleigh range beyond them, and its envelope is drawn on the
-    // stretch the beam travels, cut at the faces as before.
+    // A cone's focus lies between the optics; a propagated waist may lie
+    // beyond them where propagatedFocus allows it, and its envelope is drawn
+    // on the stretch the beam travels, cut at the faces as before.
     // A propagated waist's envelope stops where an edge clips the beam.
     if (found.model === 'propagated' && found.reachMm !== null) to = Math.min(to, found.reachMm - found.waistFromStartMm);
     if (![from, to].every(Number.isFinite) || !(from < to)) continue;
@@ -178,6 +232,9 @@ export function zoomFoci(zoom, paths = []) {
       point: found.point, axis: found.axis, w0Mm: found.w0Mm, zRMm: found.zRMm, na: found.na,
       from, to, ends, wl: group.wl, color: group.color || wavelengthToColor(group.wl),
       model: found.model || 'cone', estimate: found.estimate || null,
+      // A propagated waist that another bundle's stretch holds is named
+      // once, by that bundle.
+      named: found.named !== false,
       // The bench already draws this beam's envelope (step G2), and the
       // view magnifies it: the waist is not drawn a second time.
       drawnAsEnvelope: found.model === 'propagated' && Boolean(group.beam?.drawnAsEnvelope),
@@ -186,19 +243,74 @@ export function zoomFoci(zoom, paths = []) {
   return foci;
 }
 
-// The waist of a bundle's propagated beam, in bundleFocus's shape, where it
-// lies on the bundle's segment or within a Rayleigh range of either end; null
-// without a beam parameter, and { ok: false } when the beam's waist lies
-// further away (the rays' crossing is then not where the beam is narrowest,
-// and no waist is drawn there).
+// The waist of a bundle's propagated beam, in bundleFocus's shape, where the
+// beam really forms it; null without a beam parameter, and { ok: false }
+// where it does not (no waist is drawn there, neither the beam's nor a
+// cone's). Each waist belongs to one bundle, the one whose stretch holds it,
+// measured on the path that carries the beam parameter, from where its
+// segment starts (included) to where it ends (excluded). The light past a
+// face is the path's next segment, or the branches the tracer starts there
+// (branchLinks):
+// - beside a face the light crosses straight carrying the beam parameter
+//   (a filter), the waist is the neighbouring bundle's, which names it:
+//   this bundle keeps its focus within a Rayleigh range of the face, as
+//   before, but unnamed (`named: false`); its envelope is cut at that face
+//   on the waist's side, which leaves it no more than a line;
+// - beside a face that turns any of the rays (a lens, a mirror, a
+//   beamsplitter's reflected arm), the waist is not where this light goes:
+//   behind the start it is virtual, beyond the end the beam forms another
+//   waist, or none, and never this one; a waist on the face itself is the
+//   incident beam's, named by the bundle that arrives there, unless a beam
+//   leaving the face straight with the beam parameter holds it (a
+//   beamsplitter's transmitted arm), and never by a turned one leaving;
+// - past a face where the beam parameter ends, the light stopping there (a
+//   fiber's end face, a pinhole's plate, a beam block) or going on straight
+//   without one (a specimen plane), the waist is named only within
+//   STOP_REACH Rayleigh ranges of it, where the face meets the waist;
+// - behind a start that no beam parameter reaches straight, there is none.
 function propagatedFocus(group) {
   const beam = group.beam;
   if (!beam) return null;
   const shape = beamFromQ(beam.q, { wavelengthNm: beam.wavelengthNm, m2: beam.m2, index: beam.index });
   if (!shape) return null;
   const along = shape.waistAheadMm;
-  const length = Math.max(...group.rays.map(r => r.len));
-  if (!(along > -shape.rayleighMm && along <= length + shape.rayleighMm)) return { ok: false };
+  const length = group.beamLen;
+  const straight = (r, other) => other.d.x * r.d.x + other.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
+  let named = true;
+  // A waist on the face this bundle starts from, where the rays arrived
+  // turned (a mirror, a lens, a beamsplitter's reflected arm) and the
+  // incident beam reaches its own waist on that face too, is the incident
+  // beam's, named by the bundle that arrived (below). One the optic forms
+  // there afresh (a lens matched to the incident curvature) is this one's.
+  const arrivedTurned = group.rays.some(r => r.prev && !straight(r, r.prev));
+  const incidentWaistHere = group.rays.some(r => r.prev?.waistOnFace);
+  if (Math.abs(along) <= ALONG_TOLERANCE && arrivedTurned && incidentWaistHere) named = false;
+  if (along < -ALONG_TOLERANCE) {
+    const carriedIn = group.rays.every(r => r.prev && straight(r, r.prev)) && group.rays.some(r => r.prev.beam);
+    if (!carriedIn || !(along > -shape.rayleighMm)) return { ok: false };
+    named = false;
+  } else if (!(along < length - ALONG_TOLERANCE)) {
+    const goesOn = group.rays.flatMap(r => r.onward.map(next => ({ r, next })));
+    const onFace = along <= length + ALONG_TOLERANCE;
+    if (goesOn.some(({ r, next }) => !straight(r, next))) {
+      if (!onFace) return { ok: false };
+      // The incident beam reaches its waist on the face itself. An outgoing
+      // beam that goes on straight with the beam parameter (a beamsplitter's
+      // transmitted arm) holds the same waist and names it; otherwise it is
+      // named here, and the turned beams leaving the face do not name it.
+      const arms = new Map();
+      for (const { r, next } of goesOn) {
+        const arm = arms.get(next.via) || { straight: true, beam: false };
+        arm.straight &&= straight(r, next);
+        arm.beam ||= next.beam;
+        arms.set(next.via, arm);
+      }
+      if ([...arms.values()].some(arm => arm.straight && arm.beam)) named = false;
+    } else if (goesOn.some(({ next }) => next.beam)) {
+      if (!(along <= length + shape.rayleighMm)) return { ok: false };
+      named = false;
+    } else if (!(along <= length + STOP_REACH * shape.rayleighMm)) return { ok: false };
+  }
   // An edge that clips the beam before its waist ends the beam parameter
   // there (as the probe and detectors read it): the zoom then keeps the cone
   // estimate. One that clips it past the waist leaves the waist, and the
@@ -213,7 +325,7 @@ function propagatedFocus(group) {
   if (clipAt !== null && clipAt <= Math.max(0, along)) return null;
   const reach = [clipAt, overlapAt].filter(v => v !== null);
   return {
-    ok: true, model: 'propagated', reachMm: reach.length ? Math.min(...reach) : null,
+    ok: true, model: 'propagated', named, reachMm: reach.length ? Math.min(...reach) : null,
     point: { x: beam.p.x + beam.d.x * along, y: beam.p.y + beam.d.y * along }, axis: { ...beam.d }, waistFromStartMm: along,
     w0Mm: shape.waistUm / 1000, zRMm: shape.rayleighMm, na: Math.sin(Math.atan(shape.halfDivergenceMrad / 1000)),
     estimate: beam.estimate || null,
