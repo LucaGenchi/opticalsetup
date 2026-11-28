@@ -97,11 +97,16 @@ function onward(path, i, links) {
 
 // The segment the light arrived on at the start of segment i: the path's
 // segment before, or, at its first, the last segment of the path it branched
-// from; else null.
+// from, with whether its beam reaches its own waist where it ends, on the
+// face (`waistOnFace`); else null.
 function arrival(path, i, links) {
-  if (i > 0) return segmentRay(path, i - 1);
-  const parent = links.parentOf(path);
-  return parent ? segmentRay(parent, parent.pts.length - 2) : null;
+  const from = i > 0 ? path : links.parentOf(path);
+  const k = i > 0 ? i - 1 : from ? from.pts.length - 2 : -1;
+  const seg = from && segmentRay(from, k);
+  if (!seg) return null;
+  const beam = seg.beam && beamOnPathSegment(from, k);
+  const shape = beam && beamFromQ(beam.q, { wavelengthNm: beam.wavelengthNm, m2: beam.m2, index: beam.index });
+  return { ...seg, waistOnFace: Boolean(shape) && Math.abs(shape.waistAheadMm - seg.len) <= ALONG_TOLERANCE };
 }
 
 function inRegion(g, at, p) {
@@ -273,10 +278,13 @@ function propagatedFocus(group) {
   const straight = (r, other) => other.d.x * r.d.x + other.d.y * r.d.y >= 1 - STRAIGHT_TOLERANCE;
   let named = true;
   // A waist on the face this bundle starts from, where the rays arrived
-  // turned (a mirror, a lens, a beamsplitter's reflected arm), is the
-  // incident beam's, named by the bundle that arrived (below).
+  // turned (a mirror, a lens, a beamsplitter's reflected arm) and the
+  // incident beam reaches its own waist on that face too, is the incident
+  // beam's, named by the bundle that arrived (below). One the optic forms
+  // there afresh (a lens matched to the incident curvature) is this one's.
   const arrivedTurned = group.rays.some(r => r.prev && !straight(r, r.prev));
-  if (Math.abs(along) <= ALONG_TOLERANCE && arrivedTurned) named = false;
+  const incidentWaistHere = group.rays.some(r => r.prev?.waistOnFace);
+  if (Math.abs(along) <= ALONG_TOLERANCE && arrivedTurned && incidentWaistHere) named = false;
   if (along < -ALONG_TOLERANCE) {
     const carriedIn = group.rays.every(r => r.prev && straight(r, r.prev)) && group.rays.some(r => r.prev.beam);
     if (!carriedIn || !(along > -shape.rayleighMm)) return { ok: false };

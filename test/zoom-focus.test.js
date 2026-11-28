@@ -591,6 +591,15 @@ test('a waist on a mirror or a beamsplitter face is named once (review 2)', () =
   // a splitter 0.085 zR before the waist names one on each arm).
 });
 
+test('a waist a lens forms on its own face is named (review 3)', () => {
+  // A diverging lens at 470 matched to the incident curvature there: the
+  // beam leaving it has its waist on the lens face (w0 113 µm, zR 63.1 mm),
+  // which the incident beam, still converging, does not reach.
+  const { labels, ranges } = wideWaist([placed('lens', 470, { f: -126.062959803 })]);
+  assert.deepEqual(labels, ['w₀ 113 µm']);
+  assert.deepEqual(ranges, ['zR 63.1 mm']);
+});
+
 test('a waist the beam reaches on a lens face is named; one beyond the face is not (review)', () => {
   // The waist's own position, from the beam alone.
   const at = wideWaist().foci[0].point.x;
