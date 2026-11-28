@@ -172,3 +172,17 @@ ships keep their own notices; see `THIRD-PARTY-NOTICES.md`.
   exact checks performed.
 - Do not push, open a PR, merge, or email anyone unless the user requests that
   delivery action.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues on `LucaGenchi/opticalsetup` (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
